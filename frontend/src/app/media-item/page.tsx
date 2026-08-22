@@ -1,5 +1,6 @@
 "use client";
 
+import { findMediaItemInOtherLibraries } from "@/helper/find-cross-library-media-items";
 import { makePlural } from "@/helper/make_plural";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 import { GetMediaItemDetails } from "@/services/mediaserver/get-media-item-details";
@@ -58,7 +59,8 @@ const MediaItemPage = () => {
 
   // Main Media Item States
   const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
-  const [existsInOtherSections, setExistsInOtherSections] = useState<MediaItem | null>(null);
+  const [otherLibraryMediaItems, setOtherLibraryMediaItems] = useState<MediaItem[]>([]);
+  const existsInOtherSections = otherLibraryMediaItems[0] ?? null;
 
   const [existsInDB, setExistsInDB] = useState<boolean>(
     (mediaItem?.db_saved_sets && mediaItem.db_saved_sets.length > 0) || false
@@ -233,38 +235,10 @@ const MediaItemPage = () => {
           setMediaItem(mediaItemResponse);
         }
 
-        // Find if this item exists in other sections
-        const otherSections = Object.values(librarySectionsMap).filter(
-          (s) => s.type === mediaItemResponse.type && s.title !== mediaItemResponse.library_title
-        );
-
-        if (otherSections && otherSections.length > 0) {
-          log(
-            "INFO",
-            "Media Item Page",
-            "Fetch",
-            `Found other sections of type ${mediaItemResponse.type}`,
-            otherSections
-          );
-          let foundOther: MediaItem | null = null;
-          if (mediaItemResponse.guids?.length) {
-            const tmdbID = mediaItemResponse.guids.find((guid) => guid.provider === "tmdb")?.id;
-            if (tmdbID) {
-              for (const section of otherSections) {
-                if (!section.media_items || section.media_items.length === 0) continue;
-                const otherMediaItem = section.media_items.find((item) =>
-                  item.guids?.some((guid) => guid.provider === "tmdb" && guid.id === tmdbID)
-                );
-                if (otherMediaItem) {
-                  foundOther = otherMediaItem;
-                  break;
-                }
-              }
-            }
-          }
-          log("INFO", "Media Item Page", "Fetch", `Media Item - Exists in other sections?`, foundOther);
-          setExistsInOtherSections(foundOther);
-        }
+        // Find if this item exists in other libraries (same TMDB ID, different library_title)
+        const otherLibraryMatches = findMediaItemInOtherLibraries(mediaItemResponse, librarySectionsMap);
+        log("INFO", "Media Item Page", "Fetch", `Media Item - Exists in other libraries?`, otherLibraryMatches);
+        setOtherLibraryMediaItems(otherLibraryMatches);
 
         // Check Poster Sets
         if (posterSetsResponse && Array.isArray(posterSetsResponse.sets) && posterSetsResponse.sets.length > 0) {
@@ -557,16 +531,18 @@ const MediaItemPage = () => {
   };
 
   const handleMediaItemChange = (item: MediaItem) => {
+    // Ignore completions for the same title's copy in another library (tmdb_id matches,
+    // but rating_key doesn't) - only the currently viewed library's copy should update this page.
+    if (item.rating_key !== mediaItem?.rating_key) return;
+
     setImageVersion(Date.now());
-    if (item.tmdb_id === mediaItem?.tmdb_id) {
-      if (item.db_saved_sets && mediaItem.db_saved_sets.length > 0) {
-        setExistsInDB(true);
-      } else if (item.ignored_in_db) {
-        setIgnoredInDB(true);
-        setIgnoredMode(item.ignored_mode || "");
-      }
-      setMediaItem(item);
+    if (item.db_saved_sets && mediaItem.db_saved_sets.length > 0) {
+      setExistsInDB(true);
+    } else if (item.ignored_in_db) {
+      setIgnoredInDB(true);
+      setIgnoredMode(item.ignored_mode || "");
     }
+    setMediaItem(item);
   };
 
   // Calculate number of active filters
@@ -863,6 +839,7 @@ const MediaItemPage = () => {
                     mediaItem={mediaItem}
                     onMediaItemChange={handleMediaItemChange}
                     dimNotFound={true}
+                    otherLibraryMediaItems={otherLibraryMediaItems}
                   />
                 ))}
               </div>

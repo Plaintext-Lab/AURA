@@ -96,6 +96,9 @@ type DB interface {
 
 	// Update Media Item on_server flag
 	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
+
+	// Reconcile a Media Item whose Edition changed
+	ReconcileMediaItemEdition(ctx context.Context, tmdbID, libraryTitle, oldEdition string, updatedItem models.MediaItem) (Err logging.LogErrorInfo)
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
@@ -310,4 +313,11 @@ func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle st
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.UpdateMediaItemOnServer(ctx, tmdbID, libraryTitle, edition, onServer)
+}
+
+func ReconcileMediaItemEdition(ctx context.Context, tmdbID, libraryTitle, oldEdition string, updatedItem models.MediaItem) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.ReconcileMediaItemEdition(ctx, tmdbID, libraryTitle, oldEdition, updatedItem)
 }

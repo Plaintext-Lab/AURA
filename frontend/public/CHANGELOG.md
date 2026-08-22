@@ -1,3 +1,19 @@
+## [0.9.104] - 2026-08-21
+
+### Added
+
+- Added new Bulk Edit options for Enabling and Disabling Auto-Download for multiple Saved Sets at once.
+- Organized the Bulk Edit options into a groups for better user experience.
+- Added new download option for Media Items that are present in multiple libraries. This will allow you to download images for the same Media Item in multiple libraries at once instead of having to download them separately for each library.
+
+### Fixed
+
+- Fixed padding with Table View on Saved Sets page.
+- Fixed styling with Table View on Saved Sets page.
+- Fixed issue where Media Items with a Edition tag would keep throwing "Check For Media Item Changes Job" notifications.
+
+---
+
 ## [0.9.103] - 2026-08-14
 
 ### Fixed

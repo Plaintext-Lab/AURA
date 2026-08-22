@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { CarouselDisplay } from "@/components/shared/carousel-display";
-import DownloadModal from "@/components/shared/download-modal";
+import DownloadModal, { type FormItemDisplay } from "@/components/shared/download-modal";
 import { SetFileCounts } from "@/components/shared/set-file-counts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,17 @@ type MediaCarouselProps = {
   mediaItem: MediaItem;
   onMediaItemChange?: (item: MediaItem) => void;
   dimNotFound?: boolean;
+  otherLibraryMediaItems?: MediaItem[];
 };
 
-export function MediaCarousel({ set, includedItems, mediaItem, onMediaItemChange, dimNotFound }: MediaCarouselProps) {
+export function MediaCarousel({
+  set,
+  includedItems,
+  mediaItem,
+  onMediaItemChange,
+  dimNotFound,
+  otherLibraryMediaItems,
+}: MediaCarouselProps) {
   const router = useRouter();
 
   const { setPosterSets, setIncludedItems, setSetBaseInfo } = usePosterSetsStore();
@@ -53,6 +61,14 @@ export function MediaCarousel({ set, includedItems, mediaItem, onMediaItemChange
   };
 
   const { setSearchQuery } = useSearchQueryStore();
+
+  const baseFormItems = setRefsToFormItems([set], includedItems || {});
+  const crossLibraryFormItems: FormItemDisplay[] = (otherLibraryMediaItems ?? []).flatMap((otherItem) =>
+    baseFormItems
+      .filter((item) => item.MediaItem.tmdb_id === otherItem.tmdb_id)
+      .map((item) => ({ MediaItem: otherItem, Set: { ...item.Set } }))
+  );
+  const downloadModalFormItems = [...baseFormItems, ...crossLibraryFormItems];
 
   return (
     <Carousel
@@ -146,7 +162,7 @@ export function MediaCarousel({ set, includedItems, mediaItem, onMediaItemChange
             </Link>
             <DownloadModal
               baseSetInfo={set}
-              formItems={setRefsToFormItems([set], includedItems || {})}
+              formItems={downloadModalFormItems}
               onDownloadComplete={onMediaItemChange}
             />
           </div>

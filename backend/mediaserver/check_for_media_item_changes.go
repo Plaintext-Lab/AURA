@@ -30,6 +30,28 @@ func CheckForMediaItemChanges(ctx context.Context) (Err logging.LogErrorInfo) {
 	for _, dbItem := range dbMediaItems {
 		cachedItem, found := cache.LibraryStore.GetMediaItemFromSectionByTMDBIDAndEdition(dbItem.LibraryTitle, dbItem.TMDB_ID, dbItem.Edition)
 		if !found {
+			// The exact (tmdb_id, edition) pair wasn't found
+			// Check if its there under a different Edition
+			// If so, this is an edition change, not a removal, reconcile it.
+			if editionChangedItem, editionChangedFound := cache.LibraryStore.GetMediaItemFromSectionByTMDBID(dbItem.LibraryTitle, dbItem.TMDB_ID); editionChangedFound && editionChangedItem.Edition != dbItem.Edition {
+				logging.LOGGER.Info().Timestamp().Str("tmdb_id", dbItem.TMDB_ID).Str("library_title", dbItem.LibraryTitle).
+					Str("old_edition", dbItem.Edition).Str("new_edition", editionChangedItem.Edition).
+					Msg("MediaItem Edition changed on media server - reconciling instead of treating as removed")
+
+				reconcileErr := database.ReconcileMediaItemEdition(ctx, dbItem.TMDB_ID, dbItem.LibraryTitle, dbItem.Edition, *editionChangedItem)
+				if reconcileErr.Message != "" {
+					logAction.AppendWarning("reconcile_edition_error", reconcileErr.Message)
+				} else {
+					logAction.AppendResult("reconciled_editions", map[string]any{
+						"tmdb_id":       dbItem.TMDB_ID,
+						"library_title": dbItem.LibraryTitle,
+						"old_edition":   dbItem.Edition,
+						"new_edition":   editionChangedItem.Edition,
+					})
+				}
+				continue
+			}
+
 			mediaItem := models.MediaItem{
 				TMDB_ID:      dbItem.TMDB_ID,
 				LibraryTitle: dbItem.LibraryTitle,

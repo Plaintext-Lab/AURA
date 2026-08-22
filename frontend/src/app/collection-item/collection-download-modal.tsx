@@ -130,7 +130,6 @@ const CollectionsDownloadModal: React.FC<CollectionsDownloadModalProps> = ({ ite
     color: "",
   });
 
-  // Add this with your other state declarations
   const progressRef = useRef(0);
   const progressIncrementRef = useRef(0);
   const progressDownloadRef = useRef(0);

@@ -115,20 +115,22 @@ const SavedSetsTableRow: React.FC<{
     })}`;
   }, [posterSets]);
 
+  const isSelected = bulkEditSelectedItems.has(
+    `${normalizedSavedSet.media_item.tmdb_id}|||${normalizedSavedSet.media_item.library_title}`
+  );
+  const rowCellClass = cn("transition-colors", isSelected ? "bg-primary/15" : "group-hover:bg-muted/50");
+
   return (
     <>
       <TableRow
         className={cn(
-          "group hover:bg-muted/50 cursor-pointer relative",
+          "group cursor-pointer relative border-none",
           bulkEditMode && "cursor-default",
-          isRefreshing && "cursor-wait",
-          bulkEditSelectedItems.has(
-            `${normalizedSavedSet.media_item.tmdb_id}|||${normalizedSavedSet.media_item.library_title}`
-          ) && "border-2 border-primary"
+          isRefreshing && "cursor-wait"
         )}
         key={savedSet.media_item.tmdb_id}
       >
-        <TableCell>
+        <TableCell className={cn(rowCellClass, "rounded-l-full")}>
           {bulkEditMode && (
             <Checkbox
               checked={bulkEditSelectedItems.has(
@@ -151,7 +153,7 @@ const SavedSetsTableRow: React.FC<{
             />
           )}
         </TableCell>
-        <TableCell>
+        <TableCell className={rowCellClass}>
           <div>
             {savedSet.poster_sets.some((set) => set.auto_download) ? (
               <Popover>
@@ -193,7 +195,7 @@ const SavedSetsTableRow: React.FC<{
             )}
           </div>
         </TableCell>
-        <TableCell className="font-medium">
+        <TableCell className={cn(rowCellClass, "font-medium")}>
           {
             <AssetImage
               image={savedSet.media_item}
@@ -202,7 +204,7 @@ const SavedSetsTableRow: React.FC<{
             />
           }
         </TableCell>
-        <TableCell className="font-medium">
+        <TableCell className={cn(rowCellClass, "font-medium")}>
           {
             <Link
               //href={formatMediaItemUrl(savedSet.MediaItem)}
@@ -216,13 +218,13 @@ const SavedSetsTableRow: React.FC<{
             </Link>
           }
         </TableCell>
-        <TableCell>{savedSet.media_item.year}</TableCell>
-        <TableCell>{savedSet.media_item.library_title}</TableCell>
-        <TableCell>{lastDownloadedLabel}</TableCell>
-        <TableCell>
+        <TableCell className={rowCellClass}>{savedSet.media_item.year}</TableCell>
+        <TableCell className={rowCellClass}>{savedSet.media_item.library_title}</TableCell>
+        <TableCell className={rowCellClass}>{lastDownloadedLabel}</TableCell>
+        <TableCell className={rowCellClass}>
           <SavedSetsList savedSet={normalizedSavedSet} layout="table" />
         </TableCell>
-        <TableCell>
+        <TableCell className={rowCellClass}>
           {posterSets.some(
             (set) =>
               set.selected_types.poster ||
@@ -247,7 +249,7 @@ const SavedSetsTableRow: React.FC<{
           </div>
         )}
 
-        <TableCell className="text-right">
+        <TableCell className={cn(rowCellClass, "text-right", "rounded-r-full")}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="cursor-pointer p-1 hover:bg-muted/50 focus:bg-muted/50" size="icon">

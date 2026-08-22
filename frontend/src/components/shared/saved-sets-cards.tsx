@@ -296,8 +296,8 @@ const SavedSetsCard: React.FC<{
 
         <div className="flex flex-col gap-1 mb-2">
           <span className="text-xs sm:text-sm text-muted-foreground inline-block">
-            {normalizedSavedSet.media_item.year} · {normalizedSavedSet.media_item.library_title} ·{" "}
-            {normalizedSavedSet.media_item.edition ? `${normalizedSavedSet.media_item.edition}` : ""}
+            {normalizedSavedSet.media_item.year} · {normalizedSavedSet.media_item.library_title}
+            {normalizedSavedSet.media_item.edition ? `· ${normalizedSavedSet.media_item.edition}` : ""}
           </span>
 
           <span className="text-xs sm:text-sm text-muted-foreground inline-block">
