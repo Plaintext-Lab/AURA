@@ -88,6 +88,18 @@ func AddRoutes(r *chi.Mux) {
 			r.Patch("/ignore", routes_db.IgnoreItemInDB)
 			r.Patch("/ignore/stop", routes_db.StopIgnoringItemInDB)
 			r.Post("/force-check", routes_db.AutoDownloadForceCheck)
+
+			// Linked Library Groups
+			r.Route("/library-groups", func(r chi.Router) {
+				r.Get("/", routes_db.GetLibraryGroups)
+				r.Post("/", routes_db.CreateLibraryGroup)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Put("/", routes_db.UpdateLibraryGroup)
+					r.Delete("/", routes_db.DeleteLibraryGroup)
+					r.Post("/preview", routes_db.PreviewLibraryGroup)
+					r.Post("/reconcile", routes_db.ReconcileLibraryGroup)
+				})
+			})
 		})
 
 		// Download Routes

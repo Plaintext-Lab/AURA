@@ -23,6 +23,9 @@ func (s *SQliteDB) CreateTables(ctx context.Context) (Err logging.LogErrorInfo) 
 		v2_CreateSavedItemsTable,
 		v2_CreateIgnoredItemsTable,
 		v2_AddIndexesToNewTables,
+		v7_CreateLibraryGroupsTable,
+		v7_CreateLibraryGroupPoliciesTable,
+		v7_AddLibraryGroupIndexes,
 	}
 
 	for _, step := range steps {

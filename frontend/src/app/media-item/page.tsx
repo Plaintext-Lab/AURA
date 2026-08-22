@@ -23,6 +23,7 @@ import { DimmedBackground } from "@/components/shared/dimmed_backdrop";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { MediaItemFilter } from "@/components/shared/filter-media-item";
 import Loader from "@/components/shared/loader";
+import { LinkedLibraryIndicator } from "@/components/shared/linked-library-indicator";
 import { MediaCarousel } from "@/components/shared/media-carousel";
 import { MediaItemDetails } from "@/components/shared/media-item-details";
 import { PopoverHelp } from "@/components/shared/popover-help";
@@ -659,6 +660,13 @@ const MediaItemPage = () => {
             ignoredMode={ignoredMode}
             currentSetsAvailable={posterSets?.map((set) => set.id) || []}
           />
+
+          {/* Linked library indicator – shows which groups this library belongs to */}
+          {mediaItem && librarySectionsMap[mediaItem.library_title]?.id && (
+            <LinkedLibraryIndicator
+              libraryId={librarySectionsMap[mediaItem.library_title].id}
+            />
+          )}
 
           {/* Loading and Error States */}
           {isLoading && (
