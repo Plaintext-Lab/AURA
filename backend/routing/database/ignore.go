@@ -39,13 +39,14 @@ func IgnoreItemInDB(w http.ResponseWriter, r *http.Request) {
 
 	// Get query parameters
 	tmdbID := r.URL.Query().Get("tmdb_id")
+	libraryID := resolveLibraryID(r)
 	libraryTitle := r.URL.Query().Get("library_title")
 	edition := r.URL.Query().Get("edition")
 	mode := r.URL.Query().Get("mode")                // e.g., "always", "until-set-available", "until-new-set-available"
 	currentSets := r.URL.Query().Get("current_sets") // comma-separated list of current sets for the item, used for temporary ignore modes
 
-	if tmdbID == "" || libraryTitle == "" || mode == "" {
-		logAction.SetError("Missing required query parameters", "TMDB ID, Library Title, and Mode are required",
+	if tmdbID == "" || libraryID == "" || mode == "" {
+		logAction.SetError("Missing required query parameters", "TMDB ID, Library ID (or Title), and Mode are required",
 			map[string]any{
 				"tmdb_id":       tmdbID,
 				"library_title": libraryTitle,
@@ -69,7 +70,7 @@ func IgnoreItemInDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Err := database.IgnoreMediaItem(ctx, tmdbID, libraryTitle, edition, mode, currentSets)
+	Err := database.IgnoreMediaItem(ctx, tmdbID, libraryID, libraryTitle, edition, mode, currentSets)
 	if Err.Message != "" {
 		httpx.SendResponse(w, ld, response)
 		return
@@ -106,11 +107,12 @@ func StopIgnoringItemInDB(w http.ResponseWriter, r *http.Request) {
 
 	// Get query parameters
 	tmdbID := r.URL.Query().Get("tmdb_id")
+	libraryID := resolveLibraryID(r)
 	libraryTitle := r.URL.Query().Get("library_title")
 	edition := r.URL.Query().Get("edition")
 
-	if tmdbID == "" || libraryTitle == "" {
-		logAction.SetError("Missing required query parameters", "TMDB ID and Library Title are required",
+	if tmdbID == "" || libraryID == "" {
+		logAction.SetError("Missing required query parameters", "TMDB ID and Library ID (or Title) are required",
 			map[string]any{
 				"tmdb_id":       tmdbID,
 				"library_title": libraryTitle,
@@ -119,7 +121,7 @@ func StopIgnoringItemInDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Err := database.StopIgnoringMediaItem(ctx, tmdbID, libraryTitle, edition)
+	Err := database.StopIgnoringMediaItem(ctx, tmdbID, libraryID, edition)
 	if Err.Message != "" {
 		httpx.SendResponse(w, ld, response)
 		return

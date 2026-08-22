@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (s *SQliteDB) CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoreMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo) {
+func (s *SQliteDB) CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryID, edition string) (ignored bool, ignoreMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo) {
 	ignored = false
 	ignoreMode = ""
 	sets = []models.DBSavedSet{}
@@ -47,18 +47,18 @@ func (s *SQliteDB) CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryT
             SELECT mode
             FROM IgnoredItems
             WHERE tmdb_id = ?
-              AND library_title = ?
+              AND library_id = ?
               AND edition = ?
             LIMIT 1;
-        `, TMDB_ID, libraryTitle, edition).Scan(&mode)
+        `, TMDB_ID, libraryID, edition).Scan(&mode)
 
 		if err != nil && err != sql.ErrNoRows {
 			_, logAction := logging.AddSubActionToContext(ctx, "Checking ignored status for media item", logging.LevelError)
 			defer logAction.Complete()
 			logAction.SetError("Failed to query database for ignored status", err.Error(), map[string]any{
-				"error":        err.Error(),
-				"TMDB_ID":      TMDB_ID,
-				"libraryTitle": libraryTitle,
+				"error":     err.Error(),
+				"TMDB_ID":   TMDB_ID,
+				"libraryID": libraryID,
 			})
 			return ignored, ignoreMode, sets, *logAction.Error
 		}
@@ -87,18 +87,18 @@ func (s *SQliteDB) CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryT
         FROM SavedItems si
         JOIN PosterSets ps ON ps.id = si.poster_set_id
         WHERE si.tmdb_id = ?
-          AND si.library_title = ?
+          AND si.library_id = ?
           AND si.edition = ?;
     `
-	rows, err := s.conn.QueryContext(ctx, query, TMDB_ID, libraryTitle, edition)
+	rows, err := s.conn.QueryContext(ctx, query, TMDB_ID, libraryID, edition)
 	if err != nil {
 		_, logAction := logging.AddSubActionToContext(ctx, "Checking if media item exists in database", logging.LevelError)
 		defer logAction.Complete()
 		logAction.SetError("Failed to query database for media item", err.Error(), map[string]any{
-			"error":        err.Error(),
-			"query":        query,
-			"TMDB_ID":      TMDB_ID,
-			"libraryTitle": libraryTitle,
+			"error":     err.Error(),
+			"query":     query,
+			"TMDB_ID":   TMDB_ID,
+			"libraryID": libraryID,
 		})
 		return ignored, ignoreMode, sets, *logAction.Error
 	}

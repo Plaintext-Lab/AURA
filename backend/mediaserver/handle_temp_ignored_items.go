@@ -51,7 +51,7 @@ func HandleTempIgnoredItems(ctx context.Context) (Err logging.LogErrorInfo) {
 
 		// If the item has sets, we can remove it from the temp ignored items
 		if numOfSets > 0 && mediaItem.IgnoredMode == "until-set-available" {
-			dbErr = database.StopIgnoringMediaItem(ctx, mediaItem.TMDB_ID, mediaItem.LibraryTitle, mediaItem.Edition)
+			dbErr = database.StopIgnoringMediaItem(ctx, mediaItem.TMDB_ID, mediaItem.LibraryID, mediaItem.Edition)
 			if dbErr.Message != "" {
 				logging.LOGGER.Error().Timestamp().Str("tmdb_id", mediaItem.TMDB_ID).Str("library_title", mediaItem.LibraryTitle).Str("error", dbErr.Message).Msg("Failed to stop ignoring media item")
 				continue
@@ -61,7 +61,7 @@ func HandleTempIgnoredItems(ctx context.Context) (Err logging.LogErrorInfo) {
 		} else if numOfSets > 0 && mediaItem.IgnoredMode == "until-new-set-available" {
 			// For "until-new-set-available" mode, we need to check if there are new sets available compared to the current sets when the item was ignored
 			if numOfSets > len(mediaItem.IgnoredSets) {
-				dbErr = database.StopIgnoringMediaItem(ctx, mediaItem.TMDB_ID, mediaItem.LibraryTitle, mediaItem.Edition)
+				dbErr = database.StopIgnoringMediaItem(ctx, mediaItem.TMDB_ID, mediaItem.LibraryID, mediaItem.Edition)
 				if dbErr.Message != "" {
 					logging.LOGGER.Error().Timestamp().Str("tmdb_id", mediaItem.TMDB_ID).Str("library_title", mediaItem.LibraryTitle).Str("error", dbErr.Message).Msg("Failed to stop ignoring media item")
 					continue

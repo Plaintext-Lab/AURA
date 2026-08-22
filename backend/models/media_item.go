@@ -2,7 +2,8 @@ package models
 
 type MediaItem struct {
 	TMDB_ID      string           `json:"tmdb_id"`          // TMDB ID of the media item
-	LibraryTitle string           `json:"library_title"`    // Title of the library/section the item belongs to
+	LibraryID    string           `json:"library_id"`       // Stable identifier of the library/section (from LibrarySection.ID)
+	LibraryTitle string           `json:"library_title"`    // Display title of the library/section the item belongs to
 	RatingKey    string           `json:"rating_key"`       // RatingKey is the internal ID from the media server
 	Type         string           `json:"type"`             // "movie" or "show"
 	Title        string           `json:"title"`            // Title of the media item

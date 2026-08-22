@@ -23,7 +23,7 @@ const dedupeMediaItemsByTmdbIDAndEdition = (
       return true;
     }
 
-    const key = `${String(item.tmdb_id)}|${item.edition || ""}`;
+    const key = `${String(item.tmdb_id)}|${item.library_id || ""}|${item.edition || ""}`;
     if (seenKeys.has(key)) {
       return false;
     }

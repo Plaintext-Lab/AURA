@@ -63,6 +63,10 @@ func AddNewItemToDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve a stable library_id from the library_title when the caller has not
+	// already provided one (backward-compatible clients, or the incomplete-mode path).
+	req.MediaItem.LibraryID = resolveLibraryIDFromMediaItem(req.MediaItem.LibraryID, req.MediaItem.LibraryTitle)
+
 	// Make sure each Poster Set has an ID and Type
 	if req.PosterSet.ID == "" || req.PosterSet.Type == "" {
 		logAction.SetError("Invalid Poster Set Data", "Each Poster Set must have an ID and Type", map[string]any{
@@ -143,7 +147,7 @@ func AddNewItemToDB(w http.ResponseWriter, r *http.Request) {
 	// If this is the first time adding the item, we need to update the cache
 	// Run this asynchronously
 	go func() {
-		_, _, dbSets, _ := database.CheckIfMediaItemExists(ctx, saveItem.MediaItem.TMDB_ID, saveItem.MediaItem.LibraryTitle, saveItem.MediaItem.Edition)
+		_, _, dbSets, _ := database.CheckIfMediaItemExists(ctx, saveItem.MediaItem.TMDB_ID, saveItem.MediaItem.LibraryID, saveItem.MediaItem.Edition)
 		saveItem.MediaItem.DBSavedSets = dbSets
 		cache.LibraryStore.UpdateMediaItem(saveItem.MediaItem.LibraryTitle, &saveItem.MediaItem)
 	}()

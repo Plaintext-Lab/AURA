@@ -79,7 +79,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		// If Type is Boxset, then split them up
 		if ejItem.Type == "BoxSet" {
 			// Split the BoxSet into individual items
-			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, ejItem.Name, ejItem.ID, section.Title)
+			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, ejItem.Name, ejItem.ID, section.ID, section.Title)
 			if boxSetErr.Message != "" {
 				return nil, 0, boxSetErr
 			}
@@ -105,6 +105,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		}[ejItem.Type]
 		item.Title = ejItem.Name
 		item.Year = ejItem.ProductionYear
+		item.LibraryID = section.ID
 		item.LibraryTitle = section.Title
 		if ejItem.ProviderIds.Tmdb != "" {
 			item.Guids = append(item.Guids, models.MediaItemGuid{Provider: "tmdb", ID: ejItem.ProviderIds.Tmdb})
@@ -139,7 +140,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		}
 
 		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition)
+		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, item.TMDB_ID, item.LibraryID, item.Edition)
 		if logErr.Message != "" {
 			logAction.AppendWarning("message", "Failed to check if media item exists in database")
 			logAction.AppendWarning("error", Err)
@@ -153,7 +154,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		}
 
 		// Update the Media Item on Server in the DB
-		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryID, item.Edition, true)
 		if updateErr.Message != "" {
 			logAction.AppendWarning("update_on_server_error", updateErr.Message)
 		}
@@ -169,7 +170,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	return items, totalSize, logging.LogErrorInfo{}
 }
 
-func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, parentID, sectionTitle string) (items []models.MediaItem, Err logging.LogErrorInfo) {
+func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, parentID, sectionID, sectionTitle string) (items []models.MediaItem, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Splitting BoxSet Collection: %s in Section: %s into Individual Items", collectionName, sectionTitle,
 	), logging.LevelInfo)
@@ -266,6 +267,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 
 		itemInfo.Title = item.Name
 		itemInfo.Year = item.ProductionYear
+		itemInfo.LibraryID = sectionID
 		itemInfo.LibraryTitle = sectionTitle
 		if item.ProviderIds.Tmdb != "" {
 			itemInfo.Guids = append(itemInfo.Guids, models.MediaItemGuid{Provider: "tmdb", ID: item.ProviderIds.Tmdb})
@@ -296,7 +298,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 		}
 
 		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, itemInfo.TMDB_ID, itemInfo.LibraryTitle, itemInfo.Edition)
+		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, itemInfo.TMDB_ID, itemInfo.LibraryID, itemInfo.Edition)
 		if logErr.Message != "" {
 			logAction.AppendWarning("message", "Failed to check if media item exists in database")
 			logAction.AppendWarning("error", logErr)

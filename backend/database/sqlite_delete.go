@@ -8,7 +8,7 @@ import (
 )
 
 // unlinkPosterSetFromMediaItemTx:
-// - deletes SavedItems link for (tmdb_id, library_title, poster_set_id)
+// - deletes SavedItems link for (tmdb_id, library_id, poster_set_id)
 // - deletes ImageFiles rows for (poster_set_id, item_tmdb_id)
 // - if PosterSet becomes orphaned (no SavedItems references), deletes:
 //   - ALL ImageFiles for that poster_set_id
@@ -18,7 +18,7 @@ import (
 func unlinkPosterSetFromMediaItemTx(
 	ctx context.Context,
 	tx *sql.Tx,
-	tmdbID, libraryTitle, edition, setID string,
+	tmdbID, libraryID, edition, setID string,
 ) (int64, int64, bool, int64, logging.LogErrorInfo) {
 	// Lookup PosterSets PK by set_id
 	var posterSetPK int64
@@ -42,14 +42,14 @@ func unlinkPosterSetFromMediaItemTx(
 	res, err := tx.ExecContext(ctx, `
         DELETE FROM SavedItems
         WHERE tmdb_id = ?
-          AND library_title = ?
+          AND library_id = ?
           AND edition = ?
           AND poster_set_id = ?;
-    `, tmdbID, libraryTitle, edition, posterSetPK)
+    `, tmdbID, libraryID, edition, posterSetPK)
 	if err != nil {
 		return 0, 0, false, 0, logging.LogErrorInfo{
 			Message: "Failed to delete SavedItems link for media item",
-			Detail:  map[string]any{"error": err.Error(), "tmdb_id": tmdbID, "library_title": libraryTitle, "edition": edition, "set_id": setID},
+			Detail:  map[string]any{"error": err.Error(), "tmdb_id": tmdbID, "library_id": libraryID, "edition": edition, "set_id": setID},
 		}
 	}
 	linksDeleted, _ := res.RowsAffected()
@@ -113,10 +113,10 @@ func unlinkPosterSetFromMediaItemTx(
 	return linksDeleted, itemImagesDeleted, orphanSetDeleted, orphanImagesDeleted, logging.LogErrorInfo{}
 }
 
-func (s *SQliteDB) DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo) {
+func (s *SQliteDB) DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryID, edition, setID string) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(
 		ctx,
-		fmt.Sprintf("Unlinking PosterSet (set_id=%s) from media item (%s | %s | %s)", setID, tmdbID, libraryTitle, edition),
+		fmt.Sprintf("Unlinking PosterSet (set_id=%s) from media item (%s | %s | %s)", setID, tmdbID, libraryID, edition),
 		logging.LevelInfo,
 	)
 	defer logAction.Complete()
@@ -135,7 +135,7 @@ func (s *SQliteDB) DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libr
 	defer func() { _ = tx.Rollback() }()
 
 	linksDeleted, itemImagesDeleted, orphanSetDeleted, orphanImagesDeleted, errInfo :=
-		unlinkPosterSetFromMediaItemTx(ctx, tx, tmdbID, libraryTitle, edition, setID)
+		unlinkPosterSetFromMediaItemTx(ctx, tx, tmdbID, libraryID, edition, setID)
 	if errInfo.Message != "" {
 		logAction.SetError(errInfo.Message, "", errInfo.Detail)
 		return *logAction.Error
@@ -157,17 +157,17 @@ func (s *SQliteDB) DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libr
 
 // DeleteAllPosterSetsForMediaItem unlinks *all* sets for a given media item.
 // It also deletes item-scoped images, and deletes any sets that become orphaned (with all their images).
-func (s *SQliteDB) DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
+func (s *SQliteDB) DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryID, edition string) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(
 		ctx,
-		fmt.Sprintf("Unlinking ALL PosterSets from media item (%s | %s | %s)", tmdbID, libraryTitle, edition),
+		fmt.Sprintf("Unlinking ALL PosterSets from media item (%s | %s | %s)", tmdbID, libraryID, edition),
 		logging.LevelInfo,
 	)
 	defer logAction.Complete()
 
 	Err = logging.LogErrorInfo{}
 	if s.conn == nil {
-		logAction.SetError("Database connection is nil", "", map[string]any{"tmdb_id": tmdbID, "library_title": libraryTitle})
+		logAction.SetError("Database connection is nil", "", map[string]any{"tmdb_id": tmdbID, "library_id": libraryID})
 		return *logAction.Error
 	}
 
@@ -184,9 +184,9 @@ func (s *SQliteDB) DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, 
         FROM SavedItems si
         JOIN PosterSets ps ON ps.id = si.poster_set_id
         WHERE si.tmdb_id = ?
-          AND si.library_title = ?
+          AND si.library_id = ?
           AND si.edition = ?;
-    `, tmdbID, libraryTitle, edition)
+    `, tmdbID, libraryID, edition)
 	if err != nil {
 		logAction.SetError("Failed to list poster sets for media item", "", map[string]any{"error": err.Error()})
 		return *logAction.Error
@@ -214,7 +214,7 @@ func (s *SQliteDB) DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, 
 
 	for _, setID := range setIDs {
 		linksDeleted, itemImagesDeleted, orphanSetDeleted, orphanImagesDeleted, errInfo :=
-			unlinkPosterSetFromMediaItemTx(ctx, tx, tmdbID, libraryTitle, edition, setID)
+			unlinkPosterSetFromMediaItemTx(ctx, tx, tmdbID, libraryID, edition, setID)
 		if errInfo.Message != "" {
 			logAction.SetError(errInfo.Message, "", errInfo.Detail)
 			return *logAction.Error
@@ -243,7 +243,7 @@ func (s *SQliteDB) DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, 
 	return Err
 }
 
-func (s *SQliteDB) DeleteMediaItemAndIgnoredStatus(ctx context.Context, tmdbID, libraryTitle, edition string) logging.LogErrorInfo {
+func (s *SQliteDB) DeleteMediaItemAndIgnoredStatus(ctx context.Context, tmdbID, libraryID, edition string) logging.LogErrorInfo {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Deleting MediaItem and Ignored status", logging.LevelInfo)
 	defer logAction.Complete()
 
@@ -256,8 +256,8 @@ func (s *SQliteDB) DeleteMediaItemAndIgnoredStatus(ctx context.Context, tmdbID, 
 
 	// Delete from IgnoredItems
 	_, err = tx.ExecContext(ctx, `
-        DELETE FROM IgnoredItems WHERE tmdb_id = ? AND library_title = ? AND edition = ?
-    `, tmdbID, libraryTitle, edition)
+        DELETE FROM IgnoredItems WHERE tmdb_id = ? AND library_id = ? AND edition = ?
+    `, tmdbID, libraryID, edition)
 	if err != nil {
 		logAction.SetError("Failed to delete from IgnoredItems", "", map[string]any{"error": err.Error()})
 		return *logAction.Error
@@ -265,8 +265,8 @@ func (s *SQliteDB) DeleteMediaItemAndIgnoredStatus(ctx context.Context, tmdbID, 
 
 	// Delete from MediaItems (cascades to related tables)
 	_, err = tx.ExecContext(ctx, `
-        DELETE FROM MediaItems WHERE tmdb_id = ? AND library_title = ? AND edition = ?
-    `, tmdbID, libraryTitle, edition)
+        DELETE FROM MediaItems WHERE tmdb_id = ? AND library_id = ? AND edition = ?
+    `, tmdbID, libraryID, edition)
 	if err != nil {
 		logAction.SetError("Failed to delete from MediaItems", "", map[string]any{"error": err.Error()})
 		return *logAction.Error
