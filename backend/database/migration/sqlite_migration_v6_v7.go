@@ -155,6 +155,7 @@ func migrate_6_to_7(ctx context.Context) (Err logging.LogErrorInfo) {
 			CREATE TABLE IgnoredItems (
 				tmdb_id TEXT NOT NULL,
 				library_id TEXT NOT NULL DEFAULT '',
+				library_title TEXT NOT NULL DEFAULT '',
 				edition TEXT NOT NULL DEFAULT '',
 				mode TEXT NOT NULL CHECK (mode IN ('always','until-set-available','until-new-set-available')),
 				current_sets TEXT NOT NULL DEFAULT '[]',
@@ -166,8 +167,8 @@ func migrate_6_to_7(ctx context.Context) (Err logging.LogErrorInfo) {
 			return *logAction.Error
 		}
 		if _, err = tx.ExecContext(ctx, `
-			INSERT INTO IgnoredItems (tmdb_id, library_id, edition, mode, current_sets)
-			SELECT tmdb_id, library_title, edition, mode, current_sets
+			INSERT INTO IgnoredItems (tmdb_id, library_id, library_title, edition, mode, current_sets)
+			SELECT tmdb_id, library_title, library_title, edition, mode, current_sets
 			FROM IgnoredItems_old;
 		`); err != nil {
 			tx.Rollback()

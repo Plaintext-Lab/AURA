@@ -86,7 +86,7 @@ type DB interface {
 	DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryID, edition string) (Err logging.LogErrorInfo)
 
 	// Ignore Media Item
-	IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, edition, mode, currentSets string) (Err logging.LogErrorInfo)
+	IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo)
 
 	// Stop Ignoring Media Item
 	StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo)
@@ -284,11 +284,11 @@ func DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryID, edi
 	return Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryID, edition)
 }
 
-func IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
+func IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.IgnoreMediaItem(ctx, tmdbID, libraryID, edition, mode, currentSets)
+	return Client.IgnoreMediaItem(ctx, tmdbID, libraryID, libraryTitle, edition, mode, currentSets)
 }
 
 func StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo) {

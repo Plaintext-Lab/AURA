@@ -70,7 +70,7 @@ func IgnoreItemInDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Err := database.IgnoreMediaItem(ctx, tmdbID, libraryID, edition, mode, currentSets)
+	Err := database.IgnoreMediaItem(ctx, tmdbID, libraryID, libraryTitle, edition, mode, currentSets)
 	if Err.Message != "" {
 		httpx.SendResponse(w, ld, response)
 		return

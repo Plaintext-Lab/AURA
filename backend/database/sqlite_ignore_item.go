@@ -60,7 +60,7 @@ func (s *SQliteDB) GetTempIgnoredItems(ctx context.Context) (items []models.Medi
 	return items, Err
 }
 
-func (s *SQliteDB) IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
+func (s *SQliteDB) IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
 	Err = logging.LogErrorInfo{}
 
 	if s == nil || s.conn == nil {
@@ -106,11 +106,11 @@ func (s *SQliteDB) IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, editi
 
 	_, err := s.conn.ExecContext(ctx, `
         INSERT INTO IgnoredItems (tmdb_id, library_id, library_title, edition, mode, current_sets)
-        VALUES (?, ?, '', ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(tmdb_id, library_id, edition) DO UPDATE SET
             mode = excluded.mode,
             current_sets = excluded.current_sets;
-    `, tmdbID, libraryID, edition, mode, currentSets)
+    `, tmdbID, libraryID, libraryTitle, edition, mode, currentSets)
 	if err != nil {
 		return logging.LogErrorInfo{
 			Message: "Failed to ignore media item",
