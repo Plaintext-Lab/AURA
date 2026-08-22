@@ -9,6 +9,7 @@ export interface AppConfig {
   labels_and_tags: AppConfigLabelsAndTags; // Labels and tags management settings
   notifications: AppConfigNotifications; // Notification settings
   sonarr_radarr: AppConfigSonarrRadarrApps; // List of Sonarr/Radarr instances to integrate with
+  activity_source: AppConfigActivitySource; // Optional activity provider (Tautulli / Tracearr)
 }
 
 export interface AppConfigAuth {
@@ -161,4 +162,14 @@ export interface AppConfigSonarrRadarrApp {
   library: string; // Name of the Media Server library associated with this Sonarr/Radarr instance.
   url: string; // Base URL of the Sonarr/Radarr server.
   api_token: string; // API key for accessing the Sonarr/Radarr server.
+}
+
+export interface AppConfigActivitySource {
+  enabled: boolean; // Whether the activity source is enabled.
+  provider: string; // Provider name: "tautulli" or "tracearr".
+  base_url: string; // Base URL of the provider.
+  api_token: string; // API key / token (masked in responses once set).
+  refresh_interval: string; // Cron expression for scheduled syncs.
+  activity_window_days: number; // Number of days of history to consider.
+  tracearr_server_id?: string; // Tracearr only: server UUID to query.
 }

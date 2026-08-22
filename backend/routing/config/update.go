@@ -68,6 +68,7 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 	notificationsChanged, notificationsValid := checkConfigDifferences_Notifications(ctx, config.Current.Notifications, &newConfig.Notifications)
 	sonarrRadarrChanged, sonarrRadarrValid := checkConfigDifferences_SonarrRadarr(ctx, config.Current.SonarrRadarr, &newConfig.SonarrRadarr, newConfig.MediaServer)
 	databaseChanged, databaseValid := checkConfigDifferences_Database(ctx, config.Current.Database, &newConfig.Database)
+	activityChanged, _ := checkConfigDifferences_ActivitySource(ctx, config.Current.ActivitySource, &newConfig.ActivitySource)
 
 	if !authValid || !loggingValid || !mediaServerValid || !mediuxValid || !autoDownloadValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !databaseValid {
 		ld.Status = logging.StatusError
@@ -91,7 +92,7 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 
 	if !authChanged && !loggingChanged && !mediaServerChanged && !mediuxChanged &&
 		!autoDownloadChanged && !imagesChanged && !tmdbChanged && !labelsAndTagsChanged &&
-		!notificationsChanged && !sonarrRadarrChanged && !databaseChanged {
+		!notificationsChanged && !sonarrRadarrChanged && !databaseChanged && !activityChanged {
 		// If nothing has changed AND the config is valid, log a warning
 		if config.Valid {
 			ld.Status = logging.StatusWarn
@@ -135,6 +136,12 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 
 	if autoDownloadChanged {
 		jobs.StartAutoDownloadJob()
+	}
+
+	if activityChanged {
+		if err := jobs.StartActivitySyncJob(); err != nil {
+			logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to restart Activity Sync job after config update")
+		}
 	}
 
 	if mediaServerChanged {
@@ -1176,4 +1183,24 @@ func applicationSonarrRadarr(apps []config.Config_SonarrRadarrApp) map[string]co
 		m[a.Library] = a
 	}
 	return m
+}
+
+// checkConfigDifferences_ActivitySource compares old and new activity source configurations.
+func checkConfigDifferences_ActivitySource(ctx context.Context, oldAS config.Config_ActivitySource, newAS *config.Config_ActivitySource) (changed, newValid bool) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: ActivitySource", logging.LevelTrace)
+	defer logAction.Complete()
+	changed = false
+	newValid = true
+
+	// Restore masked token
+	if config.IsMaskedField(newAS.ApiToken) {
+		newAS.ApiToken = oldAS.ApiToken
+	}
+
+	if !reflect.DeepEqual(oldAS, *newAS) {
+		changed = true
+		logAction.AppendResult("changed", true)
+	}
+
+	return changed, newValid
 }

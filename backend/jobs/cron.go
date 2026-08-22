@@ -25,6 +25,7 @@ var (
 
 	// Configurable
 	autodownloadJobID cron.EntryID = 0
+	activitySyncJobID cron.EntryID = 0
 )
 
 var manualPrevRun = map[cron.EntryID]string{}
@@ -86,6 +87,8 @@ func GetListOfJobs() []JobInfo {
 				jobInfo.JobName = "Download Queue Processing Job"
 			case autodownloadJobID:
 				jobInfo.JobName = "AutoDownload Job"
+			case activitySyncJobID:
+				jobInfo.JobName = "Activity Sync Job"
 			case refreshMediaItemsAndCollectionsJobID:
 				jobInfo.JobName = "Refresh Media Items and Collections Job"
 			case refreshMediuxUsersJobID:
@@ -115,6 +118,8 @@ func TriggerJob(jobName string, jobID string) error {
 		entryID = downloadQueueJobID
 	case "AutoDownload Job":
 		entryID = autodownloadJobID
+	case "Activity Sync Job":
+		entryID = activitySyncJobID
 	case "Refresh Media Items and Collections Job":
 		entryID = refreshMediaItemsAndCollectionsJobID
 	case "Refresh Mediux Users Job":

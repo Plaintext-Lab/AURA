@@ -36,6 +36,7 @@ type Config struct {
 	Notifications Config_Notifications     `json:"notifications" yaml:"Notifications,omitempty"`   // Notification settings.
 	SonarrRadarr  Config_SonarrRadarr_Apps `json:"sonarr_radarr" yaml:"SonarrRadarr,omitempty"`    // List of Sonarr/Radarr instances to integrate with.
 	Database      Config_Database          `json:"database" yaml:"Database,omitempty"`             // Database configuration settings.
+	ActivitySource Config_ActivitySource   `json:"activity_source" yaml:"ActivitySource,omitempty"` // Optional activity provider (Tautulli / Tracearr).
 }
 
 type Config_Dev struct {
@@ -218,3 +219,16 @@ type Config_Database struct {
 	Name     string `json:"name,omitempty" yaml:"Name,omitempty"`         // Name of the database to connect to.
 	DSN      string `json:"dsn,omitempty" yaml:"DSN,omitempty"`           // Data Source Name for the database connection (if applicable).
 }
+
+// Config_ActivitySource holds the optional activity-provider integration settings.
+// Only one source is supported. The model does not prevent adding more sources later.
+type Config_ActivitySource struct {
+	Enabled          bool   `json:"enabled" yaml:"Enabled"`                                                     // Whether the activity source is enabled.
+	Provider         string `json:"provider,omitempty" yaml:"Provider,omitempty"`                               // Provider name: "tautulli" or "tracearr".
+	BaseURL          string `json:"base_url,omitempty" yaml:"BaseURL,omitempty"`                                // Base URL of the provider.
+	ApiToken         string `json:"api_token,omitempty" yaml:"ApiToken,omitempty"`                              // API key / ****** (treated as a secret; masked in responses).
+	RefreshInterval  string `json:"refresh_interval,omitempty" yaml:"RefreshInterval,omitempty"`                // Cron expression for scheduled syncs (default: every 30 minutes).
+	ActivityWindowDays int  `json:"activity_window_days,omitempty" yaml:"ActivityWindowDays,omitempty"`         // Number of days of history to consider (default: 30).
+	TracearrServerID string `json:"tracearr_server_id,omitempty" yaml:"TracearrServerID,omitempty"`             // Tracearr only: UUID of the server to query.
+}
+

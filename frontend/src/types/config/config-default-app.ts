@@ -109,4 +109,13 @@ export const defaultAppConfig = (): AppConfig =>
     sonarr_radarr: {
       applications: [{ type: "", library: "", url: "", api_token: "" }],
     },
+    activity_source: {
+      enabled: false,
+      provider: "",
+      base_url: "",
+      api_token: "",
+      refresh_interval: "*/30 * * * *",
+      activity_window_days: 30,
+      tracearr_server_id: "",
+    },
   }) satisfies AppConfig;
