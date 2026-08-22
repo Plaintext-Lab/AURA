@@ -210,6 +210,12 @@ func runWarmup() (success bool) {
 		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Handle Temp Ignored Items cron job")
 	}
 
+	// Cronjob: Start Activity Sync Job (optional; skipped if activity source is disabled)
+	err = jobs.StartActivitySyncJob()
+	if err != nil {
+		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Activity Sync cron job")
+	}
+
 	// Cron: Start Jobs Scheduler
 	jobs.StartJobs()
 

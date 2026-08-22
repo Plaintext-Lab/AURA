@@ -62,5 +62,8 @@ func (config *Config) SanitizeConfig(ctx context.Context) *Config {
 		}
 	}
 
+	// Mask ActivitySource token
+	c.ActivitySource.ApiToken = MaskToken(c.ActivitySource.ApiToken)
+
 	return &c
 }

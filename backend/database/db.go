@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-const LATEST_DB_VERSION = 6
+const LATEST_DB_VERSION = 7
 
 var Client DB
 
@@ -96,6 +96,34 @@ type DB interface {
 
 	// Update Media Item on_server flag
 	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
+
+	// Upsert a batch of activity summaries (replaces existing rows for the same source+library_id+rating_key)
+	UpsertActivitySummaries(ctx context.Context, summaries []ActivitySummaryRow) (Err logging.LogErrorInfo)
+
+	// Get all activity summaries
+	GetActivitySummaries(ctx context.Context) (rows []ActivitySummaryRow, Err logging.LogErrorInfo)
+
+	// Delete all activity summaries for a given source
+	DeleteActivitySummaries(ctx context.Context, source string) (Err logging.LogErrorInfo)
+}
+
+// ActivitySummaryRow is the database representation of a MediaActivitySummary.
+type ActivitySummaryRow struct {
+	ID              int64  `json:"id"`
+	Source          string `json:"source"`
+	LibraryID       string `json:"library_id"`
+	RatingKey       string `json:"rating_key"`
+	GrandparentKey  string `json:"grandparent_key"`
+	MediaType       string `json:"media_type"`
+	TmdbID          string `json:"tmdb_id"`
+	TvdbID          string `json:"tvdb_id"`
+	Title           string `json:"title"`
+	PlayCount       int    `json:"play_count"`
+	WatchTimeSecs   int64  `json:"watch_time_secs"`
+	LastWatched     string `json:"last_watched"`
+	WindowStart     string `json:"window_start"`
+	WindowEnd       string `json:"window_end"`
+	SyncedAt        string `json:"synced_at"`
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
@@ -310,4 +338,25 @@ func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle st
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.UpdateMediaItemOnServer(ctx, tmdbID, libraryTitle, edition, onServer)
+}
+
+func UpsertActivitySummaries(ctx context.Context, summaries []ActivitySummaryRow) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.UpsertActivitySummaries(ctx, summaries)
+}
+
+func GetActivitySummaries(ctx context.Context) (rows []ActivitySummaryRow, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return nil, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetActivitySummaries(ctx)
+}
+
+func DeleteActivitySummaries(ctx context.Context, source string) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.DeleteActivitySummaries(ctx, source)
 }

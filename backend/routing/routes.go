@@ -3,6 +3,7 @@ package routing
 import (
 	"aura/config"
 	"aura/logging"
+	routes_activity "aura/routing/activity"
 	routes_auth "aura/routing/auth"
 	routes_base "aura/routing/base"
 	routes_config "aura/routing/config"
@@ -160,6 +161,13 @@ func AddRoutes(r *chi.Mux) {
 			r.Post("/sonarr", routes_validation.ValidateSonarrRadarrInfo)
 			r.Post("/radarr", routes_validation.ValidateSonarrRadarrInfo)
 			r.Post("/notifications", routes_validation.SendTestNotification)
+			r.Post("/activity", routes_validation.ValidateActivitySourceInfo)
+		})
+
+		// Activity Routes
+		r.Route("/activity", func(r chi.Router) {
+			r.Get("/summaries", routes_activity.GetActivitySummaries)
+			r.Post("/sync", routes_activity.SyncActivityNow)
 		})
 	})
 }

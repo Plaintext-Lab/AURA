@@ -49,6 +49,9 @@ func (config *Config) Validate(ctx context.Context) {
 	// Sub-action: LabelsAndTags Config
 	isLabelsAndTagsValid := ValidateLabelsAndTags(ctx, &config.LabelsAndTags)
 
+	// Sub-action: ActivitySource Config (optional — invalid settings disable the feature but do not fail startup)
+	ValidateActivitySource(ctx, &config.ActivitySource)
+
 	// If any validation failed, set status to error
 	if !isAuthValid || !isLoggingValid || !isMediaServerValid ||
 		!isMediuxValid || !isAutoDownloadValid ||
@@ -616,4 +619,60 @@ func ValidateLabelsAndTags(ctx context.Context, LabelsAndTags *Config_LabelsAndT
 // stringSliceContains checks if a string is present in a slice of strings.
 func stringSliceContains(slice []string, item string) bool {
 	return slices.Contains(slice, item)
+}
+
+// ValidateActivitySource validates the optional activity provider configuration.
+// Invalid settings disable the feature without failing overall startup.
+func ValidateActivitySource(ctx context.Context, as *Config_ActivitySource) bool {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Validate Activity Source Config", logging.LevelTrace)
+	defer logAction.Complete()
+
+	if !as.Enabled {
+		return true
+	}
+
+	isValid := true
+
+	if as.Provider != "tautulli" && as.Provider != "tracearr" {
+		logAction.AppendWarning("provider", fmt.Sprintf("unsupported activity provider %q; disabling activity source", as.Provider))
+		as.Enabled = false
+		return false
+	}
+
+	if as.BaseURL == "" {
+		logAction.AppendWarning("base_url", "activity source base_url is required; disabling activity source")
+		as.Enabled = false
+		return false
+	}
+
+	if _, err := url.Parse(as.BaseURL); err != nil {
+		logAction.AppendWarning("base_url", fmt.Sprintf("invalid activity source base_url %q: %v; disabling activity source", as.BaseURL, err))
+		as.Enabled = false
+		return false
+	}
+
+	if as.ApiToken == "" {
+		logAction.AppendWarning("api_token", "activity source api_token is required; disabling activity source")
+		as.Enabled = false
+		return false
+	}
+
+	if as.ActivityWindowDays <= 0 {
+		as.ActivityWindowDays = 30
+	}
+
+	if as.RefreshInterval == "" {
+		as.RefreshInterval = "*/30 * * * *"
+	} else {
+		if _, err := cron.ParseStandard(as.RefreshInterval); err != nil {
+			logAction.AppendWarning("refresh_interval", fmt.Sprintf("invalid cron expression %q for activity refresh interval: %v; using default", as.RefreshInterval, err))
+			as.RefreshInterval = "*/30 * * * *"
+		}
+	}
+
+	if as.Provider == "tracearr" && as.TracearrServerID == "" {
+		logAction.AppendWarning("tracearr_server_id", "tracearr_server_id is recommended for Tracearr to filter by server")
+	}
+
+	return isValid
 }

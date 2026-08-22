@@ -74,5 +74,11 @@ func DefaultConfig() Config {
 			Providers:            []Config_Notification_Provider{},
 			NotificationTemplate: DefaultNotificationTemplates(),
 		},
+		ActivitySource: Config_ActivitySource{
+			Enabled:            false,
+			Provider:           "",
+			RefreshInterval:    "*/30 * * * *",
+			ActivityWindowDays: 30,
+		},
 	}
 }
