@@ -96,6 +96,9 @@ type DB interface {
 
 	// Update Media Item on_server flag
 	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
+
+	// Get Artwork Suggestions (media items with AURA-managed artwork coverage gaps)
+	GetArtworkSuggestions(ctx context.Context, f models.ArtworkSuggestionsFilter) (out PagedArtworkSuggestions, logErr logging.LogErrorInfo)
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
@@ -310,4 +313,11 @@ func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle st
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.UpdateMediaItemOnServer(ctx, tmdbID, libraryTitle, edition, onServer)
+}
+
+func GetArtworkSuggestions(ctx context.Context, f models.ArtworkSuggestionsFilter) (out PagedArtworkSuggestions, logErr logging.LogErrorInfo) {
+	if Client == nil {
+		return PagedArtworkSuggestions{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetArtworkSuggestions(ctx, f)
 }

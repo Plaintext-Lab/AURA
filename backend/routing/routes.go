@@ -18,6 +18,7 @@ import (
 	"aura/routing/middleware"
 	routes_search "aura/routing/search"
 	routes_sonarr_radarr "aura/routing/sonarr-radarr"
+	routes_suggestions "aura/routing/suggestions"
 	routes_validation "aura/routing/validation"
 	"aura/utils/httpx"
 	"net/http"
@@ -151,6 +152,11 @@ func AddRoutes(r *chi.Mux) {
 			r.Get("/set", routes_mediux.GetSetByID)
 			r.Get("/sets/item", routes_mediux.GetItemSets)
 			r.Get("/sets/user", routes_mediux.GetAllUserSets)
+		})
+
+		// Suggestions Routes
+		r.Route("/suggestions", func(r chi.Router) {
+			r.Get("/artwork", routes_suggestions.GetArtworkSuggestions)
 		})
 
 		// Validation Routes

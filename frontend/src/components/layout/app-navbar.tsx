@@ -7,6 +7,7 @@ import {
   Bookmark as BookmarkIcon,
   Clock,
   FileCog as FileCogIcon,
+  ImageOff,
   LayoutGrid,
   ListOrdered,
   LogOutIcon,
@@ -275,6 +276,13 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                   >
                     <BookmarkIcon className="w-6 h-6 mr-2" />
                     Saved Sets
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
+                    onClick={() => router.push("/needs-artwork")}
+                  >
+                    <ImageOff className="w-6 h-6 mr-2" />
+                    Needs Artwork
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
