@@ -26,14 +26,14 @@ func (s *SQliteDB) UpdateMediaItem(ctx context.Context, updatedItem models.Media
 	res, err := tx.ExecContext(ctx, `
         UPDATE MediaItems
         SET rating_key = ?, type = ?, title = ?, year = ?
-        WHERE tmdb_id = ? AND library_title = ? AND edition = ?;
+        WHERE tmdb_id = ? AND library_id = ? AND edition = ?;
     `,
 		updatedItem.RatingKey,
 		updatedItem.Type,
 		updatedItem.Title,
 		updatedItem.Year,
 		updatedItem.TMDB_ID,
-		updatedItem.LibraryTitle,
+		updatedItem.LibraryID,
 		updatedItem.Edition,
 	)
 	if err != nil {
@@ -47,7 +47,7 @@ func (s *SQliteDB) UpdateMediaItem(ctx context.Context, updatedItem models.Media
 		Str("table", "MediaItems").
 		Int64("rows", affected).
 		Str("tmdb_id", updatedItem.TMDB_ID).
-		Str("library_title", updatedItem.LibraryTitle).
+		Str("library_id", updatedItem.LibraryID).
 		Msg("Updated media item")
 
 	if err := tx.Commit(); err != nil {

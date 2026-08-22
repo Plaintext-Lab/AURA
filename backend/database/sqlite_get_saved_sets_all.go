@@ -81,7 +81,7 @@ WITH base AS (
 	mi.on_server,
     (SELECT COUNT(*)
      FROM SavedItems si
-     WHERE si.tmdb_id = mi.tmdb_id AND si.library_title = mi.library_title AND si.edition = mi.edition
+     WHERE si.tmdb_id = mi.tmdb_id AND si.library_id = mi.library_id AND si.edition = mi.edition
     ) AS set_count
   FROM MediaItems mi
 )
@@ -101,6 +101,7 @@ WITH base AS (
   SELECT
     mi.id,
     mi.tmdb_id,
+    mi.library_id,
     mi.library_title,
     mi.edition,
     mi.rating_key,
@@ -120,12 +121,12 @@ WITH base AS (
 
     (SELECT COUNT(*)
      FROM SavedItems si
-     WHERE si.tmdb_id = mi.tmdb_id AND si.library_title = mi.library_title AND si.edition = mi.edition
+     WHERE si.tmdb_id = mi.tmdb_id AND si.library_id = mi.library_id AND si.edition = mi.edition
     ) AS set_count,
 
     (SELECT MAX(si.last_downloaded)
      FROM SavedItems si
-     WHERE si.tmdb_id = mi.tmdb_id AND si.library_title = mi.library_title AND si.edition = mi.edition
+     WHERE si.tmdb_id = mi.tmdb_id AND si.library_id = mi.library_id AND si.edition = mi.edition
     ) AS max_last_downloaded
 
   FROM MediaItems mi
@@ -134,10 +135,12 @@ WITH base AS (
 )
 SELECT
   mi.tmdb_id AS tmdb_id,
+  mi.library_id AS library_id,
   mi.library_title AS library_title,
 
   json_object(
     'tmdb_id', mi.tmdb_id,
+    'library_id', mi.library_id,
     'library_title', mi.library_title,
     'edition', mi.edition,
     'rating_key', mi.rating_key,
@@ -242,7 +245,7 @@ SELECT
       FROM SavedItems si
       JOIN PosterSets ps ON ps.id = si.poster_set_id
       WHERE si.tmdb_id = mi.tmdb_id
-        AND si.library_title = mi.library_title
+        AND si.library_id = mi.library_id
         AND si.edition = mi.edition
     ),
     json('[]')
@@ -267,6 +270,7 @@ LIMIT ? OFFSET ?;
 
 	type rowT struct {
 		TMDBID       string
+		LibraryID    string
 		LibraryTitle string
 		MediaItem    string
 		PosterSets   sql.NullString
@@ -274,7 +278,7 @@ LIMIT ? OFFSET ?;
 
 	for rows.Next() {
 		var r rowT
-		if err := rows.Scan(&r.TMDBID, &r.LibraryTitle, &r.MediaItem, &r.PosterSets); err != nil {
+		if err := rows.Scan(&r.TMDBID, &r.LibraryID, &r.LibraryTitle, &r.MediaItem, &r.PosterSets); err != nil {
 			logAction.SetError("Failed to scan saved item row", "", map[string]any{"error": err.Error()})
 			return out, *logAction.Error
 		}
@@ -387,7 +391,7 @@ EXISTS (
   FROM SavedItems si
   JOIN PosterSets ps ON ps.id = si.poster_set_id
   WHERE si.tmdb_id = mi.tmdb_id
-    AND si.library_title = mi.library_title
+    AND si.library_id = mi.library_id
     AND si.edition = mi.edition
     AND %s
 )`, strings.Join(posterSetExists, " AND ")), posterArgs...)

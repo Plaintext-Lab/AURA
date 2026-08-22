@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-const LATEST_DB_VERSION = 6
+const LATEST_DB_VERSION = 7
 
 var Client DB
 
@@ -55,8 +55,8 @@ type DB interface {
 	// Upsert Converted Saved Item
 	UpsertSavedItem(ctx context.Context, newItem models.DBSavedItem) (Err logging.LogErrorInfo)
 
-	// Check Media Item Exists
-	CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoredMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo)
+	// Check Media Item Exists (libraryID is the stable library section ID)
+	CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryID, edition string) (ignored bool, ignoredMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo)
 
 	// Get All Media Items
 	GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo)
@@ -67,8 +67,8 @@ type DB interface {
 	// Update Media Item
 	UpdateMediaItem(ctx context.Context, updatedItem models.MediaItem) (Err logging.LogErrorInfo)
 
-	// Delete Media Item and Ignored Item entries for a given TMDB ID and Library Title
-	DeleteMediaItemAndIgnoredStatus(ctx context.Context, TMDB_ID, libraryTitle, edition string) (Err logging.LogErrorInfo)
+	// Delete Media Item and Ignored Item entries for a given TMDB ID and Library ID
+	DeleteMediaItemAndIgnoredStatus(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo)
 
 	// Get All Saved Sets
 	GetAllSavedSets(ctx context.Context, dbFilter models.DBFilter) (out PagedSavedItems, logErr logging.LogErrorInfo)
@@ -76,26 +76,26 @@ type DB interface {
 	// Get All Unique Users from Saved Sets
 	GetAllUniqueUsers(ctx context.Context) (users []string, logErr logging.LogErrorInfo)
 
-	// Get Count of Saved Sets (Unique TMDB ID + Library Title combinations)
+	// Get Count of Saved Sets (Unique TMDB ID + Library ID combinations)
 	//GetCountSavedSets(ctx context.Context) (count int, logErr logging.LogErrorInfo)
 
 	// Delete Poster Set (and associated images) by ID
-	DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo)
+	DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryID, edition, setID string) (Err logging.LogErrorInfo)
 
 	// Delete All Poster Sets for Media Item
-	DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition string) (Err logging.LogErrorInfo)
+	DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryID, edition string) (Err logging.LogErrorInfo)
 
 	// Ignore Media Item
-	IgnoreMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo)
+	IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, edition, mode, currentSets string) (Err logging.LogErrorInfo)
 
 	// Stop Ignoring Media Item
-	StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryTitle, edition string) (Err logging.LogErrorInfo)
+	StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo)
 
 	// Get Temp Ignored Items
 	GetTempIgnoredItems(ctx context.Context) (items []models.MediaItem, Err logging.LogErrorInfo)
 
 	// Update Media Item on_server flag
-	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
+	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryID string, edition string, onServer bool) (logErr logging.LogErrorInfo)
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
@@ -214,11 +214,11 @@ func UpsertSavedItem(ctx context.Context, newItem models.DBSavedItem) (Err loggi
 	return Client.UpsertSavedItem(ctx, newItem)
 }
 
-func CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoreMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo) {
+func CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryID, edition string) (ignored bool, ignoreMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo) {
 	if Client == nil {
 		return false, "", []models.DBSavedSet{}, logging.Error_DBClientNotInitialized()
 	}
-	return Client.CheckIfMediaItemExists(ctx, TMDB_ID, libraryTitle, edition)
+	return Client.CheckIfMediaItemExists(ctx, TMDB_ID, libraryID, edition)
 }
 
 func GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo) {
@@ -242,11 +242,11 @@ func UpdateMediaItem(ctx context.Context, updatedItem models.MediaItem) (Err log
 	return Client.UpdateMediaItem(ctx, updatedItem)
 }
 
-func DeleteMediaItemAndIgnoredStatus(ctx context.Context, TMDB_ID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
+func DeleteMediaItemAndIgnoredStatus(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.DeleteMediaItemAndIgnoredStatus(ctx, TMDB_ID, libraryTitle, edition)
+	return Client.DeleteMediaItemAndIgnoredStatus(ctx, TMDB_ID, libraryID, edition)
 }
 
 func GetAllSavedSets(ctx context.Context, dbFilter models.DBFilter) (out PagedSavedItems, logErr logging.LogErrorInfo) {
@@ -270,32 +270,32 @@ func GetAllUniqueUsers(ctx context.Context) (users []string, logErr logging.LogE
 // 	return Client.GetCountSavedSets(ctx)
 // }
 
-func DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo) {
+func DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryID, edition, setID string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.DeletePosterSetForMediaItem(ctx, tmdbID, libraryTitle, edition, setID)
+	return Client.DeletePosterSetForMediaItem(ctx, tmdbID, libraryID, edition, setID)
 }
 
-func DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
+func DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryID, edition string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryTitle, edition)
+	return Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryID, edition)
 }
 
-func IgnoreMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
+func IgnoreMediaItem(ctx context.Context, tmdbID, libraryID, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.IgnoreMediaItem(ctx, tmdbID, libraryTitle, edition, mode, currentSets)
+	return Client.IgnoreMediaItem(ctx, tmdbID, libraryID, edition, mode, currentSets)
 }
 
-func StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
+func StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryID, edition string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.StopIgnoringMediaItem(ctx, TMDB_ID, libraryTitle, edition)
+	return Client.StopIgnoringMediaItem(ctx, TMDB_ID, libraryID, edition)
 }
 
 func GetTempIgnoredItems(ctx context.Context) (items []models.MediaItem, Err logging.LogErrorInfo) {
@@ -305,9 +305,9 @@ func GetTempIgnoredItems(ctx context.Context) (items []models.MediaItem, Err log
 	return Client.GetTempIgnoredItems(ctx)
 }
 
-func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo) {
+func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryID string, edition string, onServer bool) (logErr logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.UpdateMediaItemOnServer(ctx, tmdbID, libraryTitle, edition, onServer)
+	return Client.UpdateMediaItemOnServer(ctx, tmdbID, libraryID, edition, onServer)
 }

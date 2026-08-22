@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func (s *SQliteDB) StopIgnoringMediaItem(ctx context.Context, tmdbID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
+func (s *SQliteDB) StopIgnoringMediaItem(ctx context.Context, tmdbID, libraryID, edition string) (Err logging.LogErrorInfo) {
 	Err = logging.LogErrorInfo{}
 
 	if s == nil || s.conn == nil {
@@ -14,21 +14,21 @@ func (s *SQliteDB) StopIgnoringMediaItem(ctx context.Context, tmdbID, libraryTit
 	}
 
 	tmdbID = strings.TrimSpace(tmdbID)
-	libraryTitle = strings.TrimSpace(libraryTitle)
+	libraryID = strings.TrimSpace(libraryID)
 	edition = strings.TrimSpace(edition)
 
 	res, err := s.conn.ExecContext(ctx, `
         DELETE FROM IgnoredItems
-        WHERE tmdb_id = ? AND library_title = ? AND edition = ?;
-    `, tmdbID, libraryTitle, edition)
+        WHERE tmdb_id = ? AND library_id = ? AND edition = ?;
+    `, tmdbID, libraryID, edition)
 	if err != nil {
 		_, logAction := logging.AddSubActionToContext(ctx, "Stopping ignore for media item", logging.LevelError)
 		defer logAction.Complete()
 		logAction.SetError("Failed to delete ignore entry from database", err.Error(), map[string]any{
-			"error":         err.Error(),
-			"tmdb_id":       tmdbID,
-			"library_title": libraryTitle,
-			"edition":       edition,
+			"error":      err.Error(),
+			"tmdb_id":    tmdbID,
+			"library_id": libraryID,
+			"edition":    edition,
 		})
 		return *logAction.Error
 	}
@@ -39,7 +39,7 @@ func (s *SQliteDB) StopIgnoringMediaItem(ctx context.Context, tmdbID, libraryTit
 		Str("table", "IgnoredItems").
 		Int64("count", n).
 		Str("tmdb_id", tmdbID).
-		Str("library_title", libraryTitle).
+		Str("library_id", libraryID).
 		Str("edition", edition).
 		Msg("Stopped ignoring media item")
 

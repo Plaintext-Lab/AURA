@@ -44,6 +44,7 @@ func v2_CreateMediaItemsTable(ctx context.Context, conn *sql.DB) (Err logging.Lo
 CREATE TABLE MediaItems (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	tmdb_id TEXT NOT NULL,
+	library_id TEXT NOT NULL DEFAULT '',
 	library_title TEXT NOT NULL,
 	edition TEXT NOT NULL DEFAULT '',
 	rating_key TEXT NOT NULL,
@@ -51,7 +52,7 @@ CREATE TABLE MediaItems (
 	title TEXT NOT NULL,
 	year INTEGER NOT NULL,
 	on_server INTEGER NOT NULL DEFAULT 0 CHECK (on_server IN (0,1)),
-	UNIQUE (tmdb_id, library_title, edition)
+	UNIQUE (tmdb_id, library_id, edition)
 );
 	`
 	_, err := conn.ExecContext(ctx, query)
@@ -262,6 +263,7 @@ func v2_CreateSavedItemsTable(ctx context.Context, conn *sql.DB) (Err logging.Lo
 	query := `
 CREATE TABLE SavedItems (
     tmdb_id TEXT NOT NULL,
+    library_id TEXT NOT NULL DEFAULT '',
     library_title TEXT NOT NULL,
     edition TEXT NOT NULL DEFAULT '',
     poster_set_id INTEGER NOT NULL,
@@ -277,13 +279,13 @@ CREATE TABLE SavedItems (
 	auto_add_new_collection_items INTEGER NOT NULL DEFAULT 0 CHECK (auto_add_new_collection_items IN (0,1)),
     last_downloaded DATETIME NOT NULL,
 
-    PRIMARY KEY (tmdb_id, library_title, edition, poster_set_id),
+    PRIMARY KEY (tmdb_id, library_id, edition, poster_set_id),
 
     FOREIGN KEY (poster_set_id) REFERENCES PosterSets(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
-    FOREIGN KEY (tmdb_id, library_title, edition) REFERENCES MediaItems(tmdb_id, library_title, edition)
+    FOREIGN KEY (tmdb_id, library_id, edition) REFERENCES MediaItems(tmdb_id, library_id, edition)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 ) WITHOUT ROWID;
@@ -308,6 +310,7 @@ func v2_CreateIgnoredItemsTable(ctx context.Context, conn *sql.DB) (Err logging.
 	query := `
 CREATE TABLE IgnoredItems (
     tmdb_id TEXT NOT NULL,
+    library_id TEXT NOT NULL DEFAULT '',
     library_title TEXT NOT NULL,
     edition TEXT NOT NULL DEFAULT '',
 
@@ -319,7 +322,7 @@ CREATE TABLE IgnoredItems (
 	-- Sets that currently available for this item (array stored as JSON string)
 	current_sets TEXT NOT NULL DEFAULT '[]',
 
-    PRIMARY KEY (tmdb_id, library_title, edition)
+    PRIMARY KEY (tmdb_id, library_id, edition)
 ) WITHOUT ROWID;
 `
 	_, err := conn.ExecContext(ctx, query)
@@ -349,7 +352,7 @@ CREATE INDEX idx_imagefiles_item_tmdb_id ON ImageFiles(item_tmdb_id);
 CREATE INDEX idx_imagefiles_item_tmdb_type ON ImageFiles(item_tmdb_id, image_type);
 
 CREATE INDEX idx_saveditems_poster_set_id ON SavedItems(poster_set_id);
-CREATE INDEX idx_saveditems_item ON SavedItems(tmdb_id, library_title);
+CREATE INDEX idx_saveditems_item ON SavedItems(tmdb_id, library_id);
 
 CREATE INDEX idx_ignoreditems_mode ON IgnoredItems(mode);
     `

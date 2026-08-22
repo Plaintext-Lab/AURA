@@ -50,7 +50,7 @@ func UpdateItemInDB(w http.ResponseWriter, r *http.Request) {
 	for _, ps := range req.UpdateItem.PosterSets {
 		if ps.ToDelete {
 			// Delete the poster set
-			Err := database.DeletePosterSetForMediaItem(ctx, req.UpdateItem.MediaItem.TMDB_ID, req.UpdateItem.MediaItem.LibraryTitle, req.UpdateItem.MediaItem.Edition, ps.ID)
+			Err := database.DeletePosterSetForMediaItem(ctx, req.UpdateItem.MediaItem.TMDB_ID, req.UpdateItem.MediaItem.LibraryID, req.UpdateItem.MediaItem.Edition, ps.ID)
 			if Err.Message != "" {
 				httpx.SendResponse(w, ld, response)
 				return

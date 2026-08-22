@@ -23,7 +23,7 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 
 	// Query all MediaItems
 	rows, err := tx.QueryContext(ctx, `
-		SELECT tmdb_id, library_title, edition, rating_key, type, title, year
+		SELECT tmdb_id, library_id, library_title, edition, rating_key, type, title, year
 		FROM MediaItems;
 	`)
 	if err != nil {
@@ -35,7 +35,7 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 	// Iterate through the rows
 	for rows.Next() {
 		var item models.MediaItem
-		if err := rows.Scan(&item.TMDB_ID, &item.LibraryTitle, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year); err != nil {
+		if err := rows.Scan(&item.TMDB_ID, &item.LibraryID, &item.LibraryTitle, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year); err != nil {
 			logAction.SetError("Failed to scan MediaItem row", "", map[string]any{"error": err.Error()})
 			return items, *logAction.Error
 		}
@@ -47,6 +47,7 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 
 type MediaItemWithFlags struct {
 	TMDB_ID      string
+	LibraryID    string
 	LibraryTitle string
 	Edition      string
 	RatingKey    string
@@ -74,6 +75,7 @@ func (s *SQliteDB) GetAllMediaItemsWithFlags(ctx context.Context) ([]MediaItemWi
 	rows, err := tx.QueryContext(ctx, `
         SELECT
             m.tmdb_id,
+            m.library_id,
             m.library_title,
             m.edition,
             m.rating_key,
@@ -86,12 +88,12 @@ func (s *SQliteDB) GetAllMediaItemsWithFlags(ctx context.Context) ([]MediaItemWi
             MediaItems m
         LEFT JOIN
             SavedItems s
-            ON m.tmdb_id = s.tmdb_id AND m.library_title = s.library_title AND m.edition = s.edition
+            ON m.tmdb_id = s.tmdb_id AND m.library_id = s.library_id AND m.edition = s.edition
         LEFT JOIN
             IgnoredItems i
-            ON m.tmdb_id = i.tmdb_id AND m.library_title = i.library_title AND m.edition = i.edition
+            ON m.tmdb_id = i.tmdb_id AND m.library_id = i.library_id AND m.edition = i.edition
         GROUP BY
-            m.tmdb_id, m.library_title, m.edition
+            m.tmdb_id, m.library_id, m.edition
     `)
 	if err != nil {
 		logAction.SetError("Failed to query MediaItems with flags", "", map[string]any{"error": err.Error()})
@@ -102,7 +104,7 @@ func (s *SQliteDB) GetAllMediaItemsWithFlags(ctx context.Context) ([]MediaItemWi
 	for rows.Next() {
 		var item MediaItemWithFlags
 		var hasSavedSet, isIgnored int
-		if err := rows.Scan(&item.TMDB_ID, &item.LibraryTitle, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year, &hasSavedSet, &isIgnored); err != nil {
+		if err := rows.Scan(&item.TMDB_ID, &item.LibraryID, &item.LibraryTitle, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year, &hasSavedSet, &isIgnored); err != nil {
 			logAction.SetError("Failed to scan row", "", map[string]any{"error": err.Error()})
 			return items, *logAction.Error
 		}

@@ -34,18 +34,18 @@ func DeleteItemFromDB(w http.ResponseWriter, r *http.Request) {
 
 	// Get the query parameters
 	tmdbID := r.URL.Query().Get("tmdb_id")
-	libraryTitle := r.URL.Query().Get("library_title")
+	libraryID := resolveLibraryID(r)
 	edition := r.URL.Query().Get("edition")
 
 	// Validate the parameters
-	if tmdbID == "" || libraryTitle == "" {
+	if tmdbID == "" || libraryID == "" {
 		ld.AddAction("Invalid parameters for deleting item from database", logging.LevelError)
 		httpx.SendResponse(w, ld, response)
 		return
 	}
 
 	// Delete the item
-	Err := database.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryTitle, edition)
+	Err := database.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryID, edition)
 	if Err.Message != "" {
 		httpx.SendResponse(w, ld, response)
 		return
