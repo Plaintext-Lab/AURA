@@ -165,5 +165,12 @@ func AddNewItemToDB(w http.ResponseWriter, r *http.Request) {
 		sonarr_radarr.HandleTags(ctx, saveItem.MediaItem, fullSet.SelectedTypes)
 	}()
 
+	// Propagate artwork to any linked libraries asynchronously.
+	// A failure in one target must not affect this response.
+	go func() {
+		propagateCtx, _ := logging.CreateLoggingContext(context.Background(), "Linked Library Propagation")
+		PropagateToLinkedLibraries(propagateCtx, saveItem, fullSet)
+	}()
+
 	httpx.SendResponse(w, ld, response)
 }

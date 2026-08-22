@@ -15,6 +15,7 @@ import { ConfigSectionAuth } from "@/components/settings-onboarding/ConfigSectio
 import { ConfigSectionAutoDownload } from "@/components/settings-onboarding/ConfigSectionAutoDownload";
 import { ConfigSectionImages } from "@/components/settings-onboarding/ConfigSectionImages";
 import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/ConfigSectionLabelsAndTags";
+import { ConfigSectionLinkedLibraries } from "@/components/settings-onboarding/ConfigSectionLinkedLibraries";
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
 import { ConfigSectionMediux } from "@/components/settings-onboarding/ConfigSectionMediux";
@@ -515,6 +516,12 @@ const SettingsPage: React.FC = () => {
               >
                 User Preferences
               </TabsTrigger>
+              <TabsTrigger
+                value="linked-libraries"
+                className="flex-1 cursor-pointer text-primary data-[state=active]:bg-primary data-[state=active]:text-background dark:data-[state=active]:bg-primary dark:data-[state=active]:text-background hover:brightness-120 active:scale-95"
+              >
+                Linked Libraries
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="app-settings" className="mt-6 w-full">
@@ -667,6 +674,14 @@ const SettingsPage: React.FC = () => {
             <TabsContent value="user-preferences" className="mt-6 w-full">
               <div id="preferences-section" ref={preferencesRef} className="w-full">
                 <UserPreferencesCard />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="linked-libraries" className="mt-6 w-full">
+              <div className="space-y-5 w-full">
+                <ConfigSectionLinkedLibraries
+                  availableLibraries={newConfig.media_server.libraries}
+                />
               </div>
             </TabsContent>
           </Tabs>
