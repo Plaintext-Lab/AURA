@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderIcon } from "lucide-react";
+import { Info, LoaderIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -162,6 +162,23 @@ const AppStatusPage: React.FC = () => {
             />{" "}
           </div>
         </div>
+
+        {/* Silo rate limits its API, so loading the media server data takes longer */}
+        {hasHydrated &&
+          status?.current_setup?.media_server?.type === "Silo" &&
+          status?.app_loading_step === "Preloading Media Server Data into Cache" && (
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-sky-500/30 bg-sky-500/10 p-4 text-sm">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-500" />
+              <div>
+                <p className="font-medium text-foreground">Silo may take a little longer to load</p>
+                <p className="mt-1 text-muted-foreground">
+                  Silo limits how many API requests aura can make, so loading your libraries can take a few minutes for
+                  larger libraries. Setting the API key&apos;s rate tier to{" "}
+                  <span className="font-medium text-foreground">elevated</span> in Silo will speed this up.
+                </p>
+              </div>
+            </div>
+          )}
 
         {!hasHydrated ? (
           <div className="text-sm text-muted-foreground">Loading status...</div>

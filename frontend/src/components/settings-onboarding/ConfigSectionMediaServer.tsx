@@ -41,8 +41,12 @@ interface ConfigSectionMediaServerProps {
   errorsUpdate?: (errors: Partial<Record<keyof AppConfigMediaServer, string>>) => void;
 }
 
-const SERVER_TYPES = ["Plex", "Emby", "Jellyfin"];
-const USER_ID_REQUIRED_TYPES = new Set<string>(["Emby", "Jellyfin"]);
+const SERVER_TYPES = ["Plex", "Emby", "Jellyfin", "Silo"];
+const USER_ID_REQUIRED_TYPES = new Set<string>(["Emby", "Jellyfin", "Silo"]);
+const DEFAULT_PORTS: Record<string, string> = { Plex: "32400", Emby: "8096", Jellyfin: "8096", Silo: "8090" };
+
+// Silo uses a Profile ID instead of a User ID
+const getUserIDLabel = (type: string) => (type === "Silo" ? "Profile ID" : "User ID");
 
 export function GetConnectionColor(status: "unknown" | "ok" | "error"): "green-500" | "red-500" | "gray-500" {
   switch (status) {
@@ -123,7 +127,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
 
     // User ID requirement
     if (USER_ID_REQUIRED_TYPES.has(typeNormalized) && !value.user_id?.trim()) {
-      errs.user_id = "User ID should be set automatically after URL & Token are valid.";
+      errs.user_id = `${getUserIDLabel(typeNormalized)} should be set automatically after URL & Token are valid.`;
     }
 
     // Libraries
@@ -341,6 +345,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
                 <li>Plex</li>
                 <li>Emby</li>
                 <li>Jellyfin</li>
+                <li>Silo</li>
               </ul>
             </PopoverHelp>
           )}
@@ -490,11 +495,14 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
                 <p>Examples:</p>
                 <ul className="list-disc list-inside mb-1">
                   <li>https://{value.type.toLowerCase()}.domain.com</li>
-                  <li>http://192.168.1.10:{value.type === "Plex" ? "32400" : "8096"}</li>
+                  <li>http://192.168.1.10:{DEFAULT_PORTS[value.type] ?? "8096"}</li>
                   <li>
-                    http://{value.type.toLowerCase()}:{value.type === "Plex" ? "32400" : "8096"}
+                    http://{value.type.toLowerCase()}:{DEFAULT_PORTS[value.type] ?? "8096"}
                   </li>
                 </ul>
+                {value.type === "Silo" && (
+                  <p className="mb-1">Use the main Silo server URL, not the Jellyfin compatibility URL.</p>
+                )}
                 <p>Rules:</p>
                 <ul className="list-disc list-inside">
                   <li>Must be a valid URL</li>
@@ -526,6 +534,13 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
           {editing && (
             <PopoverHelp ariaLabel="help-media-server-token">
               <p>API token used to authenticate requests to the media server.</p>
+              {value.type === "Silo" && (
+                <p className="mt-2">
+                  For Silo, create the API key from an admin account. Setting the API key&apos;s rate tier to{" "}
+                  <span className="font-medium">elevated</span> in Silo is recommended, as Silo limits how many requests
+                  an API key can make.
+                </p>
+              )}
             </PopoverHelp>
           )}
         </div>
@@ -541,23 +556,30 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
         {errors.api_token && <p className="text-xs text-red-500">{errors.api_token}</p>}
       </div>
 
-      {/* User ID (Emby / Jellyfin) */}
+      {/* User ID (Emby / Jellyfin) or Profile ID (Silo) */}
       {USER_ID_REQUIRED_TYPES.has(value.type) && (
         <div className={cn("space-y-1")}>
           <div className="flex items-center justify-between">
-            <Label>User ID</Label>
+            <Label>{getUserIDLabel(value.type)}</Label>
             {editing && (
               <PopoverHelp ariaLabel="help-media-server-user-id">
-                <p>
-                  User ID is required for Emby/Jellyfin. It should be set automatically after URL & Token are valid.
-                </p>
+                {value.type === "Silo" ? (
+                  <p>
+                    Profile ID is required for Silo. It is the primary profile of the API key&apos;s account, and should
+                    be set automatically after URL & Token are valid.
+                  </p>
+                ) : (
+                  <p>
+                    User ID is required for Emby/Jellyfin. It should be set automatically after URL & Token are valid.
+                  </p>
+                )}
               </PopoverHelp>
             )}
           </div>
           <Input
             disabled={true}
             value={value.user_id ?? ""}
-            placeholder="Emby/Jellyfin user id"
+            placeholder={value.type === "Silo" ? "Silo profile id" : "Emby/Jellyfin user id"}
             className={cn("w-full", dirtyFields.user_id && "border-amber-500")}
           />
           {errors.user_id && <p className="text-xs text-red-500">{errors.user_id}</p>}
