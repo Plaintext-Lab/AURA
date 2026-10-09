@@ -448,7 +448,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                             const isHighlighted = index === focusedIndex;
                             return (
                               <SearchResultMediaItem
-                                key={`media-item-${item.rating_key}`}
+                                key={`media-item-${item.library_title}-${item.rating_key}`}
                                 title={item.title}
                                 subtitle={`${item.library_title} • ${item.year}`}
                                 href={`/media-item/`}

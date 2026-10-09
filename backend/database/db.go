@@ -1,6 +1,7 @@
 package database
 
 import (
+	"aura/cache"
 	"aura/config"
 	"aura/logging"
 	"aura/models"
@@ -250,7 +251,34 @@ func UpsertSavedItem(ctx context.Context, newItem models.DBSavedItem) (Err loggi
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.UpsertSavedItem(ctx, newItem)
+	Err = Client.UpsertSavedItem(ctx, newItem)
+	if Err.Message != "" {
+		return Err
+	}
+
+	// Silo uses one item for every library it is in, so images applied in one library are shown in all of them
+	// Save the same sets for the item in the other libraries as well
+	if config.Current.MediaServer.Type == "Silo" && newItem.MediaItem.RatingKey != "" {
+		for _, otherItem := range cache.LibraryStore.GetMediaItemsByRatingKey(newItem.MediaItem.RatingKey) {
+			if otherItem.LibraryTitle == newItem.MediaItem.LibraryTitle {
+				continue
+			}
+			sharedItem := newItem
+			sharedItem.MediaItem.LibraryTitle = otherItem.LibraryTitle
+			// Use the file info for the other library, if it is known
+			if otherItem.Movie != nil {
+				sharedItem.MediaItem.Movie = otherItem.Movie
+			}
+			if otherItem.Series != nil {
+				sharedItem.MediaItem.Series = otherItem.Series
+			}
+			Err = Client.UpsertSavedItem(ctx, sharedItem)
+			if Err.Message != "" {
+				return Err
+			}
+		}
+	}
+	return logging.LogErrorInfo{}
 }
 
 func CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoreMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo) {
@@ -313,28 +341,64 @@ func DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryTitle, edit
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.DeletePosterSetForMediaItem(ctx, tmdbID, libraryTitle, edition, setID)
+	Err = Client.DeletePosterSetForMediaItem(ctx, tmdbID, libraryTitle, edition, setID)
+	if Err.Message != "" {
+		return Err
+	}
+
+	// Silo uses one item for every library it is in, so remove the set from the other libraries as well
+	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
+		logSharedLibraryError(Client.DeletePosterSetForMediaItem(ctx, tmdbID, otherLibraryTitle, edition, setID), tmdbID, otherLibraryTitle)
+	}
+	return logging.LogErrorInfo{}
 }
 
 func DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryTitle, edition)
+	Err = Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, libraryTitle, edition)
+	if Err.Message != "" {
+		return Err
+	}
+
+	// Silo uses one item for every library it is in, so remove the sets from the other libraries as well
+	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
+		logSharedLibraryError(Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, otherLibraryTitle, edition), tmdbID, otherLibraryTitle)
+	}
+	return logging.LogErrorInfo{}
 }
 
 func IgnoreMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, mode, currentSets string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.IgnoreMediaItem(ctx, tmdbID, libraryTitle, edition, mode, currentSets)
+	Err = Client.IgnoreMediaItem(ctx, tmdbID, libraryTitle, edition, mode, currentSets)
+	if Err.Message != "" {
+		return Err
+	}
+
+	// Silo uses one item for every library it is in, so ignore the item in the other libraries as well
+	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
+		logSharedLibraryError(Client.IgnoreMediaItem(ctx, tmdbID, otherLibraryTitle, edition, mode, currentSets), tmdbID, otherLibraryTitle)
+	}
+	return logging.LogErrorInfo{}
 }
 
 func StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryTitle, edition string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.StopIgnoringMediaItem(ctx, TMDB_ID, libraryTitle, edition)
+	Err = Client.StopIgnoringMediaItem(ctx, TMDB_ID, libraryTitle, edition)
+	if Err.Message != "" {
+		return Err
+	}
+
+	// Silo uses one item for every library it is in, so stop ignoring the item in the other libraries as well
+	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(TMDB_ID, libraryTitle, edition) {
+		logSharedLibraryError(Client.StopIgnoringMediaItem(ctx, TMDB_ID, otherLibraryTitle, edition), TMDB_ID, otherLibraryTitle)
+	}
+	return logging.LogErrorInfo{}
 }
 
 func GetTempIgnoredItems(ctx context.Context) (items []models.MediaItem, Err logging.LogErrorInfo) {
@@ -440,4 +504,33 @@ func UpsertSiloItemIDs(ctx context.Context, items []SiloItemIDs) (Err logging.Lo
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.UpsertSiloItemIDs(ctx, items)
+}
+
+// getSiloSharedLibraryTitles returns the other libraries that have the same item.
+// Silo uses one item (rating key) for every library it is in, so changes in one library apply to all of them.
+// Returns nothing for other media servers.
+func getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition string) []string {
+	if config.Current.MediaServer.Type != "Silo" {
+		return nil
+	}
+	item, found := cache.LibraryStore.GetMediaItemFromSectionByTMDBIDAndEdition(libraryTitle, tmdbID, edition)
+	if !found || item.RatingKey == "" {
+		return nil
+	}
+	libraryTitles := []string{}
+	for _, otherItem := range cache.LibraryStore.GetMediaItemsByRatingKey(item.RatingKey) {
+		if otherItem.LibraryTitle != libraryTitle {
+			libraryTitles = append(libraryTitles, otherItem.LibraryTitle)
+		}
+	}
+	return libraryTitles
+}
+
+// logSharedLibraryError logs a failed change in another library without failing the original change
+func logSharedLibraryError(Err logging.LogErrorInfo, tmdbID, libraryTitle string) {
+	if Err.Message == "" {
+		return
+	}
+	logging.LOGGER.Warn().Timestamp().Str("tmdb_id", tmdbID).Str("library_title", libraryTitle).Str("error", Err.Message).
+		Msg("Failed to apply the change to the same Silo item in another library")
 }

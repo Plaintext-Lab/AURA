@@ -908,7 +908,7 @@ const SavedSetsPage: React.FC = () => {
               savedSets.length > 0 &&
               savedSets.map((savedSet) => (
                 <SavedSetsTableRow
-                  key={savedSet.media_item.rating_key}
+                  key={`${savedSet.media_item.library_title}-${savedSet.media_item.rating_key}`}
                   savedSet={savedSet}
                   onUpdate={fetchSavedSets}
                   handleRecheckItem={handleRecheckItem}
@@ -953,7 +953,7 @@ const SavedSetsPage: React.FC = () => {
               savedSets.length > 0 &&
               savedSets.map((savedSet) => (
                 <SavedSetsCard
-                  key={savedSet.media_item.rating_key}
+                  key={`${savedSet.media_item.library_title}-${savedSet.media_item.rating_key}`}
                   savedSet={savedSet}
                   onUpdate={fetchSavedSets}
                   handleRecheckItem={handleRecheckItem}

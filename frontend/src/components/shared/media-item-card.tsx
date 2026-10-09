@@ -49,7 +49,7 @@ const HomeMediaItemCard: React.FC<HomeMediaItemCardProps> = ({ item }) => {
 
   return (
     <Card
-      key={item.rating_key}
+      key={`${item.library_title}-${item.rating_key}`}
       className="relative items-center cursor-pointer border border-1 hover:shadow-xl transition-shadow p-0 rounded-xl"
       onClick={() => {
         if (isMediaItem(item)) {

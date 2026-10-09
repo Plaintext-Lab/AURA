@@ -16,6 +16,7 @@ import { Lead } from "@/components/ui/typography";
 
 import { cn } from "@/lib/cn";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
+import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { usePosterSetsStore } from "@/lib/stores/global-store-poster-sets";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 
@@ -63,7 +64,23 @@ export function MediaCarousel({
   const { setSearchQuery } = useSearchQueryStore();
 
   const baseFormItems = setRefsToFormItems([set], includedItems || {});
-  const crossLibraryFormItems: FormItemDisplay[] = (otherLibraryMediaItems ?? []).flatMap((otherItem) =>
+
+  // Silo uses one item for every library it is in, so images apply to all libraries at once.
+  // Only show one entry, and list the libraries it will apply to instead.
+  const mediaServerType = useOnboardingStore((state) => state.status?.current_setup?.media_server?.type);
+  const sharesItemsAcrossLibraries = mediaServerType === "Silo";
+  const sharedLibraryTitles = sharesItemsAcrossLibraries
+    ? [
+        mediaItem.library_title,
+        ...(otherLibraryMediaItems ?? [])
+          .filter((otherItem) => otherItem.rating_key === mediaItem.rating_key)
+          .map((otherItem) => otherItem.library_title),
+      ]
+    : [];
+
+  const crossLibraryFormItems: FormItemDisplay[] = (
+    sharesItemsAcrossLibraries ? [] : (otherLibraryMediaItems ?? [])
+  ).flatMap((otherItem) =>
     baseFormItems
       .filter((item) => item.MediaItem.tmdb_id === otherItem.tmdb_id)
       .map((item) => ({ MediaItem: otherItem, Set: { ...item.Set } }))
@@ -163,6 +180,7 @@ export function MediaCarousel({
             <DownloadModal
               baseSetInfo={set}
               formItems={downloadModalFormItems}
+              sharedLibraryTitles={sharedLibraryTitles}
               onDownloadComplete={onMediaItemChange}
             />
           </div>

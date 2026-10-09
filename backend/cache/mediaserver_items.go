@@ -240,6 +240,43 @@ func (c *MediaServerLibraryCache) GetMediaItemByRatingKey(ratingKey string) (*mo
 	return &models.MediaItem{}, false
 }
 
+// GetMediaItemsByRatingKey retrieves the media item with this rating key from every section it is in.
+// Some media servers (e.g. Silo) use the same rating key for an item in every library it is in.
+func (c *MediaServerLibraryCache) GetMediaItemsByRatingKey(ratingKey string) []models.MediaItem {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	items := []models.MediaItem{}
+	for _, section := range c.sections {
+		for _, item := range section.MediaItems {
+			if item.RatingKey == ratingKey {
+				items = append(items, item)
+			}
+		}
+	}
+	return items
+}
+
+// GetMediaItemFromSectionByRatingKey retrieves a media item by rating key from a specific section.
+// Some media servers (e.g. Silo) use the same rating key for an item in every library it is in.
+func (c *MediaServerLibraryCache) GetMediaItemFromSectionByRatingKey(sectionTitle, ratingKey string) (*models.MediaItem, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	section, exists := c.sections[sectionTitle]
+	if !exists {
+		return &models.MediaItem{}, false
+	}
+
+	for _, item := range section.MediaItems {
+		if item.RatingKey == ratingKey {
+			return &item, true
+		}
+	}
+
+	return &models.MediaItem{}, false
+}
+
 // GetMediaItemFromSectionByTitleAndYear retrieves the TMDB ID from a media item by its title and year
 func (c *MediaServerLibraryCache) GetMediaItemFromSectionByTitleAndYear(sectionTitle, itemTitle string, year int) (*models.MediaItem, bool) {
 	c.mu.RLock()

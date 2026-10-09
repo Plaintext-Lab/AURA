@@ -532,8 +532,9 @@ const MediaItemPage = () => {
 
   const handleMediaItemChange = (item: MediaItem) => {
     // Ignore completions for the same title's copy in another library (tmdb_id matches,
-    // but rating_key doesn't) - only the currently viewed library's copy should update this page.
-    if (item.rating_key !== mediaItem?.rating_key) return;
+    // but rating_key or library_title doesn't) - only the currently viewed library's copy should update this page.
+    // Some media servers (e.g. Silo) use the same rating_key for an item in every library it is in.
+    if (item.rating_key !== mediaItem?.rating_key || item.library_title !== mediaItem?.library_title) return;
 
     setImageVersion(Date.now());
     if (item.db_saved_sets && mediaItem.db_saved_sets.length > 0) {

@@ -453,7 +453,9 @@ export default function Home() {
                 />
               </div>
             ) : (
-              paginatedItems.map((item) => <HomeMediaItemCard key={item.rating_key} item={item} />)
+              paginatedItems.map((item) => (
+                <HomeMediaItemCard key={`${item.library_title}-${item.rating_key}`} item={item} />
+              ))
             )}
           </ResponsiveGrid>
 
