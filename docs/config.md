@@ -340,10 +340,11 @@ Images:
 - **Options:** `true` or `false`
 - **Description:** Whether to save images locally.
 - **Details:**
-    - If `true`, images are saved in the same directory as the Media Server content.
-    - If `false`, images are updated on the Media Server but not saved next to the content.
-    - For **Emby** or **Jellyfin**, this option is ignored (handled by the server).
-    - For **Plex**, this option determines if images are saved next to content.
+    - If `true`, images are applied on the Media Server and a copy is saved in the same directory as the Media Server content.
+    - If `false`, images are applied on the Media Server but not saved next to the content.
+    - This option works the same for **Plex**, **Emby**, **Jellyfin** and **Silo**.
+    - For **Silo**, the saved copy does not change what Silo shows, as Silo only reads these files when it first scans an item.
+    - aura must be able to reach the media folders at the same paths the Media Server uses (e.g. through docker volume mounts).
 
 ## SaveImagesLocally.Path
 
@@ -364,7 +365,7 @@ Images:
 - **Details:**
     - `"match"`: Episode images will match the episode file name.
     - `"static"`: Episode images will use a static naming format like `S01E01.jpg` or `S1E1.jpg`.
-- **Note:** This option is only applicable when using Plex as the Media Server.
+- **Note:** This option is only applicable when `SaveImagesLocally.Enabled` is `true`.
 
 ## SaveImagesLocally.RunningOnWindows
 
@@ -374,7 +375,7 @@ Images:
 - **Details:**
     - If `true`, file paths will use Windows-style backslashes (`\`) and handle file permissions accordingly.
     - If `false`, file paths will use Unix-style forward slashes (`/`) and handle file permissions for Unix-based systems.
-- **Note:** This option is only applicable when using Plex as the Media Server and `SaveImagesLocally.Enabled` is `true`. It helps ensure that file paths and permissions are correctly handled based on the operating system you are running the application on.
+- **Note:** This option is only applicable when `SaveImagesLocally.Enabled` is `true`. It helps ensure that file paths and permissions are correctly handled based on the operating system you are running the application on.
 
 ---
 

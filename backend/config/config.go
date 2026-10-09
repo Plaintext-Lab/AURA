@@ -142,7 +142,7 @@ type Config_CacheImages struct {
 type Config_SaveImagesLocally struct {
 	Enabled                 bool   `json:"enabled" yaml:"Enabled"`                                                       // Whether to save images next to their content.
 	Path                    string `json:"path,omitempty" yaml:"Path,omitempty"`                                         // By default, this is set to alongside the content. If set, this will override that behavior and save all images to this path.
-	EpisodeNamingConvention string `json:"episode_naming_convention,omitempty" yaml:"EpisodeNamingConvention,omitempty"` // Episode naming convention for the media server. Only needed for Plex. Will default to match
+	EpisodeNamingConvention string `json:"episode_naming_convention,omitempty" yaml:"EpisodeNamingConvention,omitempty"` // Episode naming convention for saved titlecard images. Will default to match
 	RunningOnWindows        bool   `json:"running_on_windows,omitempty" yaml:"RunningOnWindows,omitempty"`               // Whether the application is running on Windows. This affects path formatting.
 }
 

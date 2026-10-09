@@ -281,18 +281,14 @@ func ValidateImages(ctx context.Context, Images *Config_Images, msConfig Config_
 
 	// If Images.SaveImagesLocally.Enabled is true, validate the EpisodeNamingConvention
 	if Images.SaveImagesLocally.Enabled {
-		if msConfig.Type != "Plex" {
-			return isValid
-		}
-
 		validEpisodeNamingConventions := []string{"match", "static"}
 
 		Images.SaveImagesLocally.EpisodeNamingConvention = strings.ToLower(Images.SaveImagesLocally.EpisodeNamingConvention)
 		if !stringSliceContains(validEpisodeNamingConventions, Images.SaveImagesLocally.EpisodeNamingConvention) {
-			if msConfig.Type == "Plex" && Images.SaveImagesLocally.EpisodeNamingConvention == "" {
+			if Images.SaveImagesLocally.EpisodeNamingConvention == "" {
 				Images.SaveImagesLocally.EpisodeNamingConvention = "match"
 				logAction.AppendWarning("message", "Images.SaveImagesLocally.EpisodeNamingConvention not set, defaulting to 'match'")
-			} else if msConfig.Type == "Plex" && Images.SaveImagesLocally.EpisodeNamingConvention != "match" && Images.SaveImagesLocally.EpisodeNamingConvention != "static" {
+			} else if Images.SaveImagesLocally.EpisodeNamingConvention != "match" && Images.SaveImagesLocally.EpisodeNamingConvention != "static" {
 				Images.SaveImagesLocally.EpisodeNamingConvention = "match"
 				logAction.AppendWarning("message", "Images.SaveImagesLocally.EpisodeNamingConvention invalid, defaulting to 'match'")
 			}

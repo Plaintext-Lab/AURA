@@ -3,6 +3,7 @@ package ej
 import (
 	"aura/config"
 	"aura/logging"
+	"aura/mediaserver/localimage"
 	"aura/mediux"
 	"aura/models"
 	"aura/utils"
@@ -23,6 +24,14 @@ func (e *EJ) DownloadApplyImageToMediaItem(ctx context.Context, item *models.Med
 	imageData, imageType, Err := mediux.GetImage(ctx, imageFile.ID, formatDate, mediux.ImageQualityOriginal)
 	if Err.Message != "" {
 		return Err
+	}
+
+	// If SaveImageLocally is enabled, save the image next to the content as well
+	if config.Current.Images.SaveImagesLocally.Enabled {
+		Err = localimage.SaveImageLocally(ctx, item, imageFile, imageData, imageType, e.GetMediaItemDetails)
+		if Err.Message != "" {
+			return Err
+		}
 	}
 
 	// Apply the Image to the Media Item
