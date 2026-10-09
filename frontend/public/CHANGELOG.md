@@ -1,3 +1,23 @@
+## [0.9.109] - 2026-10-08
+
+### Added
+
+- Added support for Silo Media Server
+- Added support for saving local images for Jellyfin/Emby/Silo users.
+- Added option to have "Add to Queue" checked by default in the Download Modal for better user experience.
+
+### Fixed
+
+- Fixed issue where OIDC login would not work properly in some cases.
+- Fixed invalid blurhash errors when loading images.
+
+### Updated
+
+- Updated backend dependencies to latest versions for better security and performance.
+- Updated frontend dependencies to latest versions for better security and performance.
+
+---
+
 ## [0.9.108] - 2026-09-17
 
 ### Fixed
