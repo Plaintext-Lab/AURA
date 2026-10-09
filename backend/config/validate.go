@@ -146,8 +146,8 @@ func ValidateMediaServer(ctx context.Context, MediaServer *Config_MediaServer) b
 	if MediaServer.Type == "" {
 		logAction.SetError("MediaServer.Type is not set", "Media server type must be specified", nil)
 		isValid = false
-	} else if MediaServer.Type != "Plex" && MediaServer.Type != "Emby" && MediaServer.Type != "Jellyfin" {
-		logAction.SetError(fmt.Sprintf("MediaServer.Type: '%s' is not a valid type", MediaServer.Type), "Valid types are Plex, Emby, Jellyfin", nil)
+	} else if MediaServer.Type != "Plex" && MediaServer.Type != "Emby" && MediaServer.Type != "Jellyfin" && MediaServer.Type != "Silo" {
+		logAction.SetError(fmt.Sprintf("MediaServer.Type: '%s' is not a valid type", MediaServer.Type), "Valid types are Plex, Emby, Jellyfin, Silo", nil)
 		isValid = false
 	}
 

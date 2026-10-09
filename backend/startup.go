@@ -75,8 +75,8 @@ func runPreFlight() (success bool) {
 		config.MediaServerValid = false
 		return success
 	}
-	if config.Current.MediaServer.Type == "Jellyfin" || config.Current.MediaServer.Type == "Emby" {
-		// Get Admin User for Emby/Jellyfin
+	if config.Current.MediaServer.Type == "Jellyfin" || config.Current.MediaServer.Type == "Emby" || config.Current.MediaServer.Type == "Silo" {
+		// Get Admin User for Emby/Jellyfin/Silo
 		config.AppLoadingStep = "Retrieving Media Server Admin User"
 		ejUserID, initErr := mediaserver.GetAdminUser(ctx, &config.Current.MediaServer)
 		if initErr.Message != "" {
@@ -84,7 +84,7 @@ func runPreFlight() (success bool) {
 			return success
 		} else if ejUserID == "" {
 			config.MediaServerValid = false
-			logging.LOGGER.Error().Timestamp().Msg("Failed to retrieve admin user ID from Emby/Jellyfin server")
+			logging.LOGGER.Error().Timestamp().Msgf("Failed to retrieve admin user ID from %s server", config.Current.MediaServer.Type)
 			return success
 		}
 		config.Current.MediaServer.UserID = ejUserID

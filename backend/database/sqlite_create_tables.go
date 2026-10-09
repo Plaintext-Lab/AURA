@@ -25,6 +25,7 @@ func (s *SQliteDB) CreateTables(ctx context.Context) (Err logging.LogErrorInfo) 
 		v2_AddIndexesToNewTables,
 		v7_CreateDownloadQueueJobsTable,
 		v7_CreateDownloadHistoryTable,
+		v8_CreateSiloItemIDsTable,
 	}
 
 	for _, step := range steps {
@@ -400,6 +401,33 @@ CREATE INDEX idx_downloadhistory_status_created ON DownloadHistory(status, creat
 	_, err := conn.ExecContext(ctx, query)
 	if err != nil {
 		logAction.SetError("Failed to create DownloadHistory table", err.Error(), map[string]any{
+			"error": err.Error(),
+			"query": query,
+		})
+		return *logAction.Error
+	}
+
+	return Err
+}
+
+func v8_CreateSiloItemIDsTable(ctx context.Context, conn *sql.DB) (Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Creating SiloItemIDs Table", logging.LevelTrace)
+	defer logAction.Complete()
+	Err = logging.LogErrorInfo{}
+
+	query := `
+CREATE TABLE SiloItemIDs (
+    content_id TEXT PRIMARY KEY,
+    tmdb_id TEXT NOT NULL DEFAULT '',
+    imdb_id TEXT NOT NULL DEFAULT '',
+    tvdb_id TEXT NOT NULL DEFAULT '',
+    first_air_date TEXT NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+	`
+	_, err := conn.ExecContext(ctx, query)
+	if err != nil {
+		logAction.SetError("Failed to create SiloItemIDs table", err.Error(), map[string]any{
 			"error": err.Error(),
 			"query": query,
 		})

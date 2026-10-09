@@ -55,6 +55,7 @@ func ValidateMediaServerInfo(w http.ResponseWriter, r *http.Request) {
 	switch mediaServerInfo.Type {
 	case "Plex":
 	case "Emby", "Jellyfin":
+	case "Silo":
 	default:
 		logAction.SetError("Unsupported Media Server type: "+mediaServerInfo.Type, "", nil)
 		httpx.SendResponse(w, ld, response)

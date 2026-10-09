@@ -5,6 +5,7 @@ import (
 	"aura/logging"
 	"aura/mediaserver/ej"
 	"aura/mediaserver/plex"
+	"aura/mediaserver/silo"
 	"aura/models"
 	"context"
 	"fmt"
@@ -14,7 +15,7 @@ type MediaServerInterface interface {
 	// Test Connection (returns the Server Version if connection is successful)
 	TestConnection(ctx context.Context, msConfig config.Config_MediaServer) (connectionOk bool, serverName string, serverVersion string, Err logging.LogErrorInfo)
 
-	// Get Admin User (this is for Emby/Jellyfin)
+	// Get Admin User (this is for Emby/Jellyfin/Silo)
 	GetAdminUser(ctx context.Context, msConfig config.Config_MediaServer) (userID string, Err logging.LogErrorInfo)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +83,8 @@ func NewMediaServerClient(mediaServerConfig *config.Config_MediaServer) (MediaSe
 		return &plex.Plex{Config: *cfg}, logging.LogErrorInfo{}
 	case "Jellyfin", "Emby":
 		return &ej.EJ{Config: *cfg}, logging.LogErrorInfo{}
+	case "Silo":
+		return &silo.Silo{Config: *cfg}, logging.LogErrorInfo{}
 	default:
 		return nil, logging.LogErrorInfo{
 			Message: fmt.Sprintf("unsupported media server type: %s", cfg.Type),
@@ -199,7 +202,7 @@ func AddLabelToMediaItem(ctx context.Context, item models.MediaItem, selectedTyp
 }
 
 func RateMediaItem(ctx context.Context, item *models.MediaItem, rating float64) (Err logging.LogErrorInfo) {
-	if config.Current.MediaServer.Type != "Plex" {
+	if config.Current.MediaServer.Type != "Plex" && config.Current.MediaServer.Type != "Silo" {
 		return logging.LogErrorInfo{}
 	}
 	msClient, Err := NewMediaServerClient(&config.Current.MediaServer)

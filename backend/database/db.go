@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-const LATEST_DB_VERSION = 7
+const LATEST_DB_VERSION = 8
 
 var Client DB
 
@@ -129,6 +129,12 @@ type DB interface {
 
 	// Delete all Download History entries
 	DeleteAllDownloadHistory(ctx context.Context) (Err logging.LogErrorInfo)
+
+	// Get all saved Silo Item IDs
+	GetAllSiloItemIDs(ctx context.Context) (items []SiloItemIDs, Err logging.LogErrorInfo)
+
+	// Insert or update Silo Item IDs
+	UpsertSiloItemIDs(ctx context.Context, items []SiloItemIDs) (Err logging.LogErrorInfo)
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
@@ -420,4 +426,18 @@ func DeleteAllDownloadHistory(ctx context.Context) (Err logging.LogErrorInfo) {
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.DeleteAllDownloadHistory(ctx)
+}
+
+func GetAllSiloItemIDs(ctx context.Context) (items []SiloItemIDs, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return []SiloItemIDs{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetAllSiloItemIDs(ctx)
+}
+
+func UpsertSiloItemIDs(ctx context.Context, items []SiloItemIDs) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.UpsertSiloItemIDs(ctx, items)
 }

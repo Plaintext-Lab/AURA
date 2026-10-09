@@ -175,9 +175,21 @@ MediaServer:
     EnablePlexEventListener: false
 ```
 
+-- **Example for Silo**:
+
+```yaml
+MediaServer:
+    Type: Silo
+    URL: YOUR_SILO_SERVER_URL_HERE
+    ApiToken: YOUR_SILO_API_KEY_HERE
+    Libraries:
+        - Title: Movies
+        - Title: TV Shows
+```
+
 ### Type
 
-- **Options**: `Plex`, `Emby`, `Jellyfin`
+- **Options**: `Plex`, `Emby`, `Jellyfin`, `Silo`
 - **Description**: The type of media server you are using.
 - **Details**: This option specifies the type of media server that aura will interact with. Depending on your choice, aura will use the appropriate API and methods to manage images and metadata.
 
@@ -185,7 +197,7 @@ MediaServer:
 
 - **Description**: The URL of the media server.
 - **Details**: This option specifies the URL of the media server that aura will interact with.
-- **Note**: Replace `YOUR_PLEX_SERVER_URL_HERE`, `YOUR_EMBY_SERVER_URL_HERE`, or `YOUR_JELLYFIN_SERVER_URL_HERE` with the actual URL of your media server. Make sure to include the protocol (e.g., `http://` or `https://`) in the URL.
+- **Note**: Replace `YOUR_PLEX_SERVER_URL_HERE`, `YOUR_EMBY_SERVER_URL_HERE`, `YOUR_JELLYFIN_SERVER_URL_HERE`, or `YOUR_SILO_SERVER_URL_HERE` with the actual URL of your media server. Make sure to include the protocol (e.g., `http://` or `https://`) in the URL. For Silo, use the main Silo server URL, not the Jellyfin compatibility URL.
 - **Example**: `http://localhost:32400`, `https://my-emby-server.com`, or `http://jellyfin.example.com`.
 
 ### ApiToken
@@ -193,6 +205,7 @@ MediaServer:
 - **Description**: The authentication token for the media server.
 - **Details**: This option specifies the authentication token required to access the media server's API. You can obtain this token from your media server's settings or API documentation.
 - **Note**: The token is necessary for aura to authenticate and perform actions on your media server. Make sure to keep this token secure and do not share it publicly.
+- **Silo**: Create the API Key from an admin account, as applying images and refreshing metadata require admin access. Silo limits how many requests an API Key can make, and aura makes one request per item when loading your libraries. Setting the API Key's rate tier to `elevated` on the Silo server is recommended, especially for large libraries.
 
 ### Libraries
 
