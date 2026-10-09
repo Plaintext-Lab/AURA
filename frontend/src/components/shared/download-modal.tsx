@@ -299,8 +299,9 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
   // State - Duplicate Media Items
   const [duplicates, setDuplicates] = useState<DuplicateMap>({});
 
-  // State - Add to Queue Only
-  const [addToQueueOnly, setAddToQueueOnly] = useState(false);
+  // State - Add to Queue Only (defaults to the user preference)
+  const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
+  const [addToQueueOnly, setAddToQueueOnly] = useState(defaultAddToQueue);
 
   // State - Add New Collection Items
   const [autoAddNewCollectionItems, setAutoAddNewCollectionItems] = useState(false);
@@ -1805,7 +1806,9 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
   return (
     <Dialog
       onOpenChange={(open) => {
-        if (!open) {
+        if (open) {
+          setAddToQueueOnly(defaultAddToQueue);
+        } else {
           handleClose();
         }
       }}

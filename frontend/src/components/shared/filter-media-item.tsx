@@ -57,6 +57,8 @@ function MediaItemFilterContent({
   const setShowOnlyDownloadDefaults = useUserPreferencesStore((state) => state.setShowOnlyDownloadDefaults);
   const showDateModified = useUserPreferencesStore((state) => state.showDateModified);
   const setShowDateModified = useUserPreferencesStore((state) => state.setShowDateModified);
+  const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
+  const setDefaultAddToQueue = useUserPreferencesStore((state) => state.setDefaultAddToQueue);
 
   return (
     <div className="flex-grow space-y-4 overflow-y-auto px-4 py-2">
@@ -130,6 +132,30 @@ function MediaItemFilterContent({
             <p className="text-muted-foreground">
               This is global setting that will be applied to all media items and user sets. You can always change this
               setting in this filter, or in the Settings Page{" "}
+              <Link href="/settings#preferences-section" className="underline">
+                User Preferences
+              </Link>{" "}
+              Section.
+            </p>
+          </PopoverHelp>
+        </div>
+        <div className="flex items-center space-x-2 justify-between mt-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              className="ml-0"
+              checked={defaultAddToQueue}
+              onCheckedChange={() => setDefaultAddToQueue(!defaultAddToQueue)}
+            />{" "}
+            <Label>Add to Queue by default</Label>
+          </div>
+
+          <PopoverHelp ariaLabel="help-default-add-to-queue">
+            <p className="mb-2">
+              If checked, &quot;Add to Queue&quot; will be selected when opening the download modal.
+            </p>
+            <p className="text-muted-foreground">
+              This is global setting that will be applied to all downloads. You can always change this setting in this
+              filter, or in the Settings Page{" "}
               <Link href="/settings#preferences-section" className="underline">
                 User Preferences
               </Link>{" "}

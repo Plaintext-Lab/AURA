@@ -15,6 +15,9 @@ interface UserPreferencesStore {
   showDateModified: boolean;
   setShowDateModified: (showDateModified: boolean) => void;
 
+  defaultAddToQueue: boolean;
+  setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
+
   hasHydrated: boolean;
   hydrate: () => void;
   clear: () => void;
@@ -32,6 +35,9 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
       showDateModified: false,
       setShowDateModified: (showDateModified: boolean) => set({ showDateModified }),
 
+      defaultAddToQueue: false,
+      setDefaultAddToQueue: (defaultAddToQueue: boolean) => set({ defaultAddToQueue }),
+
       hasHydrated: false,
       hydrate: () => set({ hasHydrated: true }),
 
@@ -40,6 +46,7 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
           downloadDefaults: DOWNLOAD_IMAGE_TYPE_OPTIONS.map((option) => option.value),
           showOnlyDownloadDefaults: false,
           showDateModified: false,
+          defaultAddToQueue: false,
         }),
     }),
     {
@@ -49,6 +56,7 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         downloadDefaults: state.downloadDefaults,
         showOnlyDownloadDefaults: state.showOnlyDownloadDefaults,
         showDateModified: state.showDateModified,
+        defaultAddToQueue: state.defaultAddToQueue,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
