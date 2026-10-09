@@ -130,7 +130,7 @@ function MediaItemFilterContent({
               If checked, only sets that contain at least one of the selected image types will be shown.
             </p>
             <p className="text-muted-foreground">
-              This is global setting that will be applied to all media items and user sets. You can always change this
+              This is a global setting that will be applied to all media items and user sets. You can always change this
               setting in this filter, or in the Settings Page{" "}
               <Link href="/settings#preferences-section" className="underline">
                 User Preferences
