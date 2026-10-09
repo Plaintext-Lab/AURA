@@ -26,6 +26,8 @@ import { log } from "@/lib/logger";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 
+import { useCollectionsSupported } from "@/hooks/collections-supported";
+
 import type { APIResponse } from "@/types/api/api-response";
 import type { DBSavedItem } from "@/types/database/db-poster-set";
 import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
@@ -87,6 +89,9 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
 
   // Media Store
   const { setMediaItem } = useMediaStore();
+
+  // Some media servers do not support collections
+  const collectionsSupported = useCollectionsSupported();
 
   // Filter States
   const [filters, setFilters] = useState<{ [key: string]: boolean }>({
@@ -202,7 +207,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
         const searchResp = await HandleSearch({
           searchQuery: searchInput,
           searchMediaItems: filters.mediaItem,
-          searchCollectionItems: filters.collectionItem,
+          searchCollectionItems: collectionsSupported && filters.collectionItem,
           searchMediuxUsers: filters.mediuxUser,
           searchSavedSets: filters.savedSets,
         });
@@ -232,7 +237,15 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [filters.mediaItem, filters.collectionItem, filters.mediuxUser, filters.savedSets, searchInput, setSearchQuery]);
+  }, [
+    filters.mediaItem,
+    filters.collectionItem,
+    filters.mediuxUser,
+    filters.savedSets,
+    collectionsSupported,
+    searchInput,
+    setSearchQuery,
+  ]);
 
   // Keyboard Navigation Handler
   // Handles keyboard events for navigating and selecting search results
@@ -374,29 +387,31 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <span className="text-xs font-medium text-muted-foreground mr-2 shrink-0">Filter:</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {filterOrder.map((filterType) => (
-                        <Badge
-                          key={filterType}
-                          variant={filters[filterType] ? "default" : "secondary"}
-                          className={cn(
-                            "capitalize text-xs cursor-pointer transition-colors",
-                            filters[filterType]
-                              ? "hover:bg-primary-dynamic/20"
-                              : "text-muted-foreground hover:text-primary-dynamic hover:border-primary-dynamic/50"
-                          )}
-                          onClick={() => toggleFilter(filterType)}
-                        >
-                          {filterType === "mediaItem"
-                            ? "Media Items"
-                            : filterType === "collectionItem"
-                              ? "Collection Items"
-                              : filterType === "mediuxUser"
-                                ? "MediUX Users"
-                                : filterType === "savedSets"
-                                  ? "Saved Sets"
-                                  : filterType}
-                        </Badge>
-                      ))}
+                      {filterOrder
+                        .filter((filterType) => collectionsSupported || filterType !== "collectionItem")
+                        .map((filterType) => (
+                          <Badge
+                            key={filterType}
+                            variant={filters[filterType] ? "default" : "secondary"}
+                            className={cn(
+                              "capitalize text-xs cursor-pointer transition-colors",
+                              filters[filterType]
+                                ? "hover:bg-primary-dynamic/20"
+                                : "text-muted-foreground hover:text-primary-dynamic hover:border-primary-dynamic/50"
+                            )}
+                            onClick={() => toggleFilter(filterType)}
+                          >
+                            {filterType === "mediaItem"
+                              ? "Media Items"
+                              : filterType === "collectionItem"
+                                ? "Collection Items"
+                                : filterType === "mediuxUser"
+                                  ? "MediUX Users"
+                                  : filterType === "savedSets"
+                                    ? "Saved Sets"
+                                    : filterType}
+                          </Badge>
+                        ))}
                     </div>
                   </div>
                   <Separator className="mb-4" />

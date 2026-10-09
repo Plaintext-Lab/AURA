@@ -40,6 +40,7 @@ import { useCollectionsPageStore } from "@/lib/stores/page-store-collections";
 import { useHomePageStore } from "@/lib/stores/page-store-home";
 
 import { useAppVersion } from "@/hooks/app-version";
+import { useCollectionsSupported } from "@/hooks/collections-supported";
 
 type AppNavbarProps = {
   version?: string;
@@ -93,6 +94,9 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
 
   // App Version Hook
   const { latestVersion, isNewerVersion } = useAppVersion(version);
+
+  // Some media servers do not support collections
+  const collectionsSupported = useCollectionsSupported();
 
   // Fetch onboarding/status on mount, and again whenever the route changes
   useEffect(() => {
@@ -276,13 +280,15 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                     <BookmarkIcon className="w-6 h-6 mr-2" />
                     Saved Sets
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
-                    onClick={() => router.push("/collections")}
-                  >
-                    <LayoutGrid className="w-6 h-6 mr-2" />
-                    Collections
-                  </DropdownMenuItem>
+                  {collectionsSupported && (
+                    <DropdownMenuItem
+                      className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
+                      onClick={() => router.push("/collections")}
+                    >
+                      <LayoutGrid className="w-6 h-6 mr-2" />
+                      Collections
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
                     onClick={() => router.push("/download-queue")}

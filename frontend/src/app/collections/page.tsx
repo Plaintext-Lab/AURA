@@ -5,6 +5,7 @@ import { GetMovieCollections } from "@/services/mediaserver/get-movie-collection
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CollectionsNotSupported } from "@/components/shared/collections-not-supported";
 import { CustomPagination } from "@/components/shared/custom-pagination";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { FilterCollections } from "@/components/shared/filter-collections";
@@ -19,6 +20,7 @@ import { MAX_CACHE_DURATION } from "@/lib/stores/global-store-library-sections";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useCollectionsPageStore } from "@/lib/stores/page-store-collections";
 
+import { useCollectionsSupported } from "@/hooks/collections-supported";
 import { searchItems } from "@/hooks/search-query";
 
 import type { APIResponse } from "@/types/api/api-response";
@@ -35,6 +37,12 @@ export interface CollectionItem {
 }
 
 export default function CollectionsPage() {
+  const collectionsSupported = useCollectionsSupported();
+  if (!collectionsSupported) return <CollectionsNotSupported />;
+  return <CollectionsPageContent />;
+}
+
+function CollectionsPageContent() {
   const isMounted = useRef(false);
 
   // -------------------------------
