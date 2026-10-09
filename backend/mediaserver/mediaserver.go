@@ -56,7 +56,7 @@ type MediaServerInterface interface {
 	// Handle Labels (Plex Exclusive)
 	AddLabelToMediaItem(ctx context.Context, item models.MediaItem, selectedTypes models.SelectedTypes) (Err logging.LogErrorInfo)
 
-	// Rate a specific media item (Plex Exclusive)
+	// Rate a specific media item (Plex and Silo)
 	RateMediaItem(ctx context.Context, item *models.MediaItem, rating float64) (Err logging.LogErrorInfo)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

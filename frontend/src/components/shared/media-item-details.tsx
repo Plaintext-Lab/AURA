@@ -334,10 +334,13 @@ export function MediaItemDetails({
               <RefreshCcw className="mr-2 h-4 w-4" />
               Refresh Metadata
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onSelect={() => setIsRatingModalOpen(true)}>
-              <Star className="mr-2 h-4 w-4" />
-              Rate {mediaItemType === "movie" ? "Movie" : "Show"}
-            </DropdownMenuItem>
+            {/* Rating is only supported for Plex and Silo */}
+            {(serverType === "Plex" || serverType === "Silo") && (
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => setIsRatingModalOpen(true)}>
+                <Star className="mr-2 h-4 w-4" />
+                Rate {mediaItemType === "movie" ? "Movie" : "Show"}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="cursor-pointer" onSelect={() => setIsManualImportModalOpen(true)}>
               <FileIcon className="mr-2 h-4 w-4" />
               Manual YAML Import
