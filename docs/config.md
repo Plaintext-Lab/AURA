@@ -104,6 +104,8 @@ Auth:
 ```
 
 - **IssuerURL / ClientID / ClientSecret / RedirectURL**: standard OIDC client registration values from your identity provider. `RedirectURL` must be registered with the IdP exactly as configured here.
+- **IssuerURL** is the base URL of your identity provider (e.g. `https://idp.example.com`), not its `/.well-known/openid-configuration` URL. If the discovery URL is entered, aura removes the `/.well-known/openid-configuration` part automatically.
+- **RedirectURL** must be your aura URL followed by `/api/auth/oidc/callback`. If it points anywhere else, Single Sign-On stays unavailable and the reason is shown when saving the settings.
 - **AllowedEmails / AllowedDomains**: optional allowlists. If **both** are left empty, **any** user who successfully authenticates with your identity provider is granted full access to Aura - there is no per-user account model, so this is equivalent to sharing the password with everyone who has an IdP account. The Settings UI shows a warning banner when OIDC is enabled with no allowlist configured.
 - All of the above can be configured via `Settings` → `Authentication` in the UI instead of editing the YAML directly.
 

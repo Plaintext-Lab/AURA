@@ -40,9 +40,9 @@ func NewRouter() *chi.Mux {
 	}
 
 	// Initialize OIDC (no-op if disabled). Bounded timeout so a slow/unreachable IdP can't hang
-	// router (re)creation - if discovery fails, OIDC login is simply left unavailable.
+	// router (re)creation - if discovery fails, OIDC login is simply left unavailable (InitOIDC logs why).
 	oidcCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	routes_auth.InitOIDC(oidcCtx)
+	_ = routes_auth.InitOIDC(oidcCtx)
 	cancel()
 
 	// Add the routes to the router

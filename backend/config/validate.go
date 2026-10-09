@@ -83,6 +83,14 @@ func ValidateAuth(ctx context.Context, Auth *Config_Auth) bool {
 	}
 
 	if Auth.OIDC.Enabled {
+		// The Issuer URL is the base URL of the identity provider, not its discovery document
+		Auth.OIDC.IssuerURL = strings.TrimSpace(Auth.OIDC.IssuerURL)
+		if trimmed := strings.TrimSuffix(strings.TrimRight(Auth.OIDC.IssuerURL, "/"), "/.well-known/openid-configuration"); trimmed != strings.TrimRight(Auth.OIDC.IssuerURL, "/") {
+			logAction.AppendWarning("message", fmt.Sprintf("Auth.OIDC.IssuerURL should not include /.well-known/openid-configuration, using '%s'", trimmed))
+			Auth.OIDC.IssuerURL = trimmed
+		}
+		Auth.OIDC.RedirectURL = strings.TrimSpace(Auth.OIDC.RedirectURL)
+
 		if Auth.OIDC.IssuerURL == "" || Auth.OIDC.ClientID == "" || Auth.OIDC.ClientSecret == "" || Auth.OIDC.RedirectURL == "" {
 			logAction.SetError("Auth.OIDC is missing required fields", "IssuerURL, ClientID, ClientSecret, and RedirectURL are all required when OIDC is enabled", nil)
 			isValid = false

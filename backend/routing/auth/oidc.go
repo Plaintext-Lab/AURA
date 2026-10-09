@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -26,21 +27,36 @@ var (
 // InitOIDC performs OIDC discovery against the configured issuer and, on success, makes OIDC
 // login available. If discovery fails (unreachable/misconfigured IdP), OIDC is simply left
 // unavailable - the rest of the app must keep working, since a broken IdP shouldn't take down
-// the whole server.
-func InitOIDC(ctx context.Context) {
+// the whole server. The error is returned so callers can show why OIDC is unavailable.
+func InitOIDC(ctx context.Context) (Err logging.LogErrorInfo) {
 	oidcProvider = nil
 	oidcOAuth2Cfg = nil
 	oidcIDVerifier = nil
 
 	cfg := config.Current.Auth.OIDC
 	if !cfg.Enabled {
-		return
+		return logging.LogErrorInfo{}
+	}
+
+	// The Redirect URL must point to aura's OIDC callback, otherwise the login can never complete
+	redirectURL, err := url.Parse(cfg.RedirectURL)
+	if err != nil || !strings.HasSuffix(strings.TrimRight(redirectURL.Path, "/"), "/api/auth/oidc/callback") {
+		logging.LOGGER.Error().Timestamp().Str("redirect_url", cfg.RedirectURL).Msg("OIDC Redirect URL does not point to aura's OIDC callback - OIDC login will be unavailable until this is fixed")
+		return logging.LogErrorInfo{
+			Message: "OIDC Redirect URL must point to aura's OIDC callback",
+			Help:    "Set it to your aura URL followed by /api/auth/oidc/callback (e.g. https://aura.example.com/api/auth/oidc/callback), and register the same URL with your identity provider",
+			Detail:  map[string]any{"redirect_url": cfg.RedirectURL},
+		}
 	}
 
 	provider, err := oidc.NewProvider(ctx, cfg.IssuerURL)
 	if err != nil {
 		logging.LOGGER.Error().Timestamp().Str("issuer_url", cfg.IssuerURL).Err(err).Msg("OIDC discovery failed - OIDC login will be unavailable until this is fixed and the config is reloaded")
-		return
+		return logging.LogErrorInfo{
+			Message: "OIDC discovery failed",
+			Help:    "Ensure the Issuer URL is the base URL of your identity provider (e.g. https://idp.example.com) and that aura can reach it",
+			Detail:  map[string]any{"issuer_url": cfg.IssuerURL, "error": err.Error()},
+		}
 	}
 
 	oidcProvider = provider
@@ -54,6 +70,7 @@ func InitOIDC(ctx context.Context) {
 	oidcIDVerifier = provider.Verifier(&oidc.Config{ClientID: cfg.ClientID})
 
 	logging.LOGGER.Info().Timestamp().Str("issuer_url", cfg.IssuerURL).Msg("OIDC initialized successfully")
+	return logging.LogErrorInfo{}
 }
 
 // OIDCAvailable reports whether OIDC login is configured, enabled, and successfully initialized.

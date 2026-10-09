@@ -8,6 +8,7 @@ import (
 	"aura/mediaserver"
 	"aura/mediux"
 	"aura/models"
+	routes_auth "aura/routing/auth"
 	sonarr_radarr "aura/sonarr-radarr"
 	"aura/utils/httpx"
 	"context"
@@ -17,6 +18,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 )
 
 type updateConfigRequest struct {
@@ -143,6 +145,16 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 
 	if mediaServerChanged {
 		autodownload.StartOrRestartPlexWebSocketClient()
+	}
+
+	// Restart OIDC with the new Auth settings, so the login page shows the correct login options
+	if authChanged {
+		oidcCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		oidcErr := routes_auth.InitOIDC(oidcCtx)
+		cancel()
+		if oidcErr.Message != "" {
+			logAction.SetError("Configuration saved, but Single Sign-On (OIDC) could not be started", oidcErr.Help, oidcErr.Detail)
+		}
 	}
 
 	response.Status = AppConfigStatus{
