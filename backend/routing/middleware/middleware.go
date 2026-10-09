@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 )
 
@@ -19,7 +19,7 @@ Sets up the middleware stack for the given router.
 Middlewares included:
 - Custom Logging Middleware: Logs requests using a custom log formatter.
 - CORS Middleware: Allows CORS for all origins (replace this with specific origins).
-- RealIP Middleware: Gets the client's real public IP address from the request headers.
+- Client IP Middleware: Gets the client's IP address, using the X-Forwarded-For header when behind a reverse proxy.
 - StripSlashes Middleware: Strips slashes to no slash URL versions.
 - Panic Recovery Middleware: Recovers from panics and returns a 500 error.
 
@@ -49,8 +49,10 @@ func Configure(r *chi.Mux) {
 	})
 	r.Use(cors.Handler)
 
-	// RealIP Middleware: Get the client's real public IP address from the request headers
-	r.Use(middleware.RealIP)
+	// Client IP Middleware: Get the client's IP address from the connection,
+	// or from the X-Forwarded-For header when the request comes from a reverse proxy
+	r.Use(middleware.ClientIPFromRemoteAddr)
+	r.Use(clientIPFromProxy)
 
 	// StripSlashes Middleware: Strip slashes to no slash URL versions
 	r.Use(middleware.StripSlashes)
@@ -68,6 +70,21 @@ func Configure(r *chi.Mux) {
 func removeExtraSlashes(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.ReplaceAll(r.URL.Path, "//", "/")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Private network ranges, where reverse proxies in front of aura are expected to be
+var privateIPPrefixes = []string{"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7"}
+
+func clientIPFromProxy(next http.Handler) http.Handler {
+	fromXFF := middleware.ClientIPFromXFF(privateIPPrefixes...)(next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := middleware.GetClientIPAddr(r.Context())
+		if ip.IsPrivate() || ip.IsLoopback() {
+			fromXFF.ServeHTTP(w, r)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

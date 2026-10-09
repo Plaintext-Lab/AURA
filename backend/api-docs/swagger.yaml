@@ -298,7 +298,7 @@ definitions:
         type: string
       user_id:
         description: User ID for accessing the media server. This is used for Emby
-          and Jellyfin servers.
+          and Jellyfin servers. For Silo servers, this is the Profile ID.
         type: string
     type: object
   config.Config_Mediux:
@@ -424,8 +424,8 @@ definitions:
         description: Whether to save images next to their content.
         type: boolean
       episode_naming_convention:
-        description: Episode naming convention for the media server. Only needed for
-          Plex. Will default to match
+        description: Episode naming convention for saved titlecard images. Will default
+          to match
         type: string
       path:
         description: By default, this is set to alongside the content. If set, this
@@ -3184,6 +3184,10 @@ paths:
         in: query
         name: return_type
         type: string
+      - description: Title of the library the Media Item is in
+        in: query
+        name: library_title
+        type: string
       produces:
       - application/json
       responses:
@@ -3348,9 +3352,9 @@ paths:
       - application/json
       description: Rate a media item on the media server. This endpoint allows clients
         to submit a user rating for a specific media item, which will be sent to the
-        media server (currently only supported for Plex). The rating should be a number
-        between 0 and 5, and it will be converted to the appropriate scale for the
-        media server before being submitted.
+        media server (currently only supported for Plex and Silo). The rating should
+        be a number between 0 and 5, and it will be converted to the appropriate scale
+        for the media server before being submitted.
       parameters:
       - description: The rating key of the media item to rate
         in: query

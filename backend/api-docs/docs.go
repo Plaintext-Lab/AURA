@@ -2357,6 +2357,12 @@ const docTemplate = `{
                         "description": "Return Type (full or item, default is full)",
                         "name": "return_type",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Title of the library the Media Item is in",
+                        "name": "library_title",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2609,7 +2615,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Rate a media item on the media server. This endpoint allows clients to submit a user rating for a specific media item, which will be sent to the media server (currently only supported for Plex). The rating should be a number between 0 and 5, and it will be converted to the appropriate scale for the media server before being submitted.",
+                "description": "Rate a media item on the media server. This endpoint allows clients to submit a user rating for a specific media item, which will be sent to the media server (currently only supported for Plex and Silo). The rating should be a number between 0 and 5, and it will be converted to the appropriate scale for the media server before being submitted.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4034,7 +4040,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
-                    "description": "User ID for accessing the media server. This is used for Emby and Jellyfin servers.",
+                    "description": "User ID for accessing the media server. This is used for Emby and Jellyfin servers. For Silo servers, this is the Profile ID.",
                     "type": "string"
                 }
             }
@@ -4241,7 +4247,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "episode_naming_convention": {
-                    "description": "Episode naming convention for the media server. Only needed for Plex. Will default to match",
+                    "description": "Episode naming convention for saved titlecard images. Will default to match",
                     "type": "string"
                 },
                 "path": {

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 )
 
@@ -159,14 +160,12 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 func getLogIP(Request *http.Request) string {
 
-	// Get the IP address of the client
-	ip := Request.RemoteAddr
-	if forwarded := Request.Header.Get("X-Forwarded-For"); forwarded != "" {
-		ip = forwarded // If the X-Forwarded-For header is present, use it instead
+	// Get the IP address of the client, as set by the Client IP middleware
+	ip := middleware.GetClientIP(Request.Context())
+	if ip == "" {
+		// Remove the port number from the IP address
+		ip = regexp.MustCompile(`:\d+$`).ReplaceAllString(Request.RemoteAddr, "")
 	}
-
-	// Remove the port number from the IP address
-	ip = regexp.MustCompile(`:\d+$`).ReplaceAllString(ip, "")
 
 	// If the ip is ::1 (change it to localhost)
 	if ip == "[::1]" || ip == "::1" {
