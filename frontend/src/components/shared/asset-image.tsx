@@ -4,7 +4,7 @@ import type { CollectionItem } from "@/app/collections/page";
 import { formatExactDateTime } from "@/helper/format-date-last-updates";
 import { formatDownloadSize } from "@/helper/format-download-size";
 import { downloadImageFileForMediaItem } from "@/services/downloads/download-image";
-import { decode } from "blurhash";
+import { decode, isBlurhashValid } from "blurhash";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +48,13 @@ function decodeBlurhashToDataURL(blurhash: string): string | undefined {
         "decodeBlurhashToDataURL",
         `Large blurhash detected (${blurhash.length} chars). Expected 3x3 components (~15-20 chars).`
       );
+    }
+
+    // Some blurhash strings from MediUX are malformed, so skip the blur placeholder for those
+    const validation = isBlurhashValid(blurhash);
+    if (!validation.result) {
+      log("INFO", "AssetImage", "decodeBlurhashToDataURL", `Skipping invalid blurhash: ${validation.errorReason}`);
+      return undefined;
     }
 
     // Decode blurhash to pixel data (2x2 for absolute minimal size)
