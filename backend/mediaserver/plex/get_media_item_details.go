@@ -125,6 +125,9 @@ func extractMediaItemFromResponse(ctx context.Context, metadata PlexLibraryItems
 	item.Title = metadata.Title
 	item.Year = metadata.Year
 	item.LibraryTitle = metadata.LibrarySectionTitle
+	if metadata.LibrarySectionID != 0 {
+		item.LibraryID = strconv.Itoa(metadata.LibrarySectionID)
+	}
 	item.UpdatedAt = metadata.UpdatedAt
 	item.AddedAt = metadata.AddedAt
 	item.ContentRating = metadata.ContentRating
