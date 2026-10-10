@@ -62,3 +62,27 @@ func TestExtractMediaItemFromResponseSetsLibraryID(t *testing.T) {
 		t.Errorf("LibraryID = %q, want \"7\"", item.LibraryID)
 	}
 }
+
+// Plex documents librarySectionID on the details MediaContainer, not always on Metadata.
+func TestGetMediaItemDetailsReadsLibraryIDFromContainer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/library/metadata/101" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(`{"MediaContainer":{"librarySectionID":7,"librarySectionTitle":"Movies","Metadata":[
+			{"ratingKey":"101","type":"movie","title":"Heat","librarySectionTitle":"Movies",
+			 "Guid":[{"id":"tmdb://949"}],"Media":[{"Part":[{"file":"/movies/Heat.mkv"}]}]}]}}`))
+	}))
+	defer srv.Close()
+	config.Current.MediaServer.URL = srv.URL
+
+	item := &models.MediaItem{RatingKey: "101", LibraryTitle: "Movies"}
+	found, Err := (&Plex{}).GetMediaItemDetails(testContext(), item)
+	if Err.Message != "" || !found {
+		t.Fatalf("GetMediaItemDetails: found=%v, err=%s", found, Err.Message)
+	}
+	if item.LibraryID != "7" {
+		t.Errorf("LibraryID = %q, want \"7\"", item.LibraryID)
+	}
+}

@@ -65,6 +65,9 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 		return found, *logAction.Error
 	}
 	*item = *extracted
+	if item.LibraryID == "" && plexResp.MediaContainer.LibrarySectionID != 0 {
+		item.LibraryID = strconv.Itoa(plexResp.MediaContainer.LibrarySectionID)
+	}
 
 	// If no TMDB ID found, return an error
 	if item.TMDB_ID == "" {
