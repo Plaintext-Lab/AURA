@@ -3,6 +3,7 @@ package mediaserver
 import (
 	"aura/cache"
 	"aura/config"
+	"aura/database"
 	"aura/logging"
 	"context"
 	"sort"
@@ -56,6 +57,10 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 		found, Err := GetLibrarySectionDetails(ctx, &section)
 		if Err.Message != "" || !found {
 			continue
+		}
+
+		if backfillErr := database.BackfillLibraryID(ctx, section.Title, section.ID); backfillErr.Message != "" {
+			logAction.AppendWarning("backfill_library_id_error", backfillErr.Message)
 		}
 
 		// Update the collections cache for this section

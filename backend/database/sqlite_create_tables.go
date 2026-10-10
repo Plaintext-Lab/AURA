@@ -47,6 +47,7 @@ CREATE TABLE MediaItems (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	tmdb_id TEXT NOT NULL,
 	library_title TEXT NOT NULL,
+	library_id TEXT NOT NULL DEFAULT '',
 	edition TEXT NOT NULL DEFAULT '',
 	rating_key TEXT NOT NULL,
 	type TEXT NOT NULL CHECK (type IN ('movie','show')),
@@ -265,6 +266,7 @@ func v2_CreateSavedItemsTable(ctx context.Context, conn *sql.DB) (Err logging.Lo
 CREATE TABLE SavedItems (
     tmdb_id TEXT NOT NULL,
     library_title TEXT NOT NULL,
+    library_id TEXT NOT NULL DEFAULT '',
     edition TEXT NOT NULL DEFAULT '',
     poster_set_id INTEGER NOT NULL,
 
@@ -311,6 +313,7 @@ func v2_CreateIgnoredItemsTable(ctx context.Context, conn *sql.DB) (Err logging.
 CREATE TABLE IgnoredItems (
     tmdb_id TEXT NOT NULL,
     library_title TEXT NOT NULL,
+    library_id TEXT NOT NULL DEFAULT '',
     edition TEXT NOT NULL DEFAULT '',
 
     -- 'always' = persist until user un-ignores
