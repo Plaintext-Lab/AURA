@@ -45,7 +45,7 @@ const providerLogoMap: {
 // The user rating comes from the media server, so show that media server's logo
 const userRatingLogoMap: { [mediaServerType: string]: string } = {
   Plex: "/plex-icon.png",
-  Silo: "/silo-icon.svg",
+  Silo: "/silo-icon.png",
 };
 
 type MediaItemRatingsProps = {

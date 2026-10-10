@@ -42,6 +42,13 @@ interface ConfigSectionMediaServerProps {
 }
 
 const SERVER_TYPES = ["Plex", "Emby", "Jellyfin", "Silo"];
+// Logo of each media server type, shown in the type list
+const SERVER_TYPE_ICONS: Record<string, string> = {
+  Plex: "/plex-icon.png",
+  Emby: "/emby-icon.png",
+  Jellyfin: "/jellyfin-icon.png",
+  Silo: "/silo-icon.png",
+};
 const USER_ID_REQUIRED_TYPES = new Set<string>(["Emby", "Jellyfin", "Silo"]);
 const DEFAULT_PORTS: Record<string, string> = { Plex: "32400", Emby: "8096", Jellyfin: "8096", Silo: "8090" };
 
@@ -377,7 +384,10 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
           <SelectContent>
             {SERVER_TYPES.map((t) => (
               <SelectItem className="cursor-pointer" key={t} value={t}>
+                <span className="flex items-center gap-2">
+                  <img src={SERVER_TYPE_ICONS[t]} alt="" aria-hidden="true" className="h-4 w-4 object-contain" />
                 {t}
+                </span>
               </SelectItem>
             ))}
             <SelectScrollUpButton />
