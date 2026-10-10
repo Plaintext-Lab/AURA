@@ -5056,6 +5056,10 @@ const docTemplate = `{
                 "latest_episode_added_at": {
                     "type": "integer"
                 },
+                "library_id": {
+                    "description": "Media server section ID of the library the item belongs to",
+                    "type": "string"
+                },
                 "library_title": {
                     "description": "Title of the library/section the item belongs to",
                     "type": "string"
