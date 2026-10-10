@@ -59,8 +59,8 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 			continue
 		}
 
-		if backfillErr := database.BackfillLibraryID(ctx, section.Title, section.ID); backfillErr.Message != "" {
-			logAction.AppendWarning("backfill_library_id_error", backfillErr.Message)
+		if syncErr := database.SyncLibraryRows(ctx, section.Title, section.ID); syncErr.Message != "" {
+			logAction.AppendWarning("sync_library_rows_error", syncErr.Message)
 		}
 
 		// Update the collections cache for this section

@@ -58,8 +58,8 @@ type DB interface {
 	// Check Media Item Exists
 	CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoredMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo)
 
-	// Fill an empty library_id on rows for a scanned library
-	BackfillLibraryID(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo)
+	// Line stored rows up with a scanned library's current title and ID
+	SyncLibraryRows(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo)
 
 	// Get All Media Items
 	GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo)
@@ -257,11 +257,11 @@ func CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition 
 	return Client.CheckIfMediaItemExists(ctx, TMDB_ID, libraryTitle, edition)
 }
 
-func BackfillLibraryID(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo) {
+func SyncLibraryRows(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo) {
 	if Client == nil {
 		return logging.Error_DBClientNotInitialized()
 	}
-	return Client.BackfillLibraryID(ctx, libraryTitle, libraryID)
+	return Client.SyncLibraryRows(ctx, libraryTitle, libraryID)
 }
 
 func GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo) {

@@ -9,7 +9,7 @@ import (
 
 // migrate_7_to_8 adds an empty library_id column to MediaItems, SavedItems and
 // IgnoredItems. The configured libraries hold only titles, so IDs are normally
-// written by database.BackfillLibraryID during the next scan. Upgrades from v0/v1
+// written by database.SyncLibraryRows during the next scan. Upgrades from v0/v1
 // scan during migration and skip that start-up scan, so fill from any scanned
 // sections here too.
 func migrate_7_to_8(ctx context.Context) (Err logging.LogErrorInfo) {
@@ -57,8 +57,8 @@ func migrate_7_to_8(ctx context.Context) (Err logging.LogErrorInfo) {
 	}
 
 	for _, section := range cache.LibraryStore.GetAllSectionsSortedByTitle() {
-		if backfillErr := database.BackfillLibraryID(ctx, section.Title, section.ID); backfillErr.Message != "" {
-			return backfillErr
+		if syncErr := database.SyncLibraryRows(ctx, section.Title, section.ID); syncErr.Message != "" {
+			return syncErr
 		}
 	}
 
