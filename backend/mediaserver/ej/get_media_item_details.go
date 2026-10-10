@@ -66,6 +66,13 @@ func (e *EJ) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) (f
 	}
 	found = true
 
+	// Item details carry no library section, so take its ID from the scanned section.
+	if item.LibraryID == "" {
+		if section, ok := cache.LibraryStore.GetSectionByTitle(item.LibraryTitle); ok {
+			item.LibraryID = section.ID
+		}
+	}
+
 	item.RatingKey = ejResp.ID
 	item.Type = ejResp.Type
 	item.Title = ejResp.Name

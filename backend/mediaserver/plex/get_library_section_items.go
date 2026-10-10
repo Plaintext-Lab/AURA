@@ -69,6 +69,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		item.Title = metadata.Title
 		item.Year = metadata.Year
 		item.LibraryTitle = plexResp.MediaContainer.LibrarySectionTitle
+		item.LibraryID = section.ID
 		item.UpdatedAt = metadata.UpdatedAt
 		item.AddedAt = metadata.AddedAt
 		item.ContentRating = metadata.ContentRating
