@@ -99,8 +99,8 @@ func TestMigrate7To8KeepsDataAndAddsLibraryID(t *testing.T) {
 	}
 
 	// The first scan then fills the ID in.
-	if Err := database.BackfillLibraryID(ctx, "Movies", "7"); Err.Message != "" {
-		t.Fatalf("BackfillLibraryID: %s", Err.Message)
+	if Err := database.SyncLibraryRows(ctx, "Movies", "7"); Err.Message != "" {
+		t.Fatalf("SyncLibraryRows: %s", Err.Message)
 	}
 	for _, table := range []string{"MediaItems", "SavedItems", "IgnoredItems"} {
 		if err := conn.QueryRow(`SELECT library_id FROM ` + table).Scan(&libraryID); err != nil {

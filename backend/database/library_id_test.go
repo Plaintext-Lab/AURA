@@ -102,7 +102,7 @@ func TestWritesStoreLibraryID(t *testing.T) {
 	}
 }
 
-func TestBackfillLibraryIDOnlyFillsEmptyRowsForThatTitle(t *testing.T) {
+func TestSyncLibraryRowsOnlyFillsEmptyRowsForThatTitle(t *testing.T) {
 	s, ctx := newTestDB(t)
 	for _, q := range []string{
 		`INSERT INTO MediaItems (tmdb_id, library_title, rating_key, type, title, year) VALUES ('1', 'Movies', 'r1', 'movie', 'A', 2000), ('2', 'Old', 'r2', 'movie', 'B', 2000)`,
@@ -114,12 +114,12 @@ func TestBackfillLibraryIDOnlyFillsEmptyRowsForThatTitle(t *testing.T) {
 		}
 	}
 
-	if Err := s.BackfillLibraryID(ctx, "Movies", "7"); Err.Message != "" {
-		t.Fatalf("BackfillLibraryID: %s", Err.Message)
+	if Err := s.SyncLibraryRows(ctx, "Movies", "7"); Err.Message != "" {
+		t.Fatalf("SyncLibraryRows: %s", Err.Message)
 	}
 	// A second run must not overwrite an ID that is already set.
-	if Err := s.BackfillLibraryID(ctx, "Movies", "99"); Err.Message != "" {
-		t.Fatalf("BackfillLibraryID: %s", Err.Message)
+	if Err := s.SyncLibraryRows(ctx, "Movies", "99"); Err.Message != "" {
+		t.Fatalf("SyncLibraryRows: %s", Err.Message)
 	}
 
 	for _, table := range libraryIDTables {
@@ -129,5 +129,80 @@ func TestBackfillLibraryIDOnlyFillsEmptyRowsForThatTitle(t *testing.T) {
 		if got := libraryIDOf(t, s.conn, table, "2"); got != "" {
 			t.Errorf("%s unconfigured library_id = %q, want empty", table, got)
 		}
+	}
+}
+
+func TestSyncLibraryRowsCarriesDataAcrossARename(t *testing.T) {
+	s, ctx := newTestDB(t)
+	for _, q := range []string{
+		// Library 7 ("Movies", about to become "Films") has two editions of one movie.
+		// Library 9 ("4K Movies") has the same movie.
+		`INSERT INTO MediaItems (tmdb_id, library_title, library_id, edition, rating_key, type, title, year) VALUES
+			('949', 'Movies', '7', '', 'r1', 'movie', 'Heat', 1995),
+			('949', 'Movies', '7', 'Director''s Cut', 'r2', 'movie', 'Heat', 1995),
+			('949', '4K Movies', '9', '', 'r3', 'movie', 'Heat', 1995)`,
+		`INSERT INTO SavedItems (tmdb_id, library_title, library_id, edition, poster_set_id, last_downloaded) VALUES
+			('949', 'Movies', '7', '', 1, CURRENT_TIMESTAMP),
+			('949', 'Movies', '7', 'Director''s Cut', 2, CURRENT_TIMESTAMP),
+			('949', '4K Movies', '9', '', 3, CURRENT_TIMESTAMP)`,
+		`INSERT INTO IgnoredItems (tmdb_id, library_title, library_id, mode) VALUES ('1396', 'Movies', '7', 'always')`,
+		`INSERT INTO PosterSets (id, set_id, type, title, user) VALUES (1, 's1', 'movie', 'A', 'u'), (2, 's2', 'movie', 'B', 'u'), (3, 's3', 'movie', 'C', 'u')`,
+	} {
+		if _, err := s.conn.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if Err := s.SyncLibraryRows(ctx, "Films", "7"); Err.Message != "" {
+		t.Fatalf("SyncLibraryRows: %s", Err.Message)
+	}
+
+	countByTitle := func(table, title string) int {
+		var n int
+		if err := s.conn.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE library_title = ?", title).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	for table, want := range map[string]int{"MediaItems": 2, "SavedItems": 2, "IgnoredItems": 1} {
+		if got := countByTitle(table, "Films"); got != want {
+			t.Errorf("%s rows under the new title = %d, want %d", table, got, want)
+		}
+		if got := countByTitle(table, "Movies"); got != 0 {
+			t.Errorf("%s rows left under the old title = %d, want 0", table, got)
+		}
+	}
+	// The other library's copy keeps its own row and rating key.
+	var ratingKey string
+	if err := s.conn.QueryRow(`SELECT rating_key FROM MediaItems WHERE library_title = '4K Movies'`).Scan(&ratingKey); err != nil || ratingKey != "r3" {
+		t.Errorf("4K Movies row = %q, %v; want r3", ratingKey, err)
+	}
+
+	// Lookups by the new title find the saved sets and the ignore.
+	_, _, sets, Err := s.CheckIfMediaItemExists(ctx, "949", "Films", "Director's Cut")
+	if Err.Message != "" || len(sets) != 1 {
+		t.Errorf("saved sets for the renamed edition = %d, err=%s; want 1", len(sets), Err.Message)
+	}
+	ignored, _, _, Err := s.CheckIfMediaItemExists(ctx, "1396", "Films", "")
+	if Err.Message != "" || !ignored {
+		t.Errorf("ignored after rename = %v, err=%s; want true", ignored, Err.Message)
+	}
+}
+
+func TestSyncLibraryRowsKeepsRowsThatWouldCollide(t *testing.T) {
+	s, ctx := newTestDB(t)
+	if _, err := s.conn.Exec(`INSERT INTO MediaItems (tmdb_id, library_title, library_id, rating_key, type, title, year) VALUES
+		('949', 'Movies', '7', 'old', 'movie', 'Heat', 1995),
+		('949', 'Films', '', 'new', 'movie', 'Heat', 1995)`); err != nil {
+		t.Fatal(err)
+	}
+
+	if Err := s.SyncLibraryRows(ctx, "Films", "7"); Err.Message != "" {
+		t.Fatalf("SyncLibraryRows: %s", Err.Message)
+	}
+
+	var n int
+	if err := s.conn.QueryRow(`SELECT COUNT(*) FROM MediaItems WHERE tmdb_id = '949'`).Scan(&n); err != nil || n != 2 {
+		t.Errorf("rows = %d, %v; want both kept", n, err)
 	}
 }
