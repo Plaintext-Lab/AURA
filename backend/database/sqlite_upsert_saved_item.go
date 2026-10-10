@@ -256,9 +256,10 @@ func upsertMediaItem(ctx context.Context, tx *sql.Tx, mediaItem models.MediaItem
 	defer logAction.Complete()
 
 	q := `
-INSERT INTO MediaItems (tmdb_id, library_title, edition, rating_key, type, title, year, on_server)
-VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+INSERT INTO MediaItems (tmdb_id, library_title, library_id, edition, rating_key, type, title, year, on_server)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
 ON CONFLICT(tmdb_id, library_title, edition) DO UPDATE SET
+  library_id = CASE WHEN excluded.library_id <> '' THEN excluded.library_id ELSE MediaItems.library_id END,
   rating_key = excluded.rating_key,
   type       = excluded.type,
   title      = excluded.title,
@@ -269,6 +270,7 @@ RETURNING id;
 	err := tx.QueryRowContext(ctx, q,
 		mediaItem.TMDB_ID,
 		mediaItem.LibraryTitle,
+		libraryIDForTitle(mediaItem.LibraryTitle, mediaItem.LibraryID),
 		mediaItem.Edition,
 		mediaItem.RatingKey,
 		mediaItem.Type,
@@ -497,12 +499,13 @@ RETURNING id;
 func upsertSavedItemEntry(ctx context.Context, tx *sql.Tx, mediaItem models.MediaItem, ps models.DBPosterSetDetail, posterSetRowID int64) (Err logging.LogErrorInfo) {
 	q := `
 INSERT INTO SavedItems (
-  tmdb_id, library_title, edition, poster_set_id,
+  tmdb_id, library_title, library_id, edition, poster_set_id,
   poster_selected, backdrop_selected, season_poster_selected, special_season_poster_selected, titlecard_selected,
 	autodownload, auto_add_new_collection_items, last_downloaded
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
+  library_id                    = CASE WHEN excluded.library_id <> '' THEN excluded.library_id ELSE SavedItems.library_id END,
   poster_selected               = excluded.poster_selected,
   backdrop_selected             = excluded.backdrop_selected,
   season_poster_selected        = excluded.season_poster_selected,
@@ -515,6 +518,7 @@ ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
 	_, err := tx.ExecContext(ctx, q,
 		mediaItem.TMDB_ID,
 		mediaItem.LibraryTitle,
+		libraryIDForTitle(mediaItem.LibraryTitle, mediaItem.LibraryID),
 		mediaItem.Edition,
 		posterSetRowID,
 		boolToInt(ps.SelectedTypes.Poster),
