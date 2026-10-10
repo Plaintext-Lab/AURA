@@ -1,14 +1,17 @@
 package migration
 
 import (
+	"aura/cache"
 	"aura/database"
 	"aura/logging"
 	"context"
 )
 
 // migrate_7_to_8 adds an empty library_id column to MediaItems, SavedItems and
-// IgnoredItems. It does not fill it: the configured libraries hold only titles,
-// so the IDs are written by database.BackfillLibraryID during the next scan.
+// IgnoredItems. The configured libraries hold only titles, so IDs are normally
+// written by database.BackfillLibraryID during the next scan. Upgrades from v0/v1
+// scan during migration and skip that start-up scan, so fill from any scanned
+// sections here too.
 func migrate_7_to_8(ctx context.Context) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Migrating Database from v7 to v8", logging.LevelInfo)
 	defer logAction.Complete()
@@ -51,6 +54,12 @@ func migrate_7_to_8(ctx context.Context) (Err logging.LogErrorInfo) {
 	if err = tx.Commit(); err != nil {
 		logAction.SetError("Failed to commit transaction for adding library_id column", "", map[string]any{"error": err.Error()})
 		return *logAction.Error
+	}
+
+	for _, section := range cache.LibraryStore.GetAllSectionsSortedByTitle() {
+		if backfillErr := database.BackfillLibraryID(ctx, section.Title, section.ID); backfillErr.Message != "" {
+			return backfillErr
+		}
 	}
 
 	logging.LOGGER.Info().Timestamp().Msg("Database migration v7.0 to v8.0 completed successfully")

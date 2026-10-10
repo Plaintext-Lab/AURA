@@ -1,9 +1,11 @@
 package migration
 
 import (
+	"aura/cache"
 	"aura/config"
 	"aura/database"
 	"aura/logging"
+	"aura/models"
 	"context"
 	"database/sql"
 	"path/filepath"
@@ -35,7 +37,8 @@ INSERT INTO SavedItems (tmdb_id, library_title, poster_set_id, poster_selected, 
 INSERT INTO IgnoredItems (tmdb_id, library_title, mode, current_sets) VALUES ('1396', 'Movies', 'until-new-set-available', '["s1"]');
 `
 
-func TestMigrate7To8KeepsDataAndAddsLibraryID(t *testing.T) {
+func openV7DB(t *testing.T) context.Context {
+	t.Helper()
 	dir := t.TempDir()
 	config.ConfigPath = dir
 	config.Current.Database = config.Config_Database{Type: "sqlite3", Path: "test.db"}
@@ -55,6 +58,11 @@ func TestMigrate7To8KeepsDataAndAddsLibraryID(t *testing.T) {
 	if _, Err := database.Client.Init(ctx); Err.Message != "" {
 		t.Fatalf("Init: %s", Err.Message)
 	}
+	return ctx
+}
+
+func TestMigrate7To8KeepsDataAndAddsLibraryID(t *testing.T) {
+	ctx := openV7DB(t)
 
 	// Running twice must be safe, e.g. after a failed version update.
 	for range 2 {
@@ -100,6 +108,33 @@ func TestMigrate7To8KeepsDataAndAddsLibraryID(t *testing.T) {
 		}
 		if libraryID != "7" {
 			t.Errorf("%s library_id = %q after backfill, want \"7\"", table, libraryID)
+		}
+	}
+}
+
+// Upgrades from v0/v1 scan the libraries during migration, which also skips the
+// start-up scan, so the migration has to fill IDs from that scan itself.
+func TestMigrate7To8FillsLibraryIDFromAnEarlierScan(t *testing.T) {
+	ctx := openV7DB(t)
+	cache.LibraryStore.UpdateSection(&models.LibrarySection{LibrarySectionBase: models.LibrarySectionBase{ID: "7", Title: "Movies"}})
+	t.Cleanup(cache.LibraryStore.ClearAllSections)
+
+	if Err := migrate_7_to_8(ctx); Err.Message != "" {
+		t.Fatalf("migrate_7_to_8: %s", Err.Message)
+	}
+
+	conn, _, Err := database.GetDBConnection(ctx)
+	if Err.Message != "" {
+		t.Fatal(Err.Message)
+	}
+	defer conn.Close()
+	for _, table := range []string{"MediaItems", "SavedItems", "IgnoredItems"} {
+		var libraryID string
+		if err := conn.QueryRow(`SELECT library_id FROM ` + table).Scan(&libraryID); err != nil {
+			t.Fatal(err)
+		}
+		if libraryID != "7" {
+			t.Errorf("%s library_id = %q, want \"7\"", table, libraryID)
 		}
 	}
 }
