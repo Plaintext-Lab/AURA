@@ -75,6 +75,22 @@ func TestWritesStoreLibraryID(t *testing.T) {
 		}
 	}
 
+	// Reading back must return the stored ID.
+	mediaItems, Err := s.GetAllMediaItems(ctx)
+	if Err.Message != "" || len(mediaItems) != 1 {
+		t.Fatalf("GetAllMediaItems: %d items, err=%s", len(mediaItems), Err.Message)
+	}
+	if mediaItems[0].LibraryID != "7" {
+		t.Errorf("GetAllMediaItems LibraryID = %q, want \"7\"", mediaItems[0].LibraryID)
+	}
+	savedSets, Err := s.GetAllSavedSets(ctx, models.DBFilter{ItemsPerPage: 10, PageNumber: 1})
+	if Err.Message != "" || len(savedSets.Items) != 1 {
+		t.Fatalf("GetAllSavedSets: %d items, err=%s", len(savedSets.Items), Err.Message)
+	}
+	if savedSets.Items[0].MediaItem.LibraryID != "7" {
+		t.Errorf("GetAllSavedSets LibraryID = %q, want \"7\"", savedSets.Items[0].MediaItem.LibraryID)
+	}
+
 	// The ignore route only sends the title, so the ID comes from the scanned section.
 	cache.LibraryStore.UpdateSection(&models.LibrarySection{LibrarySectionBase: models.LibrarySectionBase{ID: "8", Title: "Shows"}})
 	t.Cleanup(cache.LibraryStore.ClearAllSections)
