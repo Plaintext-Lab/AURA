@@ -5,7 +5,6 @@ import (
 	"aura/logging"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"time"
@@ -43,60 +42,19 @@ func (s *SQliteDB) Backup(ctx context.Context, currentVersion, newVersion int) (
 		return *logAction.Error
 	}
 
-	// Committed writes can still be in the WAL file; move them into the main file before copying it.
-	// A checkpoint blocked by another connection is reported in busy, not as an error.
-	var busy, walFrames, checkpointedFrames int
-	err := s.conn.QueryRowContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)").Scan(&busy, &walFrames, &checkpointedFrames)
-	if err == nil && busy != 0 {
-		err = fmt.Errorf("checkpoint blocked by another connection")
-	}
-	if err != nil {
-		logAction.SetError("Failed to checkpoint database before backup",
-			"Ensure no other process is holding the database open.",
-			map[string]any{
-				"error": err.Error(),
-				"path":  dbPath,
-			})
-		return *logAction.Error
-	}
-
-	// Create a backup file with version and timestamp
 	// Create a backup file path with version and timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	backupPath := fmt.Sprintf("%s_backup_v%d_to_v%d_%s.db", dbPath[:len(dbPath)-3], currentVersion, newVersion, timestamp)
 
-	// Copy the database file to the backup location
+	// Write the backup with VACUUM INTO instead of copying the database file.
+	// In WAL mode, committed writes can still be in the WAL file, and copying the file while
+	// another connection writes can produce a torn copy. VACUUM INTO writes a consistent
+	// snapshot that includes the WAL contents, even while other connections are writing.
 	actionBackupFile := logAction.AddSubAction("Backing up database file", logging.LevelTrace)
-	sourceFile, err := os.Open(dbPath)
+	_, err := s.conn.ExecContext(ctx, "VACUUM INTO ?", backupPath)
 	if err != nil {
-		actionBackupFile.SetError("Failed to open source database file for backup",
-			"Ensure the database path is accessible.",
-			map[string]any{
-				"error": err.Error(),
-				"path":  dbPath,
-			})
-		return *actionBackupFile.Error
-	}
-	defer sourceFile.Close()
-
-	// Create the backup file
-	backupFile, err := os.Create(backupPath)
-	if err != nil {
-		actionBackupFile.SetError("Failed to create backup database file",
-			"Ensure the destination path is accessible and writable.",
-			map[string]any{
-				"error": err.Error(),
-				"path":  backupPath,
-			})
-		return *actionBackupFile.Error
-	}
-	defer backupFile.Close()
-
-	// Copy the contents
-	_, err = io.Copy(backupFile, sourceFile)
-	if err != nil {
-		actionBackupFile.SetError("Failed to copy database file for backup",
-			"Ensure there is sufficient disk space and permissions.",
+		actionBackupFile.SetError("Failed to back up database file",
+			"Ensure the destination path is accessible and writable, and that there is sufficient disk space.",
 			map[string]any{
 				"error":       err.Error(),
 				"source":      dbPath,

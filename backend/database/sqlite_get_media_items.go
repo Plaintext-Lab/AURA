@@ -13,16 +13,9 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 	items = []models.MediaItem{}
 	logErr = logging.LogErrorInfo{}
 
-	// Start a transaction
-	tx, err := s.conn.BeginTx(ctx, nil)
-	if err != nil {
-		logAction.SetError("Failed to start transaction", "", map[string]any{"error": err.Error()})
-		return items, *logAction.Error
-	}
-	defer func() { _ = tx.Rollback() }()
-
 	// Query all MediaItems
-	rows, err := tx.QueryContext(ctx, `
+	// A single read does not need a transaction, which would take the write lock (immediate transactions)
+	rows, err := s.conn.QueryContext(ctx, `
 		SELECT tmdb_id, library_title, edition, rating_key, type, title, year
 		FROM MediaItems;
 	`)
@@ -68,14 +61,8 @@ func (s *SQliteDB) GetAllMediaItemsWithFlags(ctx context.Context) ([]MediaItemWi
 	items := []MediaItemWithFlags{}
 	logErr := logging.LogErrorInfo{}
 
-	tx, err := s.conn.BeginTx(ctx, nil)
-	if err != nil {
-		logAction.SetError("Failed to start transaction", "", map[string]any{"error": err.Error()})
-		return items, *logAction.Error
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	rows, err := tx.QueryContext(ctx, `
+	// A single read does not need a transaction, which would take the write lock (immediate transactions)
+	rows, err := s.conn.QueryContext(ctx, `
         SELECT
             m.tmdb_id,
             m.library_title,

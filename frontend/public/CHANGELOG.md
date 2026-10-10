@@ -10,6 +10,7 @@
 
 - Fixed issue where OIDC login would not work properly in some cases.
 - Fixed invalid blurhash errors when loading images.
+- Fixed "database is locked" errors that left download jobs stuck and dropped download history. The database now uses WAL mode, so `AURA.db-wal` and `AURA.db-shm` files will appear next to `AURA.db`.(Thanks to [Artic0din](https://github.com/Artic0din) for the PR!)
 
 ### Updated
 
