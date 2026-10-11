@@ -306,6 +306,12 @@ func checkConfigDifferences_MediaServer(ctx context.Context, oldMediaServer conf
 	changed = false
 	newValid = false
 	serverName = ""
+
+	// The User ID is not saved or exported, so keep the current one if it's missing
+	if newMediaServer.UserID == "" {
+		newMediaServer.UserID = oldMediaServer.UserID
+	}
+
 	if !reflect.DeepEqual(oldMediaServer, newMediaServer) {
 		if oldMediaServer.Type != newMediaServer.Type {
 			logAction.AppendResult("MediaServer.Type changed", fmt.Sprintf("from '%s' to '%s'", oldMediaServer.Type, newMediaServer.Type))
@@ -381,6 +387,28 @@ func checkConfigDifferences_MediaServer(ctx context.Context, oldMediaServer conf
 	connectionOk, serverName, _, msErr := mediaserver.TestConnection(ctx, newMediaServer)
 	if msErr.Message != "" || !connectionOk {
 		newValid = false
+		return changed, newValid, serverName
+	}
+
+	// Get the User ID from the media server when the connection settings change, or if there isn't one
+	if newMediaServer.Type == "Emby" || newMediaServer.Type == "Jellyfin" || newMediaServer.Type == "Silo" {
+		connectionChanged := oldMediaServer.Type != newMediaServer.Type ||
+			oldMediaServer.URL != newMediaServer.URL ||
+			oldMediaServer.ApiToken != newMediaServer.ApiToken
+		if connectionChanged || newMediaServer.UserID == "" {
+			userID, userErr := mediaserver.GetAdminUser(ctx, newMediaServer)
+			if userErr.Message != "" || userID == "" {
+				logAction.SetError(fmt.Sprintf("Failed to get the admin user from the %s server", newMediaServer.Type),
+					"Make sure the token belongs to an admin account", map[string]any{"error": userErr.Message})
+				newValid = false
+				return changed, newValid, serverName
+			}
+			if userID != oldMediaServer.UserID {
+				logAction.AppendResult("MediaServer.UserID changed", fmt.Sprintf("from '%v' to '%v'", oldMediaServer.UserID, userID))
+				changed = true
+			}
+			newMediaServer.UserID = userID
+		}
 	}
 
 	// Catch any other changes not checked above
