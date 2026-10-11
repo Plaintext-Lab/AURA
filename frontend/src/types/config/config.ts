@@ -1,3 +1,5 @@
+import type { TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS } from "@/types/ui-options";
+
 export interface AppConfig {
   auth: AppConfigAuth;
   logging: AppConfigLogging; // Logging configuration settings
@@ -9,6 +11,7 @@ export interface AppConfig {
   labels_and_tags: AppConfigLabelsAndTags; // Labels and tags management settings
   notifications: AppConfigNotifications; // Notification settings
   sonarr_radarr: AppConfigSonarrRadarrApps; // List of Sonarr/Radarr instances to integrate with
+  user_preferences: AppConfigUserPreferences; // User preferences, shared between sessions and devices
 }
 
 export interface AppConfigAuth {
@@ -171,4 +174,11 @@ export interface AppConfigSonarrRadarrApp {
   library: string; // Name of the Media Server library associated with this Sonarr/Radarr instance.
   url: string; // Base URL of the Sonarr/Radarr server.
   api_token: string; // API key for accessing the Sonarr/Radarr server.
+}
+
+export interface AppConfigUserPreferences {
+  download_defaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[]; // Image types selected by default in the Download Modal
+  show_only_download_defaults: boolean; // Whether to only show the default image types in the Download Modal
+  show_date_modified: boolean; // Whether to show the date modified on poster sets
+  default_add_to_queue: boolean; // Whether "Add to Queue" is checked by default in the Download Modal
 }

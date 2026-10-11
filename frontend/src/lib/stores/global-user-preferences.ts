@@ -1,53 +1,137 @@
+import { UpdateAppConfigSection } from "@/services/config/update-section";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { log } from "@/lib/logger";
+import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { GlobalStore } from "@/lib/stores/stores";
 
+import type { AppConfigUserPreferences } from "@/types/config/config";
 import { DOWNLOAD_IMAGE_TYPE_OPTIONS, type TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS } from "@/types/ui-options";
 
-interface UserPreferencesStore {
+// User Preferences are saved in the aura config, so they're the same on every device.
+// They are also kept locally, so pages don't show the defaults while loading.
+
+interface UserPreferences {
   downloadDefaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[];
-  setDownloadDefaults: (downloadDefaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[]) => void;
-
   showOnlyDownloadDefaults: boolean;
-  setShowOnlyDownloadDefaults: (showOnlyDownloadDefaults: boolean) => void;
-
   showDateModified: boolean;
-  setShowDateModified: (showDateModified: boolean) => void;
-
   defaultAddToQueue: boolean;
-  setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
+}
 
+export type UserPreferencesSaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface UserPreferencesStore extends UserPreferences {
+  // Whether the last change was saved to the server, shown in Settings
+  saveStatus: UserPreferencesSaveStatus;
+  saveError?: string;
+  // Save the current preferences again after a failed save
+  retrySave: () => void;
+  setDownloadDefaults: (downloadDefaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[]) => void;
+  setShowOnlyDownloadDefaults: (showOnlyDownloadDefaults: boolean) => void;
+  setShowDateModified: (showDateModified: boolean) => void;
+  setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
+  // Apply the preferences from the aura config, without saving them again
+  applyServerPreferences: (preferences: UserPreferences) => void;
   hasHydrated: boolean;
   hydrate: () => void;
   clear: () => void;
 }
 
+const defaultPreferences = (): UserPreferences => ({
+  downloadDefaults: DOWNLOAD_IMAGE_TYPE_OPTIONS.map((option) => option.value),
+  showOnlyDownloadDefaults: false,
+  showDateModified: false,
+  defaultAddToQueue: false,
+});
+
+const toServerPreferences = (preferences: UserPreferences): AppConfigUserPreferences => ({
+  download_defaults: preferences.downloadDefaults,
+  show_only_download_defaults: preferences.showOnlyDownloadDefaults,
+  show_date_modified: preferences.showDateModified,
+  default_add_to_queue: preferences.defaultAddToQueue,
+});
+
+const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPreferences => ({
+  downloadDefaults: preferences.download_defaults ?? [],
+  showOnlyDownloadDefaults: preferences.show_only_download_defaults ?? false,
+  showDateModified: preferences.show_date_modified ?? false,
+  defaultAddToQueue: preferences.default_add_to_queue ?? false,
+});
+
+const preferencesEqual = (a: UserPreferences, b: UserPreferences) =>
+  JSON.stringify(toServerPreferences(a)) === JSON.stringify(toServerPreferences(b));
+
+// Save shortly after the last change, so quick changes are saved together
+const SAVE_DELAY_MS = 400;
+const SAVED_MESSAGE_MS = 2500;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let savedMessageTimer: ReturnType<typeof setTimeout> | null = null;
+let savesInProgress = 0;
+
+const queueServerSave = () => {
+  if (saveTimer) clearTimeout(saveTimer);
+  if (savedMessageTimer) clearTimeout(savedMessageTimer);
+  useUserPreferencesStore.setState({ saveStatus: "saving", saveError: undefined });
+  saveTimer = setTimeout(async () => {
+    saveTimer = null;
+    savesInProgress++;
+    const response = await UpdateAppConfigSection(
+      "user_preferences",
+      toServerPreferences(useUserPreferencesStore.getState()) as unknown as Record<string, unknown>
+    );
+    savesInProgress--;
+    // A newer change is waiting to be saved
+    if (saveTimer) return;
+    if (response.status === "error") {
+      log("ERROR", "User Preferences", "Save", `Failed to save user preferences: ${response.error?.message}`);
+      useUserPreferencesStore.setState({
+        saveStatus: "error",
+        saveError: response.error?.message || "Failed to save",
+      });
+      return;
+    }
+    useUserPreferencesStore.setState({ saveStatus: "saved" });
+    savedMessageTimer = setTimeout(() => {
+      if (useUserPreferencesStore.getState().saveStatus === "saved") {
+        useUserPreferencesStore.setState({ saveStatus: "idle" });
+      }
+    }, SAVED_MESSAGE_MS);
+    // Keep the config status in sync
+    if (response.data?.status) {
+      useOnboardingStore.getState().setStatus(response.data.status);
+    }
+  }, SAVE_DELAY_MS);
+};
+
 export const useUserPreferencesStore = create<UserPreferencesStore>()(
   persist(
     (set) => ({
-      downloadDefaults: DOWNLOAD_IMAGE_TYPE_OPTIONS.map((option) => option.value),
-      setDownloadDefaults: (downloadDefaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[]) => set({ downloadDefaults }),
-
-      showOnlyDownloadDefaults: false,
-      setShowOnlyDownloadDefaults: (showOnlyDownloadDefaults: boolean) => set({ showOnlyDownloadDefaults }),
-
-      showDateModified: false,
-      setShowDateModified: (showDateModified: boolean) => set({ showDateModified }),
-
-      defaultAddToQueue: false,
-      setDefaultAddToQueue: (defaultAddToQueue: boolean) => set({ defaultAddToQueue }),
-
+      ...defaultPreferences(),
+      setDownloadDefaults: (downloadDefaults: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[]) => {
+        set({ downloadDefaults });
+        queueServerSave();
+      },
+      setShowOnlyDownloadDefaults: (showOnlyDownloadDefaults: boolean) => {
+        set({ showOnlyDownloadDefaults });
+        queueServerSave();
+      },
+      setShowDateModified: (showDateModified: boolean) => {
+        set({ showDateModified });
+        queueServerSave();
+      },
+      setDefaultAddToQueue: (defaultAddToQueue: boolean) => {
+        set({ defaultAddToQueue });
+        queueServerSave();
+      },
+      applyServerPreferences: (preferences: UserPreferences) => set(preferences),
+      saveStatus: "idle",
+      saveError: undefined,
+      retrySave: () => queueServerSave(),
       hasHydrated: false,
       hydrate: () => set({ hasHydrated: true }),
-
-      clear: () =>
-        set({
-          downloadDefaults: DOWNLOAD_IMAGE_TYPE_OPTIONS.map((option) => option.value),
-          showOnlyDownloadDefaults: false,
-          showDateModified: false,
-          defaultAddToQueue: false,
-        }),
+      // Clears the local copy only. The saved preferences are applied on the next load
+      clear: () => set(defaultPreferences()),
     }),
     {
       name: "UserPreferences",
@@ -64,3 +148,57 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
     }
   )
 );
+
+// Preferences used to be saved on each device only.
+// The first time a device syncs, upload its preferences if the config still has the defaults.
+const SYNCED_KEY = "UserPreferencesSynced";
+
+const syncFromServer = () => {
+  if (typeof window === "undefined") return;
+  const store = useUserPreferencesStore.getState();
+  const serverPreferences = useOnboardingStore.getState().status?.current_setup?.user_preferences;
+  if (!store.hasHydrated || !serverPreferences) return;
+
+  // Don't replace a change that is still being saved
+  if (saveTimer || savesInProgress > 0) return;
+
+  const server = fromServerPreferences(serverPreferences);
+  const local: UserPreferences = {
+    downloadDefaults: store.downloadDefaults,
+    showOnlyDownloadDefaults: store.showOnlyDownloadDefaults,
+    showDateModified: store.showDateModified,
+    defaultAddToQueue: store.defaultAddToQueue,
+  };
+
+  let synced = false;
+  try {
+    synced = localStorage.getItem(SYNCED_KEY) === "true";
+    localStorage.setItem(SYNCED_KEY, "true");
+  } catch {
+    // Without localStorage, use the config's preferences
+    synced = true;
+  }
+
+  if (!synced && preferencesEqual(server, defaultPreferences()) && !preferencesEqual(local, defaultPreferences())) {
+    log("INFO", "User Preferences", "Sync", "Uploading this device's preferences to the aura config");
+    queueServerSave();
+    return;
+  }
+
+  if (!preferencesEqual(server, local)) {
+    store.applyServerPreferences(server);
+  }
+};
+
+// Sync when the config status changes, and once the local preferences have loaded
+useOnboardingStore.subscribe((state, previous) => {
+  if (state.status?.current_setup?.user_preferences !== previous.status?.current_setup?.user_preferences) {
+    syncFromServer();
+  }
+});
+useUserPreferencesStore.subscribe((state, previous) => {
+  if (state.hasHydrated && !previous.hasHydrated) {
+    syncFromServer();
+  }
+});
+syncFromServer();
