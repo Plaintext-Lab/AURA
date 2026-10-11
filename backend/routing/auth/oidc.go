@@ -75,7 +75,7 @@ func InitOIDC(ctx context.Context) (Err logging.LogErrorInfo) {
 
 // OIDCAvailable reports whether OIDC login is configured, enabled, and successfully initialized.
 func OIDCAvailable() bool {
-	return config.Current.Auth.OIDC.Enabled && oidcProvider != nil && oidcOAuth2Cfg != nil && oidcIDVerifier != nil
+	return config.AuthEnabled() && config.Current.Auth.OIDC.Enabled && oidcProvider != nil && oidcOAuth2Cfg != nil && oidcIDVerifier != nil
 }
 
 // OIDCLoginRedirect godoc
@@ -257,7 +257,7 @@ type authMethodsResponse struct {
 func GetAuthMethods(w http.ResponseWriter, r *http.Request) {
 	_, ld := logging.CreateLoggingContext(r.Context(), r.URL.Path)
 	httpx.SendResponse(w, ld, authMethodsResponse{
-		PasswordEnabled: config.Current.Auth.Enabled,
+		PasswordEnabled: config.AuthEnabled(),
 		OIDCEnabled:     OIDCAvailable(),
 	})
 }

@@ -11,4 +11,5 @@ export interface AppStatusResponse {
   app_version: string;
   app_loading_step: string;
   api_key_configured: boolean;
+  auth_disabled_by_env?: boolean; // AURA_DISABLE_AUTH has turned off authentication
 }

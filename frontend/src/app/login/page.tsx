@@ -37,9 +37,9 @@ function LoginForm() {
   const status = useOnboardingStore((state) => state.status);
   const hasHydrated = useOnboardingStore((state) => state.hasHydrated);
 
-  // If onboarding is complete and auth is disabled, there's nothing to log in to.
+  // If onboarding is complete and auth is disabled or AURA_DISABLE_AUTH is set, there's nothing to log in to.
   useEffect(() => {
-    if (hasHydrated && status && status.current_setup.auth.enabled === false) {
+    if (hasHydrated && status && (status.current_setup.auth.enabled === false || status.auth_disabled_by_env)) {
       router.replace("/");
     }
   }, [hasHydrated, router, status]);

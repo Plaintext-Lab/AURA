@@ -35,7 +35,7 @@ func AttemptLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	var response loginResponse
 
-	if !config.Current.Auth.Enabled {
+	if !config.AuthEnabled() {
 		httpx.SendResponse(w, ld, "Authentication is disabled")
 		return
 	}

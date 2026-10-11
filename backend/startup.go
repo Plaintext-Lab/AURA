@@ -57,6 +57,12 @@ func runBootstrap() (success bool) {
 	config.Load(ctx)
 	logAction.Complete()
 
+	// Warn while AURA_DISABLE_AUTH is set, so it isn't left on by accident
+	if config.AuthDisabledByEnv() {
+		logging.LOGGER.Warn().Timestamp().Bool("auth_enabled_in_config", config.Current.Auth.Enabled).
+			Msgf("Authentication is turned off by %s. Anyone who can reach aura can use it. Remove %s once you have access again.", config.DisableAuthEnv, config.DisableAuthEnv)
+	}
+
 	// Print the config details (sanitized)
 	config.Current.PrintDetails()
 

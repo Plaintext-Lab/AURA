@@ -42,8 +42,8 @@ var publicPathPrefixes = []string{
 //  4. A valid aura_session browser cookie (signed JWT, set by password login or the OIDC callback).
 func Authenticator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip if auth globally disabled
-		if !config.Current.Auth.Enabled {
+		// Skip if auth globally disabled in the config, or with AURA_DISABLE_AUTH
+		if !config.AuthEnabled() {
 			next.ServeHTTP(w, r)
 			return
 		}
