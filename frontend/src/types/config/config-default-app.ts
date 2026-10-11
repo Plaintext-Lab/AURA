@@ -23,6 +23,8 @@ export const defaultAppConfig = (): AppConfig =>
     logging: {
       level: "",
       file: "",
+      keep_days: 7,
+      keep_files: 7,
     },
     media_server: {
       type: "",

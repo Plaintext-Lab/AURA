@@ -36,6 +36,8 @@ export interface AppConfigAuthOIDC {
 export interface AppConfigLogging {
   level: string; // Logging level (e.g., DEBUG, INFO, WARN, ERROR)
   file?: string; // Log file path
+  keep_days?: number; // Number of days to keep old log files before they are deleted
+  keep_files?: number; // Number of old log files to keep before the oldest are deleted
 }
 
 export interface AppConfigMediaServer {

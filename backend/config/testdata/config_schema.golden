@@ -36,6 +36,8 @@ LabelsAndTags.Applications[].Enabled: bool
 LabelsAndTags.Applications[].Remove: []string
 LabelsAndTags.RemoveOverlayLabelOnlyOnPosterDownload: bool
 Logging.File: string
+Logging.KeepDays: int
+Logging.KeepFiles: int
 Logging.Level: string
 MediaServer.ApiToken: string
 MediaServer.EnablePlexEventListener: bool

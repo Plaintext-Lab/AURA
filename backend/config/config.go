@@ -78,8 +78,10 @@ type Config_Auth_OIDC struct {
 }
 
 type Config_Logging struct {
-	Level string `json:"level" yaml:"Level"`         // Logging level (e.g., TRACE, DEBUG, INFO, WARN, ERROR).
-	File  string `json:"file" yaml:"File,omitempty"` // File path for logging output.
+	Level     string `json:"level" yaml:"Level"`          // Logging level (e.g., TRACE, DEBUG, INFO, WARN, ERROR).
+	File      string `json:"file" yaml:"File,omitempty"`  // File path for logging output.
+	KeepDays  int    `json:"keep_days" yaml:"KeepDays"`   // Number of days to keep old log files before they are deleted.
+	KeepFiles int    `json:"keep_files" yaml:"KeepFiles"` // Number of old log files to keep before the oldest are deleted.
 }
 
 type Config_MediaServer struct {

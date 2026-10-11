@@ -157,6 +157,60 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
         </div>
         <Input disabled value={value.file || ""} placeholder="aura.log" />
       </div>
+
+      {/* Keep Old Logs */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={cn("space-y-1 border rounded-md p-3", dirtyFields.keep_days && "border-amber-500")}>
+          <div className="flex items-center justify-between mb-1">
+            <Label htmlFor="logging-keep-days">Keep Old Logs (days)</Label>
+            {editing && (
+              <PopoverHelp ariaLabel="help-logging-keep-days">
+                <p>Old log files are deleted after this many days.</p>
+              </PopoverHelp>
+            )}
+          </div>
+          <Input
+            id="logging-keep-days"
+            type="number"
+            disabled={!editing}
+            value={value.keep_days ?? ""}
+            onChange={(e) => {
+              // Only save real numbers, not an empty field
+              const days = e.target.valueAsNumber;
+              if (!Number.isNaN(days)) onChange("keep_days", days);
+            }}
+            placeholder="7"
+            min={1}
+            max={365}
+          />
+        </div>
+
+        <div className={cn("space-y-1 border rounded-md p-3", dirtyFields.keep_files && "border-amber-500")}>
+          <div className="flex items-center justify-between mb-1">
+            <Label htmlFor="logging-keep-files">Keep Old Logs (files)</Label>
+            {editing && (
+              <PopoverHelp ariaLabel="help-logging-keep-files">
+                <p className="mb-2">Only this many old log files are kept. The oldest are deleted first.</p>
+                <p className="text-xs text-muted-foreground">Old files are deleted when either limit is reached.</p>
+              </PopoverHelp>
+            )}
+          </div>
+          <Input
+            id="logging-keep-files"
+            type="number"
+            disabled={!editing}
+            value={value.keep_files ?? ""}
+            onChange={(e) => {
+              // Only save real numbers, not an empty field
+              const files = e.target.valueAsNumber;
+              if (!Number.isNaN(files)) onChange("keep_files", files);
+            }}
+            placeholder="7"
+            min={1}
+            max={100}
+          />
+        </div>
+      </div>
     </Card>
   );
 };

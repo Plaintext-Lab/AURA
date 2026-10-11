@@ -289,6 +289,16 @@ func checkConfigDifferences_Logging(ctx context.Context, oldLogging config.Confi
 				Msg("Logging.Level changed")
 			changed = true
 		}
+
+		if oldLogging.KeepDays != newLogging.KeepDays {
+			logAction.AppendResult("Logging.KeepDays changed", fmt.Sprintf("from '%d' to '%d'", oldLogging.KeepDays, newLogging.KeepDays))
+			logging.LOGGER.Info().
+				Timestamp().
+				Int("old_keep_days", oldLogging.KeepDays).
+				Int("new_keep_days", newLogging.KeepDays).
+				Msg("Logging.KeepDays changed")
+			changed = true
+		}
 	}
 
 	newValid = config.ValidateLogging(ctx, newLogging)

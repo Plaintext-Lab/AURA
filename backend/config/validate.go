@@ -138,6 +138,27 @@ func ValidateLogging(ctx context.Context, Logging *Config_Logging) bool {
 		logging.SetLogLevel(Logging.Level)
 	}
 
+	// Logging.KeepDays: default to 7 days, at most 365 days
+	if Logging.KeepDays <= 0 {
+		Logging.KeepDays = 7
+	} else if Logging.KeepDays > 365 {
+		logAction.SetError("Logging.KeepDays is too large", "Use a value between 1 and 365", nil)
+		isValid = false
+	}
+
+	// Logging.KeepFiles: default to 7 files, at most 100
+	if Logging.KeepFiles <= 0 {
+		Logging.KeepFiles = 7
+	} else if Logging.KeepFiles > 100 {
+		logAction.SetError("Logging.KeepFiles is too large", "Use a value between 1 and 100", nil)
+		isValid = false
+	}
+
+	if isValid {
+		logging.SetLogKeepDays(Logging.KeepDays)
+		logging.SetLogKeepFiles(Logging.KeepFiles)
+	}
+
 	return isValid
 }
 

@@ -52,7 +52,9 @@ func DefaultConfig() Config {
 			SessionCookieSecure: "auto",
 		},
 		Logging: Config_Logging{
-			Level: "INFO",
+			Level:     "INFO",
+			KeepDays:  7,
+			KeepFiles: 7,
 		},
 		Mediux: Config_Mediux{
 			DownloadQuality: "optimized",
