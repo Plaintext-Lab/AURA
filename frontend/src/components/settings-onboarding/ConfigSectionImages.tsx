@@ -37,6 +37,7 @@ interface ConfigSectionImagesProps {
       enabled?: boolean;
       path?: boolean;
       episode_naming_convention?: boolean;
+      running_on_windows?: boolean;
     };
   };
   onChange: <K extends keyof AppConfigImages, F extends keyof AppConfigImages[K]>(
@@ -244,6 +245,34 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
                 <SelectScrollDownButton />
               </SelectContent>
             </Select>
+          </div>
+        )}
+
+        {value.save_images_locally.enabled && (
+          <div
+            className={cn(
+              "mt-4 flex items-center justify-between rounded-md border p-3",
+              dirtyFields.save_images_locally?.running_on_windows && "border-amber-500"
+            )}
+          >
+            <Label className="mr-2">Running on Windows</Label>
+            <div className="flex items-center gap-2">
+              <Switch
+                disabled={!editing}
+                checked={!!value.save_images_locally.running_on_windows}
+                onCheckedChange={(v) => onChange("save_images_locally", "running_on_windows", v)}
+              />
+              {editing && (
+                <PopoverHelp ariaLabel="help-images-running-on-windows">
+                  <p className="mb-2">Turn on if your media server runs on Windows.</p>
+                  <p className="text-muted-foreground">
+                    Windows paths from the media server (e.g. <span className="font-mono">C:\Movies</span>) are
+                    converted to paths aura can use (e.g. <span className="font-mono">/C/Movies</span>). Make sure those
+                    paths are mounted in the aura container.
+                  </p>
+                </PopoverHelp>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -7,11 +7,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { PopoverHelp } from "@/components/shared/popover-help";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 import { cn } from "@/lib/cn";
@@ -70,6 +72,12 @@ function CommaListInput({
     />
   );
 }
+
+const SESSION_COOKIE_SECURE_OPTIONS = [
+  { value: "auto", label: "Auto", description: "Secure when aura is opened over HTTPS" },
+  { value: "always", label: "Always", description: "Always secure (aura is only used over HTTPS)" },
+  { value: "never", label: "Never", description: "Never secure (e.g. aura is only used over HTTP)" },
+];
 
 export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
   value,
@@ -362,6 +370,88 @@ export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
           </div>
         )}
       </div>
+
+      {/* Advanced */}
+      <Accordion type="single" collapsible className="rounded-md border px-3">
+        <AccordionItem value="advanced" className="border-b-0">
+          <AccordionTrigger className="cursor-pointer py-3 text-sm font-medium hover:no-underline">
+            Advanced
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-3">
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="session-cookie-secure">Session Cookie Secure</Label>
+                {editing && (
+                  <PopoverHelp ariaLabel="help-session-cookie-secure">
+                    <p className="mb-2">
+                      Whether the login session cookie is marked Secure, so the browser only sends it over HTTPS.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Keep Auto unless logging in doesn&apos;t stick (e.g. behind a reverse proxy that handles HTTPS).
+                    </p>
+                  </PopoverHelp>
+                )}
+              </div>
+              <Select
+                disabled={!editing}
+                value={value.session_cookie_secure || "auto"}
+                onValueChange={(v) => onChange("session_cookie_secure", v)}
+              >
+                <SelectTrigger id="session-cookie-secure" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SESSION_COOKIE_SECURE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                      {option.label} <span className="text-muted-foreground">- {option.description}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Only used with Auto */}
+            {(value.session_cookie_secure || "auto") === "auto" && (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="trust-proxy-cookie-secure">Trust Reverse Proxy for HTTPS</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Treat requests as HTTPS when the reverse proxy says so (X-Forwarded-Proto). Only turn this on if
+                    aura is behind a reverse proxy that sets this header.
+                  </p>
+                </div>
+                <Switch
+                  id="trust-proxy-cookie-secure"
+                  disabled={!editing}
+                  checked={!!value.trust_proxy_for_cookie_secure}
+                  onCheckedChange={(v) => onChange("trust_proxy_for_cookie_secure", v)}
+                />
+              </div>
+            )}
+
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="allowed-origins">Allowed Origins</Label>
+                {editing && (
+                  <PopoverHelp ariaLabel="help-allowed-origins">
+                    <p className="mb-2">
+                      Other websites allowed to call the aura API with your login (e.g. a dashboard on another domain).
+                    </p>
+                    <p className="text-muted-foreground">Not needed when using aura normally.</p>
+                  </PopoverHelp>
+                )}
+              </div>
+              <CommaListInput
+                id="allowed-origins"
+                disabled={!editing}
+                placeholder="https://dashboard.example.com"
+                value={value.allowed_origins}
+                onChange={(list) => onChange("allowed_origins", list)}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   );
 };

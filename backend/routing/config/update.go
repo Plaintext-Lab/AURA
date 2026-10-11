@@ -237,6 +237,10 @@ func checkConfigDifferences_Auth(ctx context.Context, oldAuth config.Config_Auth
 	}
 
 	newValid = config.ValidateAuth(ctx, newAuth)
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldAuth, *newAuth) {
+		changed = true
+	}
 	return changed, newValid
 }
 
@@ -259,6 +263,10 @@ func checkConfigDifferences_Logging(ctx context.Context, oldLogging config.Confi
 	}
 
 	newValid = config.ValidateLogging(ctx, newLogging)
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldLogging, *newLogging) {
+		changed = true
+	}
 	return changed, newValid
 }
 
@@ -348,6 +356,10 @@ func checkConfigDifferences_MediaServer(ctx context.Context, oldMediaServer conf
 		newValid = false
 	}
 
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldMediaServer, *newMediaServer) {
+		changed = true
+	}
 	return changed, newValid, serverName
 }
 
@@ -394,6 +406,10 @@ func checkConfigDifferences_Mediux(ctx context.Context, oldMediux config.Config_
 		newValid = false
 	}
 
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldMediux, *newMediux) {
+		changed = true
+	}
 	return changed, newValid
 }
 
@@ -491,6 +507,10 @@ func checkConfigDifferences_Images(ctx context.Context, oldImages config.Config_
 		}
 	}
 	newValid = config.ValidateImages(ctx, newImages, msConfig)
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldImages, *newImages) {
+		changed = true
+	}
 	return changed, newValid
 }
 
@@ -514,6 +534,10 @@ func checkConfigDifferences_TMDB(ctx context.Context, oldTMDB config.Config_TMDB
 				newTMDB.ApiToken = oldTMDB.ApiToken
 			}
 		}
+	}
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldTMDB, *newTMDB) {
+		changed = true
 	}
 	return changed, newValid
 }
@@ -685,6 +709,10 @@ func checkConfigDifferences_LabelsAndTags(ctx context.Context, oldLAT config.Con
 				changed = true
 			}
 		}
+	}
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldLAT, *newLAT) {
+		changed = true
 	}
 	return changed, newValid
 }
@@ -934,6 +962,10 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 
 	}
 	newValid = config.ValidateNotifications(ctx, newNotifications)
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldNotifications, *newNotifications) {
+		changed = true
+	}
 	return changed, newValid
 }
 

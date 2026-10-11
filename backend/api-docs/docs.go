@@ -65,22 +65,14 @@ const docTemplate = `{
         },
         "/api/config": {
             "get": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Get the current status of the app configuration and onboarding process",
+                "description": "Get the current status of the app configuration while aura is in setup mode. Without the setup code (X-Setup-Code header), only the app status is returned, not the config.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Config"
                 ],
-                "summary": "Get Config Status",
+                "summary": "Get Config Status (Setup Mode)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -98,12 +90,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized (only when Auth.Enabled=true)",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
                         }
                     }
                 }
@@ -152,56 +138,6 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/routes_config.updateConfigResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized (only when Auth.Enabled=true)",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpx.JSONResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "SessionCookie": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Reload the configuration file and return the current config status",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Config"
-                ],
-                "summary": "Reload Config",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/httpx.JSONResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/routes_config.reloadConfigResponse"
                                         }
                                     }
                                 }
@@ -307,6 +243,112 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/config/export": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Download the full application configuration as a YAML file.",
+                "produces": [
+                    "application/x-yaml"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Export Config",
+                "responses": {
+                    "200": {
+                        "description": "The config as YAML",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/config/import": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Replace the application configuration with a config file",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Import Config",
+                "parameters": [
+                    {
+                        "description": "Config file contents",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_config.importConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_config.updateConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/config/template-variables": {
             "get": {
                 "security": [
@@ -348,6 +390,92 @@ const docTemplate = `{
                         "description": "Unauthorized (only when Auth.Enabled=true)",
                         "schema": {
                             "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/config/{section}": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update some settings in one section of the application configuration. Only the settings included in the request body are changed. The section is validated and saved on its own, and only that section's changes are applied (e.g. reconnecting to the media server, restarting changed jobs).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Update Config Section",
+                "parameters": [
+                    {
+                        "enum": [
+                            "auth",
+                            "logging",
+                            "media_server",
+                            "mediux",
+                            "jobs",
+                            "images",
+                            "tmdb",
+                            "labels_and_tags",
+                            "notifications",
+                            "sonarr_radarr",
+                            "user_preferences"
+                        ],
+                        "type": "string",
+                        "description": "Config section",
+                        "name": "section",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The settings to change, using the same field names as the config (e.g. {\\",
+                        "name": "changes",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_config.updateConfigSectionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
                         }
                     }
                 }
@@ -3231,6 +3359,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/setup/verify": {
+            "post": {
+                "description": "Check the setup code printed in the aura logs. The setup page then sends it with each request (X-Setup-Code header) while aura is in setup mode.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Verify Setup Code",
+                "parameters": [
+                    {
+                        "description": "Setup code",
+                        "name": "code",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_config.verifySetupCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_config.verifySetupCodeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/sonarr/webhook": {
             "post": {
                 "security": [
@@ -3645,14 +3825,6 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "database": {
-                    "description": "Database configuration settings.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/config.Config_Database"
-                        }
-                    ]
-                },
                 "images": {
                     "description": "Image settings.",
                     "allOf": [
@@ -3722,6 +3894,14 @@ const docTemplate = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/config.Config_TMDB"
+                        }
+                    ]
+                },
+                "user_preferences": {
+                    "description": "User preferences, shared between sessions and devices.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_UserPreferences"
                         }
                     ]
                 }
@@ -3828,43 +4008,6 @@ const docTemplate = `{
                 },
                 "title": {
                     "description": "Title for the custom notification.",
-                    "type": "string"
-                }
-            }
-        },
-        "config.Config_Database": {
-            "type": "object",
-            "properties": {
-                "dsn": {
-                    "description": "Data Source Name for the database connection (if applicable).",
-                    "type": "string"
-                },
-                "host": {
-                    "description": "Hostname or IP address of the database server (if applicable).",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name of the database to connect to.",
-                    "type": "string"
-                },
-                "password": {
-                    "description": "Password for database authentication (if applicable).",
-                    "type": "string"
-                },
-                "path": {
-                    "description": "File path for the database (if applicable, e.g., for SQLite).",
-                    "type": "string"
-                },
-                "port": {
-                    "description": "Port number of the database server (if applicable).",
-                    "type": "integer"
-                },
-                "type": {
-                    "description": "Type of database (e.g., \"sqlite\", \"mysql\", \"postgresql\").",
-                    "type": "string"
-                },
-                "user": {
-                    "description": "Username for database authentication (if applicable).",
                     "type": "string"
                 }
             }
@@ -4002,6 +4145,14 @@ const docTemplate = `{
                 "file": {
                     "description": "File path for logging output.",
                     "type": "string"
+                },
+                "keep_days": {
+                    "description": "Number of days to keep old log files before they are deleted.",
+                    "type": "integer"
+                },
+                "keep_files": {
+                    "description": "Number of old log files to keep before the oldest are deleted.",
+                    "type": "integer"
                 },
                 "level": {
                     "description": "Logging level (e.g., TRACE, DEBUG, INFO, WARN, ERROR).",
@@ -4295,6 +4446,30 @@ const docTemplate = `{
         },
         "config.Config_TMDB": {
             "type": "object"
+        },
+        "config.Config_UserPreferences": {
+            "type": "object",
+            "properties": {
+                "default_add_to_queue": {
+                    "description": "Whether \"Add to Queue\" is checked by default in the Download Modal.",
+                    "type": "boolean"
+                },
+                "download_defaults": {
+                    "description": "Image types selected by default in the Download Modal.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "show_date_modified": {
+                    "description": "Whether to show the date modified on poster sets.",
+                    "type": "boolean"
+                },
+                "show_only_download_defaults": {
+                    "description": "Whether to only show the default image types in the Download Modal.",
+                    "type": "boolean"
+                }
+            }
         },
         "config.NotificationTemplateVariableCatalog": {
             "type": "object",
@@ -5444,6 +5619,14 @@ const docTemplate = `{
                     "description": "Current version of the app",
                     "type": "string"
                 },
+                "auth_disabled_by_env": {
+                    "description": "Whether AURA_DISABLE_AUTH has turned off authentication",
+                    "type": "boolean"
+                },
+                "config_has_errors": {
+                    "description": "Whether the required settings are entered, but have errors",
+                    "type": "boolean"
+                },
                 "config_loaded": {
                     "description": "Whether a config file is loaded",
                     "type": "boolean"
@@ -5471,6 +5654,10 @@ const docTemplate = `{
                 "needs_setup": {
                     "description": "Whether the app needs initial setup",
                     "type": "boolean"
+                },
+                "setup_code_required": {
+                    "description": "Whether the setup code must be entered first",
+                    "type": "boolean"
                 }
             }
         },
@@ -5482,11 +5669,12 @@ const docTemplate = `{
                 }
             }
         },
-        "routes_config.reloadConfigResponse": {
+        "routes_config.importConfigRequest": {
             "type": "object",
             "properties": {
-                "status": {
-                    "$ref": "#/definitions/routes_config.AppConfigStatus"
+                "yaml": {
+                    "description": "The config file contents in config.yaml format",
+                    "type": "string"
                 }
             }
         },
@@ -5514,6 +5702,37 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/routes_config.AppConfigStatus"
+                }
+            }
+        },
+        "routes_config.updateConfigSectionResponse": {
+            "type": "object",
+            "properties": {
+                "changed": {
+                    "description": "Whether any setting changed",
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/routes_config.AppConfigStatus"
+                }
+            }
+        },
+        "routes_config.verifySetupCodeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes_config.verifySetupCodeResponse": {
+            "type": "object",
+            "properties": {
+                "valid": {
+                    "type": "boolean"
                 }
             }
         },

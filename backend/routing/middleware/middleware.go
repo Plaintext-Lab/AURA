@@ -34,12 +34,10 @@ func Configure(r *chi.Mux) {
 	// never hits this at all - CORS only applies to genuine cross-origin requests. Wildcard +
 	// AllowCredentials is also rejected by browsers per spec, so this must be an explicit list;
 	// Auth.AllowedOrigins lets an admin opt a specific extra origin in if they're calling the API
-	// directly from somewhere else. Router is rebuilt on every config change (see NewRouter), so
-	// this always reflects the current config.
-	allowedOrigins := config.Current.Auth.AllowedOrigins
+	// directly from somewhere else. Read on every request, so changes apply without a restart.
 	cors := cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
-			return slices.Contains(allowedOrigins, origin)
+			return slices.Contains(config.Current.Auth.AllowedOrigins, origin)
 		},
 		AllowedMethods:   []string{"GET", "POST", "DELETE", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Api-Key"},

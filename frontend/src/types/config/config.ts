@@ -84,6 +84,7 @@ export interface AppConfigSaveImagesLocally {
   enabled: boolean; // Whether to save images locally.
   path: string; // Path to save images locally. If empty, images will be saved next to content.
   episode_naming_convention: string; // Naming convention for episode images.
+  running_on_windows?: boolean; // Convert Windows paths from the media server like C:\Movies to /C/Movies
 }
 
 export interface AppConfigTMDB {

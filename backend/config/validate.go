@@ -106,9 +106,11 @@ func ValidateAuth(ctx context.Context, Auth *Config_Auth) bool {
 		}
 	}
 
+	// Default Auth.SessionCookieSecure to "auto" if not set
 	switch Auth.SessionCookieSecure {
-	case "", "auto", "always", "never":
-		// valid
+	case "":
+		Auth.SessionCookieSecure = "auto"
+	case "auto", "always", "never":
 	default:
 		logAction.SetError("Auth.SessionCookieSecure is invalid", "Must be one of: auto, always, never", nil)
 		isValid = false
