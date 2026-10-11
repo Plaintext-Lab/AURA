@@ -32,6 +32,7 @@
 - The Saved Sets page now explains how to save a set when nothing is saved yet, and hides the filters, view options and Bulk Edit until there are sets.
 - While aura is starting, and during setup, the navbar is hidden to avoid confusion.
 - Sets added to the download queue are as saved in the database on the Home Page. If they fail to be saved, a refresh is required.
+- CHANGELOG page now shows `inline` code blocks correctly for better readability.
 
 ### Fixed
 
