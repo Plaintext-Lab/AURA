@@ -3,7 +3,7 @@
 import { ClearLogFiles } from "@/services/logs/clear";
 import { toast } from "sonner";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -29,6 +29,48 @@ interface ConfigSectionLoggingProps {
 }
 
 const LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
+
+// NumberInput keeps its own text, so the field can be cleared to type a new number
+function NumberInput({
+  id,
+  value,
+  disabled,
+  placeholder,
+  min,
+  max,
+  onChange,
+}: {
+  id: string;
+  value: number | undefined;
+  disabled?: boolean;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  onChange: (value: number) => void;
+}) {
+  const valueText = value?.toString() ?? "";
+  const [text, setText] = useState(valueText);
+  // Show the saved value again when it changes elsewhere
+  useEffect(() => setText(valueText), [valueText]);
+  return (
+    <Input
+      id={id}
+      type="number"
+      inputMode="numeric"
+      disabled={disabled}
+      placeholder={placeholder}
+      min={min}
+      max={max}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        const number = e.target.valueAsNumber;
+        if (!Number.isNaN(number)) onChange(number);
+      }}
+      onBlur={() => setText(valueText)}
+    />
+  );
+}
 
 export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
   value,
@@ -171,16 +213,11 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
               </PopoverHelp>
             )}
           </div>
-          <Input
+          <NumberInput
             id="logging-keep-days"
-            type="number"
             disabled={!editing}
-            value={value.keep_days ?? ""}
-            onChange={(e) => {
-              // Only save real numbers, not an empty field
-              const days = e.target.valueAsNumber;
-              if (!Number.isNaN(days)) onChange("keep_days", days);
-            }}
+            value={value.keep_days}
+            onChange={(days) => onChange("keep_days", days)}
             placeholder="7"
             min={1}
             max={365}
@@ -197,16 +234,11 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
               </PopoverHelp>
             )}
           </div>
-          <Input
+          <NumberInput
             id="logging-keep-files"
-            type="number"
             disabled={!editing}
-            value={value.keep_files ?? ""}
-            onChange={(e) => {
-              // Only save real numbers, not an empty field
-              const files = e.target.valueAsNumber;
-              if (!Number.isNaN(files)) onChange("keep_files", files);
-            }}
+            value={value.keep_files}
+            onChange={(files) => onChange("keep_files", files)}
             placeholder="7"
             min={1}
             max={100}
