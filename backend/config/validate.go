@@ -648,3 +648,12 @@ func ValidateLabelsAndTags(ctx context.Context, LabelsAndTags *Config_LabelsAndT
 func stringSliceContains(slice []string, item string) bool {
 	return slices.Contains(slice, item)
 }
+
+// IsSetUp reports whether any of the required settings have been entered.
+// A config that is not set up yet is not treated as having errors
+func (config Config) IsSetUp() bool {
+	return config.MediaServer.Type != "" ||
+		config.MediaServer.URL != "" ||
+		config.MediaServer.ApiToken != "" ||
+		config.Mediux.ApiToken != ""
+}

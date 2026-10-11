@@ -66,8 +66,12 @@ func runBootstrap() (success bool) {
 	// Print the config details (sanitized)
 	config.Current.PrintDetails()
 
-	// If the config is loaded, validate it
-	if config.Loaded {
+	// If the config is loaded, validate it.
+	// A config that isn't set up yet goes straight to setup instead.
+	if config.Loaded && !config.Current.IsSetUp() {
+		config.Valid = false
+		logging.LOGGER.Info().Timestamp().Msg("aura is not set up yet, starting setup")
+	} else if config.Loaded {
 		config.AppLoadingStep = "Validating Configuration"
 		config.Current.Validate(ctx)
 	}

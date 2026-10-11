@@ -22,7 +22,6 @@ var publicExactPaths = []string{
 	"/api/login",
 	"/api/logout",
 	"/api/config/auth-methods",
-	"/api/search",
 }
 
 // publicPathPrefixes lists route *prefixes* that never require authentication

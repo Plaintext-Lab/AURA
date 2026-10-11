@@ -31,7 +31,15 @@ import (
 func AddRoutes(r *chi.Mux) {
 	// If the config is not valid, only allow access to the /onboarding routes
 	if !(config.Loaded && config.Valid) {
-		logging.LOGGER.Warn().Timestamp().Bool("loaded", config.Loaded).Bool("valid", config.Valid).Msg("Configuration invalid or not loaded, adding onboarding routes only")
+		if config.Loaded && !config.Current.IsSetUp() {
+			logging.LOGGER.Info().Timestamp().Msg("aura is not set up yet, adding setup routes only")
+		} else {
+			logging.LOGGER.Warn().Timestamp().Bool("loaded", config.Loaded).Bool("valid", config.Valid).Msg("Configuration invalid or not loaded, adding setup routes only")
+		}
+		// Without a login, setup is protected by the setup code, printed once the config is loaded
+		if config.Loaded && !config.AuthEnabled() {
+			logging.LOGGER.Warn().Timestamp().Msgf("aura is in setup mode. Enter this setup code on the setup page: %s", config.SetupCode())
+		}
 		addOnboardingRoutes(r)
 		return
 	} else {
@@ -63,7 +71,7 @@ func AddRoutes(r *chi.Mux) {
 		r.Get("/auth/oidc/login", routes_auth.OIDCLoginRedirect)
 		r.Get("/auth/oidc/callback", routes_auth.OIDCCallback)
 
-		// Search - Public Search Endpoint (Media Items, Saved Sets and MediUX Users)
+		// Search - Media Items, Saved Sets and MediUX Users
 		r.Get("/search", routes_search.HandleSearch)
 
 		// Sonarr/Radarr Webhook
@@ -178,17 +186,27 @@ func AddRoutes(r *chi.Mux) {
 func addOnboardingRoutes(r *chi.Mux) {
 
 	r.Route("/api", func(r chi.Router) {
-		///////////////////
-		// Public Routes
-		//////////////////
+
+		// Protect setup mode with a login if auth is enabled, otherwise with the setup code from the logs
+		r.Use(middleware.SetupGuard)
 
 		// Base Routes
 		r.Get("/", routes_base.HealthCheck)
 		r.Get("/health", routes_base.HealthCheck)
 
+		// Login - setup mode needs a login when auth is enabled
+		r.Post("/login", routes_auth.AttemptLogin)
+		r.Post("/logout", routes_auth.Logout)
+		r.Get("/auth/oidc/login", routes_auth.OIDCLoginRedirect)
+		r.Get("/auth/oidc/callback", routes_auth.OIDCCallback)
+
+		// Setup Code
+		r.Post("/setup/verify", routes_config.VerifySetupCode)
+
 		// Config Routes
 		r.Route("/config", func(r chi.Router) {
-			r.Get("/", routes_config.GetAppConfigStatus)
+			r.Get("/", routes_config.GetSetupConfigStatus)
+			r.Get("/auth-methods", routes_auth.GetAuthMethods)
 			r.Get("/template-variables", routes_config.GetNotificationTemplateVariables)
 			r.Post("/", routes_config.UpdateAppConfig)
 		})
