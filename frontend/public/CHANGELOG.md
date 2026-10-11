@@ -1,16 +1,47 @@
 ## [0.9.109] - 2026-10-08
 
+### Breaking Changes
+
+- Settings are now stored in the aura database instead of `config.yaml`. On first start, an existing `config.yaml` is imported automatically and renamed to `config.yaml.imported`. After that, a new `config.yaml` is ignored unless `AURA_IMPORT_CONFIG=true` is set.
+- `Database.Path` in `config.yaml` is replaced by the `DATABASE_PATH` environment variable. A custom path from an existing `config.yaml` is still used, but set `DATABASE_PATH` to the same value going forward.
+- When aura needs to be set up and no login is configured (e.g. a fresh install), the setup page asks for a setup code, which aura prints in its logs on startup. If a login is configured, setup requires logging in instead.
+- Search now requires a login when authentication is enabled.
+
 ### Added
 
 - Added support for Silo Media Server
 - Added support for saving local images for Jellyfin/Emby/Silo users.
 - Added option to have "Add to Queue" checked by default in the Download Modal for better user experience.
+- Settings now save automatically as you change them. Anything that needs to be tested gives an option to "Test And Save".
+- Added an Undo option after a setting is saved to quickly revert to the previous value if needed.
+- Added all settings to the Search bar, so you can quickly find and change a setting without having to navigate through the Settings page.
+- Added Export and Import Configuration in Settings > Advanced, to back up or restore your configuration.
+- User Preferences are now saved in aura, so they are the same in every browser and on every device.
+- Added the `AURA_DISABLE_AUTH` environment variable to turn off authentication if you get locked out due to forgotten password or misconfigured OIDC settings.
+- Added the `DATABASE_PATH` environment variable to set a custom path for the database file.
+- Added the `AURA_IMPORT_CONFIG` environment variable to import an existing `config.yaml` on startup, even if a database already exists.
+- During setup, the Media Server libraries are loaded automatically once the connection works.
+- Added Keep Old Logs (days) and Keep Old Logs (files) to Settings > Logging, to choose how long and how many old log files are kept.
+- Added the previously hidden settings to the Settings page.
+
+### UI Tweaks
+
+- Added the media server logos to the Media Server type list, and the MediUX logo to the Settings and setup sections.
+- Redesigned the Settings page: each section has its own page, picked from a sidebar (or a dropdown on mobile).
+- Redesigned the Onboarding page.
+- The Saved Sets page now explains how to save a set when nothing is saved yet, and hides the filters, view options and Bulk Edit until there are sets.
+- While aura is starting, and during setup, the navbar is hidden to avoid confusion.
+- Sets added to the download queue are as saved in the database on the Home Page. If they fail to be saved, a refresh is required.
 
 ### Fixed
 
 - Fixed issue where OIDC login would not work properly in some cases.
 - Fixed invalid blurhash errors when loading images.
-- Fixed "database is locked" errors that left download jobs stuck and dropped download history. The database now uses WAL mode, so `AURA.db-wal` and `AURA.db-shm` files will appear next to `AURA.db`.(Thanks to [Artic0din](https://github.com/Artic0din) for the PR!)
+- Fixed "database is locked" errors that left download jobs stuck and dropped download history. The database now uses WAL mode, so `AURA.db-wal` and `AURA.db-shm` files will appear next to `AURA.db`. (Thanks to [Artic0din](https://github.com/Artic0din) for the PR!)
+- Fixed not being able to type a comma in the OIDC Allowed Emails and Allowed Domains fields.
+- Fixed passwords, tokens and other secrets being written to the logs and shown in the browser.
+- Fixed the Emby/Jellyfin User ID not updating when the media server token changed.
+- Fixed the Silo Profile ID not updating when the media server token changed.
 
 ### Updated
 
