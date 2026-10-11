@@ -37,6 +37,40 @@ const parseCommaList = (v: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+// CommaListInput edits a list as comma separated text
+function CommaListInput({
+  id,
+  value,
+  disabled,
+  placeholder,
+  onChange,
+}: {
+  id: string;
+  value: string[] | undefined;
+  disabled?: boolean;
+  placeholder?: string;
+  onChange: (list: string[]) => void;
+}) {
+  const listText = (value || []).join(", ");
+  const [text, setText] = useState(listText);
+  // Show the saved list again when it changes elsewhere (e.g. after saving)
+  useEffect(() => setText(listText), [listText]);
+  return (
+    <Input
+      id={id}
+      disabled={disabled}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const list = parseCommaList(text);
+        setText(list.join(", "));
+        if (list.join(",") !== (value || []).join(",")) onChange(list);
+      }}
+    />
+  );
+}
+
 export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
   value,
   editing,
@@ -294,24 +328,24 @@ export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
               <Label htmlFor="oidc-allowed-emails" className="mb-1 block">
                 Allowed Emails
               </Label>
-              <Input
+              <CommaListInput
                 id="oidc-allowed-emails"
                 disabled={!editing}
                 placeholder="you@example.com, other@example.com"
-                value={(oidc.allowed_emails || []).join(", ")}
-                onChange={(e) => updateOidc("allowed_emails", parseCommaList(e.target.value))}
+                value={oidc.allowed_emails}
+                onChange={(list) => updateOidc("allowed_emails", list)}
               />
             </div>
             <div>
               <Label htmlFor="oidc-allowed-domains" className="mb-1 block">
                 Allowed Domains
               </Label>
-              <Input
+              <CommaListInput
                 id="oidc-allowed-domains"
                 disabled={!editing}
                 placeholder="example.com"
-                value={(oidc.allowed_domains || []).join(", ")}
-                onChange={(e) => updateOidc("allowed_domains", parseCommaList(e.target.value))}
+                value={oidc.allowed_domains}
+                onChange={(list) => updateOidc("allowed_domains", list)}
               />
             </div>
 
