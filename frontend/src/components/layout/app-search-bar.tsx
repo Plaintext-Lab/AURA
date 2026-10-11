@@ -1,9 +1,23 @@
 "use client";
 
+import { type SettingsSearchEntry, searchSettings, settingURL } from "@/helper/config/settings-search";
 import { formatUnixSeconds } from "@/helper/format-date-last-updates";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 import { HandleSearch } from "@/services/search/api-search";
-import { BookmarkIcon, EyeOff, Film, FilmIcon, Search, Star, TvIcon, User, UserIcon, X } from "lucide-react";
+import {
+  BookmarkIcon,
+  ChevronRight,
+  EyeOff,
+  Film,
+  FilmIcon,
+  Search,
+  Settings,
+  Star,
+  TvIcon,
+  User,
+  UserIcon,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 import * as React from "react";
@@ -146,6 +160,10 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
 
   const hasFilteredResults = filteredMediaItems.length > 0 || filteredMediuxUsers.length > 0;
 
+  // Show matching settings first. They are searched locally, so they show right away
+  const settingsResults = useMemo(() => searchSettings(searchInput), [searchInput]);
+  const settingsOffset = settingsResults.length;
+
   // Use Effect - To handle clicks outside the search results to close the dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -252,7 +270,8 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isExpanded) return;
 
-    const totalItems = filteredMediaItems.length + filteredMediuxUsers.length + filteredSavedSets.length;
+    const totalItems =
+      settingsOffset + filteredMediaItems.length + filteredMediuxUsers.length + filteredSavedSets.length;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -268,19 +287,21 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
       e.preventDefault();
 
       // If an item is focused, select it
-      if (focusedIndex >= 0) {
+      if (focusedIndex >= 0 && focusedIndex < settingsOffset) {
+        // Selecting from Settings
+        handleSettingClick(settingsResults[focusedIndex]);
+      } else if (focusedIndex >= 0) {
+        const index = focusedIndex - settingsOffset;
         // Determine if we're selecting Media Items or MediUX Users
-        if (focusedIndex < filteredMediaItems.length) {
+        if (index < filteredMediaItems.length) {
           // Selecting from Media Items
-          handleMediaItemClick(filteredMediaItems[focusedIndex]);
-        } else if (focusedIndex < filteredMediaItems.length + filteredMediuxUsers.length) {
+          handleMediaItemClick(filteredMediaItems[index]);
+        } else if (index < filteredMediaItems.length + filteredMediuxUsers.length) {
           // Selecting from MediUX Users
-          handleMediuxUserClick(filteredMediuxUsers[focusedIndex - filteredMediaItems.length].username);
+          handleMediuxUserClick(filteredMediuxUsers[index - filteredMediaItems.length].username);
         } else {
           // Selecting from Saved Sets
-          handleSavedSetsClick(
-            filteredSavedSets[focusedIndex - filteredMediaItems.length - filteredMediuxUsers.length]
-          );
+          handleSavedSetsClick(filteredSavedSets[index - filteredMediaItems.length - filteredMediuxUsers.length]);
         }
 
         setIsExpanded(false);
@@ -292,6 +313,12 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
       setFocusedIndex(-1);
       inputRef.current?.blur();
     }
+  };
+
+  // Handle Setting Click
+  const handleSettingClick = (entry: SettingsSearchEntry) => {
+    setIsExpanded(false);
+    router.push(settingURL(entry));
   };
 
   // Handle Media Item Click
@@ -429,6 +456,44 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                 <X className="w-4 h-4 text-destructive" />
               </Button>
 
+              {/* Settings Section */}
+              {settingsResults.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Settings ({settingsResults.length})
+                  </h3>
+                  <div className="space-y-1">
+                    {settingsResults.map((entry, index) => (
+                      <Link
+                        key={`setting-${entry.sectionId}-${entry.label}`}
+                        href={settingURL(entry)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSettingClick(entry);
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted",
+                          index === focusedIndex && "bg-muted"
+                        )}
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                          <Settings className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{entry.label}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {entry.sectionLabel} • {entry.description}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    ))}
+                  </div>
+                  {(isLoading || hasFilteredResults) && <Separator className="mt-4" />}
+                </div>
+              )}
+
               {isLoading ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <AuraSpinner size="lg" className="mx-auto mb-2 text-primary-dynamic" />
@@ -460,7 +525,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                         </h3>
                         <div className="space-y-1">
                           {filteredMediaItems.map((item, index) => {
-                            const isHighlighted = index === focusedIndex;
+                            const isHighlighted = settingsOffset + index === focusedIndex;
                             return (
                               <SearchResultMediaItem
                                 key={`media-item-${item.library_title}-${item.rating_key}`}
@@ -501,7 +566,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                         </h3>
                         <div className="space-y-1">
                           {filteredSavedSets.map((set, index) => {
-                            const adjustedIndex = filteredMediaItems.length + index;
+                            const adjustedIndex = settingsOffset + filteredMediaItems.length + index;
                             const isHighlighted = adjustedIndex === focusedIndex;
                             const subtitle = `${set.media_item.library_title} • ${
                               set.poster_sets.length > 1
@@ -546,7 +611,8 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
 
                         <div className="space-y-1">
                           {filteredMediuxUsers.map((item, index) => {
-                            const adjustedIndex = filteredMediaItems.length + filteredSavedSets.length + index;
+                            const adjustedIndex =
+                              settingsOffset + filteredMediaItems.length + filteredSavedSets.length + index;
                             const isHighlighted = adjustedIndex === focusedIndex;
                             return (
                               <SearchResultUserItem
@@ -566,7 +632,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
 
                   {error && <ErrorMessage error={error} />}
                 </motion.div>
-              ) : isSearching ? (
+              ) : isSearching && settingsResults.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   {!error ? (
                     <>

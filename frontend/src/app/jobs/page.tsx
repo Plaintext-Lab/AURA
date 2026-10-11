@@ -98,7 +98,7 @@ export default function JobsPage() {
     try {
       setLoading(true);
 
-      const [jobsResponse, configResponse] = await Promise.all([GetAllJobs(), GetAppConfigStatus(false)]);
+      const [jobsResponse, configResponse] = await Promise.all([GetAllJobs(), GetAppConfigStatus()]);
 
       if (jobsResponse.status === "error") {
         setError(ReturnErrorMessage<JobInfo[]>(jobsResponse.error?.message || "Failed to fetch jobs"));

@@ -22,6 +22,7 @@ import type { AppConfigLogging } from "@/types/config/config";
 interface ConfigSectionLoggingProps {
   value: AppConfigLogging;
   editing: boolean;
+  showActions?: boolean; // Show actions hidden while editing, as Settings is always editable
   dirtyFields?: Partial<Record<keyof AppConfigLogging, boolean>>;
   onChange: <K extends keyof AppConfigLogging>(field: K, value: AppConfigLogging[K]) => void;
   errorsUpdate?: (errors: Partial<Record<keyof AppConfigLogging, string>>) => void;
@@ -32,6 +33,7 @@ const LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
 export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
   value,
   editing,
+  showActions = false,
   dirtyFields = {},
   onChange,
   errorsUpdate,
@@ -135,7 +137,7 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
           <Label>Log File</Label>
           <div className="flex items-center gap-2">
             <Button
-              hidden={editing}
+              hidden={editing && !showActions}
               variant="outline"
               onClick={handleViewLogs}
               className="cursor-pointer hover:text-primary"
@@ -143,7 +145,7 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
               View
             </Button>
             <ConfirmDestructiveDialogActionButton
-              hidden={editing}
+              hidden={editing && !showActions}
               onConfirm={handleClearOldLogs}
               title="Clear Old Logs?"
               description="This will permanently delete all old log files. Are you sure you want to continue?"

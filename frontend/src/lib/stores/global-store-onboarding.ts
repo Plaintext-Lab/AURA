@@ -38,7 +38,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
       fetchStatus: async () => {
         set({ loading: true, error: null });
         try {
-          const response: APIResponse<AppConfigStatus_Response> = await GetAppConfigStatus(false);
+          const response: APIResponse<AppConfigStatus_Response> = await GetAppConfigStatus();
           set({ status: response.data?.status, loading: false });
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : "Failed to fetch onboarding status";

@@ -1,5 +1,6 @@
 "use client";
 
+import { withoutEmptyFieldErrors } from "@/helper/validation/empty-field-errors";
 import { ValidateURL } from "@/helper/validation/validate-url";
 import { GetLibrarySectionOptions } from "@/services/mediaserver/get-library-section-options";
 import type { PlexServersResponse } from "@/services/mediaserver/plex";
@@ -35,6 +36,10 @@ import type { AppConfigMediaServer, AppConfigMediaServerLibrary } from "@/types/
 interface ConfigSectionMediaServerProps {
   value: AppConfigMediaServer;
   editing: boolean;
+  showActions?: boolean; // Show actions hidden while editing, as Settings is always editable
+  hideEmptyFieldErrors?: boolean; // Don't turn the card red for empty fields during setup
+  autoLoadLibraries?: boolean; // Load all libraries once connected, if none are added yet
+  onConnectionVerifiedChange?: (verified: boolean, checking: boolean) => void; // Reports whether the connection has been checked and works
   configAlreadyLoaded: boolean;
   dirtyFields?: Partial<Record<keyof AppConfigMediaServer, boolean>>;
   onChange: <K extends keyof AppConfigMediaServer>(field: K, value: AppConfigMediaServer[K]) => void;
@@ -69,6 +74,10 @@ export function GetConnectionColor(status: "unknown" | "ok" | "error"): "green-5
 export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> = ({
   value,
   editing,
+  showActions = false,
+  hideEmptyFieldErrors = false,
+  autoLoadLibraries = false,
+  onConnectionVerifiedChange,
   configAlreadyLoaded,
   dirtyFields = {},
   onChange,
@@ -159,6 +168,13 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
     return errs;
   }, [typeNormalized, value.url, value.api_token, value.user_id, libraries, remoteTokenError]);
 
+  // Errors that turn the card red
+  const displayErrors = React.useMemo(
+    () =>
+      hideEmptyFieldErrors ? withoutEmptyFieldErrors(errors, value as unknown as Record<string, unknown>) : errors,
+    [errors, hideEmptyFieldErrors, value]
+  );
+
   // Emit errors upward
   useEffect(() => {
     if (!errorsUpdate) return;
@@ -168,12 +184,24 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
     errorsUpdate(errors);
   }, [errors, errorsUpdate]);
 
-  // Reset remote token error when URL or Token changes
+  // Reset remote token error and connection status when URL or Token changes
   useEffect(() => {
     setRemoteTokenError(null);
+    setConnectionStatus({ status: "unknown", color: GetConnectionColor("unknown") });
   }, [value.api_token, value.url]);
 
+  // Report whether the connection has been checked and works
   useEffect(() => {
+    onConnectionVerifiedChange?.(connectionStatus.status === "ok" && !testingToken, testingToken);
+  }, [connectionStatus.status, testingToken, onConnectionVerifiedChange]);
+
+  // Check the connection when the URL changes.
+  // In Settings, skip the first check as it was already checked on load.
+  const isFirstURLCheck = useRef(true);
+  useEffect(() => {
+    const skipFirstCheck = isFirstURLCheck.current && showActions;
+    isFirstURLCheck.current = false;
+    if (skipFirstCheck) return;
     if (editing && value.url) {
       runRemoteValidation();
     }
@@ -184,14 +212,8 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
     async (showToast = true) => {
       setConnectionStatus({ status: "unknown", color: GetConnectionColor("unknown") });
       const current = valueRef.current;
-      if (!current.api_token.trim()) {
-        setRemoteTokenError("Token is required.");
-        setConnectionStatus({ status: "error", color: GetConnectionColor("error") });
-        return;
-      }
-      if (!current.url.trim()) {
-        setRemoteTokenError("URL is required.");
-        setConnectionStatus({ status: "error", color: GetConnectionColor("error") });
+      // Nothing to check without a URL and token
+      if (!current.api_token.trim() || !current.url.trim()) {
         return;
       }
 
@@ -251,6 +273,17 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
     }
     replaceLibraries(resp.data.library_sections.map((lib) => lib.title));
   };
+
+  // Load all of the server's libraries once connected, once per server and only if none are added yet
+  const autoLoadedLibrariesFor = useRef("");
+  useEffect(() => {
+    if (!autoLoadLibraries || connectionStatus.status !== "ok" || libraries.length > 0) return;
+    const server = `${value.type}|${value.url}|${value.api_token}`;
+    if (autoLoadedLibrariesFor.current === server) return;
+    autoLoadedLibrariesFor.current = server;
+    void fetchServerLibraries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoadLibraries, connectionStatus.status, libraries.length, value.type, value.url, value.api_token]);
 
   // Plex OAuth Flow (Get PIN and ID)
   const handleGetPlexPinAndID = async () => {
@@ -320,7 +353,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
   }
 
   return (
-    <Card className={`p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
+    <Card className={`p-5 ${Object.values(displayErrors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className={`text-xl font-semibold text-${connectionStatus.color}`}>Media Server</h2>
@@ -332,8 +365,8 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
         <Button
           variant="outline"
           size="sm"
-          hidden={editing}
-          disabled={editing || testingToken}
+          hidden={editing && !showActions}
+          disabled={(editing && !showActions) || testingToken}
           onClick={() => runRemoteValidation()}
           className="cursor-pointer hover:text-primary"
         >
@@ -386,7 +419,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
               <SelectItem className="cursor-pointer" key={t} value={t}>
                 <span className="flex items-center gap-2">
                   <img src={SERVER_TYPE_ICONS[t]} alt="" aria-hidden="true" className="h-4 w-4 object-contain" />
-                {t}
+                  {t}
                 </span>
               </SelectItem>
             ))}

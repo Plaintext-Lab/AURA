@@ -31,6 +31,7 @@ const EPISODE_NAMING_CONVENTION_OPTIONS = ["match", "static"];
 interface ConfigSectionImagesProps {
   value: AppConfigImages;
   editing: boolean;
+  showActions?: boolean; // Show actions hidden while editing, as Settings is always editable
   dirtyFields?: {
     cache_images?: { enabled?: boolean };
     save_images_locally?: {
@@ -52,6 +53,7 @@ interface ConfigSectionImagesProps {
 export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   value,
   editing,
+  showActions = false,
   dirtyFields = {},
   onChange,
   errorsUpdate,
@@ -104,7 +106,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-500">Images</h2>
         <ConfirmDestructiveDialogActionButton
-          hidden={editing}
+          hidden={editing && !showActions}
           onConfirm={clearTempImagesFolder}
           title="Clear Temp Images Folder?"
           description="This will permanently delete all temporary images. Are you sure you want to continue?"
