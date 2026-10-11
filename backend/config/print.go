@@ -27,5 +27,6 @@ func (config *Config) PrintDetails() {
 		Interface("Labels and Tags", sanitizedConfig.LabelsAndTags).
 		Interface("Notifications", sanitizedConfig.Notifications).
 		Interface("Sonarr and Radarr Apps", sanitizedConfig.SonarrRadarr).
+		Interface("User Preferences", sanitizedConfig.UserPreferences).
 		Msg("Configuration Details")
 }

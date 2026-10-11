@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"aura/database"
 	"aura/logging"
 	routes_auth "aura/routing/auth"
 	routes_base "aura/routing/base"
@@ -31,8 +32,11 @@ func NewRouter() *chi.Mux {
 	middleware.Configure(r)
 
 	// Initialize Token Auth
-	secret, Err := routes_auth.GetTokenAuthSecret()
-	if Err.Message != "" {
+	// The secret is stored in the database, which isn't open yet when the first router is created.
+	// The routes are created again once it is.
+	if database.Client == nil {
+		logging.LOGGER.Debug().Timestamp().Msg("Database not open yet, JWT Token Auth is initialized once it is")
+	} else if secret, Err := routes_auth.GetTokenAuthSecret(); Err.Message != "" {
 		logging.LOGGER.Error().Timestamp().Msg("Failed to get JWT Token Auth Secret: " + Err.Message)
 	} else {
 		routes_auth.SetTokenAuth(jwtauth.New("HS256", []byte(secret), nil))

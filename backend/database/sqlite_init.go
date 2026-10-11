@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -29,6 +28,12 @@ func (s *SQliteDB) Init(ctx context.Context) (newDB bool, Err logging.LogErrorIn
 
 	// Open DB Connection
 	s.conn, newDB, Err = s.GetDBConnection(ctx)
+	if Err.Message != "" {
+		return newDB, Err
+	}
+
+	// Create the config tables here, as the config is loaded before the database migrations run
+	Err = s.CreateConfigTables(ctx)
 	if Err.Message != "" {
 		return newDB, Err
 	}
@@ -59,10 +64,6 @@ func (s *SQliteDB) Init(ctx context.Context) (newDB bool, Err logging.LogErrorIn
 	return newDB, Err
 }
 
-func (s *SQliteDB) GetConfig() (config config.Config_Database) {
-	return s.Config
-}
-
 func (s *SQliteDB) GetDBConnection(ctx context.Context) (conn *sql.DB, newDB bool, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Opening Database Connection", logging.LevelInfo)
 	defer logAction.Complete()
@@ -71,14 +72,8 @@ func (s *SQliteDB) GetDBConnection(ctx context.Context) (conn *sql.DB, newDB boo
 	newDB = false
 	Err = logging.LogErrorInfo{}
 
-	// Build DSN
-	dsn, Err := BuildDSN()
-	if Err.Message != "" {
-		return conn, newDB, Err
-	}
-
-	// Construct the DB path
-	dbPath := path.Join(config.ConfigPath, dsn)
+	// Get the DB path
+	dbPath := config.DatabasePath()
 
 	// Check if DB file exists
 	_, statErr := os.Stat(dbPath)

@@ -43,16 +43,14 @@ func (config *Config) Validate(ctx context.Context) {
 	// Sub-action: SonarrRadarr Config
 	isSonarrRadarrValid := ValidateSonarrRadarr(ctx, &config.SonarrRadarr, config.MediaServer)
 
-	// Sub-action: Database Config
-	isDatabaseValid := ValidateDatabase(ctx, &config.Database)
-
 	// Sub-action: LabelsAndTags Config
 	isLabelsAndTagsValid := ValidateLabelsAndTags(ctx, &config.LabelsAndTags)
 
+	// Sub-action: UserPreferences Config
+	isUserPreferencesValid := ValidateUserPreferences(ctx, &config.UserPreferences)
+
 	// If any validation failed, set status to error
-	if !isAuthValid || !isLoggingValid || !isMediaServerValid ||
-		!isMediuxValid || !isJobsValid ||
-		!isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isDatabaseValid || !isLabelsAndTagsValid {
+	if !isAuthValid || !isLoggingValid || !isMediaServerValid || !isMediuxValid || !isJobsValid || !isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isLabelsAndTagsValid || !isUserPreferencesValid {
 		logAction.SetError("Config validation failed", "One or more config sections are invalid", nil)
 		Valid = false
 	} else {
@@ -597,28 +595,24 @@ func ValidateSonarrRadarr(ctx context.Context, apps *Config_SonarrRadarr_Apps, m
 	return isValid
 }
 
-func ValidateDatabase(ctx context.Context, Database *Config_Database) bool {
-	ctx, logAction := logging.AddSubActionToContext(ctx, "Validating Database Config", logging.LevelTrace)
+func ValidateUserPreferences(ctx context.Context, UserPreferences *Config_UserPreferences) bool {
+	_, logAction := logging.AddSubActionToContext(ctx, "Validating UserPreferences Config", logging.LevelTrace)
 	defer logAction.Complete()
 
 	isValid := true
 
-	// If Database.Type is not set, set to default "sqlite3"
-	if Database.Type == "" {
-		Database.Type = "sqlite3"
-		logAction.AppendWarning("message", "Database.Type not set, defaulting to 'sqlite3'")
-	} else if Database.Type != "sqlite3" && Database.Type != "mysql" && Database.Type != "postgresql" {
-		logAction.AppendWarning("message", "Database.Type invalid, defaulting to 'sqlite3'")
-		Database.Type = "sqlite3"
-		Database.Path = "AURA.db"
-	}
-
-	switch Database.Type {
-	case "sqlite3":
-		if Database.Path == "" {
-			Database.Path = "AURA.db"
+	// Remove any unknown or duplicate image types from DownloadDefaults
+	downloadDefaults := []string{}
+	for _, imageType := range UserPreferences.DownloadDefaults {
+		if !stringSliceContains(DownloadImageTypes, imageType) {
+			logAction.AppendWarning("message", fmt.Sprintf("UserPreferences.DownloadDefaults: '%s' is not a valid image type, removing it", imageType))
+			continue
+		}
+		if !stringSliceContains(downloadDefaults, imageType) {
+			downloadDefaults = append(downloadDefaults, imageType)
 		}
 	}
+	UserPreferences.DownloadDefaults = downloadDefaults
 
 	return isValid
 }

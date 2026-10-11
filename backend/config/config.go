@@ -25,17 +25,17 @@ var (
 )
 
 type Config struct {
-	Auth          Config_Auth              `json:"auth" yaml:"Auth,omitempty"`                     // Authentication settings.
-	Logging       Config_Logging           `json:"logging" yaml:"Logging,omitempty"`               // Logging configuration settings.
-	MediaServer   Config_MediaServer       `json:"media_server" yaml:"MediaServer,omitempty"`      // Media server integration settings.
-	Mediux        Config_Mediux            `json:"mediux" yaml:"Mediux,omitempty"`                 // MediUX integration settings.
-	Jobs          Config_Jobs              `json:"jobs" yaml:"Jobs,omitempty"`                     // Background jobs scheduling configuration.
-	Images        Config_Images            `json:"images" yaml:"Images,omitempty"`                 // Image settings.
-	TMDB          Config_TMDB              `json:"tmdb" yaml:"TMDB,omitempty"`                     // TMDB (The Movie Database) integration settings.
-	LabelsAndTags Config_LabelsAndTags     `json:"labels_and_tags" yaml:"LabelsAndTags,omitempty"` // Labels and tags settings.
-	Notifications Config_Notifications     `json:"notifications" yaml:"Notifications,omitempty"`   // Notification settings.
-	SonarrRadarr  Config_SonarrRadarr_Apps `json:"sonarr_radarr" yaml:"SonarrRadarr,omitempty"`    // List of Sonarr/Radarr instances to integrate with.
-	Database      Config_Database          `json:"database" yaml:"Database,omitempty"`             // Database configuration settings.
+	Auth            Config_Auth              `json:"auth" yaml:"Auth,omitempty"`                        // Authentication settings.
+	Logging         Config_Logging           `json:"logging" yaml:"Logging,omitempty"`                  // Logging configuration settings.
+	MediaServer     Config_MediaServer       `json:"media_server" yaml:"MediaServer,omitempty"`         // Media server integration settings.
+	Mediux          Config_Mediux            `json:"mediux" yaml:"Mediux,omitempty"`                    // MediUX integration settings.
+	Jobs            Config_Jobs              `json:"jobs" yaml:"Jobs,omitempty"`                        // Background jobs scheduling configuration.
+	Images          Config_Images            `json:"images" yaml:"Images,omitempty"`                    // Image settings.
+	TMDB            Config_TMDB              `json:"tmdb" yaml:"TMDB,omitempty"`                        // TMDB (The Movie Database) integration settings.
+	LabelsAndTags   Config_LabelsAndTags     `json:"labels_and_tags" yaml:"LabelsAndTags,omitempty"`    // Labels and tags settings.
+	Notifications   Config_Notifications     `json:"notifications" yaml:"Notifications,omitempty"`      // Notification settings.
+	SonarrRadarr    Config_SonarrRadarr_Apps `json:"sonarr_radarr" yaml:"SonarrRadarr,omitempty"`       // List of Sonarr/Radarr instances to integrate with.
+	UserPreferences Config_UserPreferences   `json:"user_preferences" yaml:"UserPreferences,omitempty"` // User preferences, shared between sessions and devices.
 }
 
 type Config_Dev struct {
@@ -236,13 +236,9 @@ type Config_SonarrRadarrApp struct {
 	ApiToken string `json:"api_token,omitempty" yaml:"ApiToken,omitempty"` // API key for accessing the Sonarr/Radarr server.
 }
 
-type Config_Database struct {
-	Type     string `json:"type,omitempty" yaml:"Type,omitempty"`         // Type of database (e.g., "sqlite", "mysql", "postgresql").
-	Path     string `json:"path,omitempty" yaml:"Path,omitempty"`         // File path for the database (if applicable, e.g., for SQLite).
-	User     string `json:"user,omitempty" yaml:"User,omitempty"`         // Username for database authentication (if applicable).
-	Password string `json:"password,omitempty" yaml:"Password,omitempty"` // Password for database authentication (if applicable).
-	Host     string `json:"host,omitempty" yaml:"Host,omitempty"`         // Hostname or IP address of the database server (if applicable).
-	Port     int    `json:"port,omitempty" yaml:"Port,omitempty"`         // Port number of the database server (if applicable).
-	Name     string `json:"name,omitempty" yaml:"Name,omitempty"`         // Name of the database to connect to.
-	DSN      string `json:"dsn,omitempty" yaml:"DSN,omitempty"`           // Data Source Name for the database connection (if applicable).
+type Config_UserPreferences struct {
+	DownloadDefaults         []string `json:"download_defaults" yaml:"DownloadDefaults"`                   // Image types selected by default in the Download Modal.
+	ShowOnlyDownloadDefaults bool     `json:"show_only_download_defaults" yaml:"ShowOnlyDownloadDefaults"` // Whether to only show the default image types in the Download Modal.
+	ShowDateModified         bool     `json:"show_date_modified" yaml:"ShowDateModified"`                  // Whether to show the date modified on poster sets.
+	DefaultAddToQueue        bool     `json:"default_add_to_queue" yaml:"DefaultAddToQueue"`               // Whether "Add to Queue" is checked by default in the Download Modal.
 }

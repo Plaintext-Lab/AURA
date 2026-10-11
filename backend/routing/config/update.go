@@ -59,6 +59,18 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	newConfig := req.Config
 
+	// Keep the current User Preferences, as they are saved separately
+	response = updateFullConfig(ctx, ld, logAction, newConfig, true)
+	httpx.SendResponse(w, ld, response)
+}
+
+// updateFullConfig checks, saves and applies a full config from onboarding or an imported file.
+// If keepUserPreferences is true, the current User Preferences are kept.
+func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *logging.LogAction, newConfig config.Config, keepUserPreferences bool) (response updateConfigResponse) {
+	// Only one config update at a time, so updates can't overwrite each other
+	config.UpdateLock.Lock()
+	defer config.UpdateLock.Unlock()
+
 	authChanged, authValid := checkConfigDifferences_Auth(ctx, config.Current.Auth, &newConfig.Auth)
 	loggingChanged, loggingValid := checkConfigDifferences_Logging(ctx, config.Current.Logging, &newConfig.Logging)
 	mediaServerChanged, mediaServerValid, newMediaServerName := checkConfigDifferences_MediaServer(ctx, config.Current.MediaServer, &newConfig.MediaServer)
@@ -69,38 +81,50 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 	labelsAndTagsChanged, labelsAndTagsValid := checkConfigDifferences_LabelsAndTags(ctx, config.Current.LabelsAndTags, &newConfig.LabelsAndTags)
 	notificationsChanged, notificationsValid := checkConfigDifferences_Notifications(ctx, config.Current.Notifications, &newConfig.Notifications)
 	sonarrRadarrChanged, sonarrRadarrValid := checkConfigDifferences_SonarrRadarr(ctx, config.Current.SonarrRadarr, &newConfig.SonarrRadarr, newConfig.MediaServer)
-	databaseChanged, databaseValid := checkConfigDifferences_Database(ctx, config.Current.Database, &newConfig.Database)
 
-	if !authValid || !loggingValid || !mediaServerValid || !mediuxValid || !jobsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !databaseValid {
+	userPreferencesChanged, userPreferencesValid := false, true
+	if keepUserPreferences {
+		newConfig.UserPreferences = config.Current.UserPreferences
+	} else {
+		userPreferencesChanged, userPreferencesValid = checkConfigDifferences_UserPreferences(ctx, config.Current.UserPreferences, &newConfig.UserPreferences)
+	}
+
+	if !authValid || !loggingValid || !mediaServerValid || !mediuxValid || !jobsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !userPreferencesValid {
 		ld.Status = logging.StatusError
-		logAction.SetError("Invalid configuration", "The provided configuration is invalid. Check the results for details.", map[string]any{
-			"auth_valid":            authValid,
-			"logging_valid":         loggingValid,
-			"media_server_valid":    mediaServerValid,
-			"mediux_valid":          mediuxValid,
-			"jobs_valid":            jobsValid,
-			"images_valid":          imagesValid,
-			"tmdb_valid":            tmdbValid,
-			"labels_and_tags_valid": labelsAndTagsValid,
-			"notifications_valid":   notificationsValid,
-			"sonarr_radarr_valid":   sonarrRadarrValid,
-			"database_valid":        databaseValid,
+		message, help := "Invalid configuration", "The provided configuration is invalid. Check the results for details."
+		// Use the first error as the message, if there is one
+		if firstErr := firstSubActionError(logAction); firstErr.Message != "" {
+			message = fmt.Sprintf("Invalid configuration: %s", firstErr.Message)
+			if firstErr.Help != "" {
+				help = firstErr.Help
+			}
+		}
+		logAction.SetError(message, help, map[string]any{
+			"auth_valid":             authValid,
+			"logging_valid":          loggingValid,
+			"media_server_valid":     mediaServerValid,
+			"mediux_valid":           mediuxValid,
+			"jobs_valid":             jobsValid,
+			"images_valid":           imagesValid,
+			"tmdb_valid":             tmdbValid,
+			"labels_and_tags_valid":  labelsAndTagsValid,
+			"notifications_valid":    notificationsValid,
+			"sonarr_radarr_valid":    sonarrRadarrValid,
+			"user_preferences_valid": userPreferencesValid,
 		})
 		response.Message = "Invalid configuration. Check the results for details."
-		httpx.SendResponse(w, ld, response)
-		return
+		return response
 	}
 
 	if !authChanged && !loggingChanged && !mediaServerChanged && !mediuxChanged &&
 		!jobsChanged && !imagesChanged && !tmdbChanged && !labelsAndTagsChanged &&
-		!notificationsChanged && !sonarrRadarrChanged && !databaseChanged {
+		!notificationsChanged && !sonarrRadarrChanged && !userPreferencesChanged {
 		// If nothing has changed AND the config is valid, log a warning
 		if config.Valid {
 			ld.Status = logging.StatusWarn
 			response.Message = "No changes detected in configuration"
 			logging.LOGGER.Warn().Timestamp().Msg(response.Message)
-			httpx.SendResponse(w, ld, response)
-			return
+			return response
 		} else if !config.Valid {
 			// If nothing has changed AND the config is invalid, re-validate
 			newConfig.Validate(ctx)
@@ -108,14 +132,12 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 				ld.Status = logging.StatusError
 				response.Message = "Configuration is still invalid after update attempt"
 				logging.LOGGER.Error().Timestamp().Msg(response.Message)
-				httpx.SendResponse(w, ld, response)
-				return
+				return response
 			} else {
 				ld.Status = logging.StatusSuccess
 				response.Message = "Configuration has been validated successfully"
 				logging.LOGGER.Info().Timestamp().Msg(response.Message)
-				httpx.SendResponse(w, ld, response)
-				return
+				return response
 			}
 		}
 	}
@@ -123,8 +145,8 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 	// Save the new config
 	saveErr := newConfig.Save(ctx)
 	if saveErr.Message != "" {
-		httpx.SendResponse(w, ld, response)
-		return
+		logAction.SetErrorFromInfo(saveErr)
+		return response
 	}
 
 	// Update the global config variable
@@ -135,20 +157,36 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 	config.MediaServerName = newMediaServerName
 	config.MediuxValid = true
 
+	var changedJobs []jobs.JobKey
 	if jobsChanged {
-		for _, key := range jobsChangedKeys {
-			if err := jobs.StartJob(key); err != nil {
-				logging.LOGGER.Error().Timestamp().Err(err).Str("job", string(key)).Msg("Failed to restart job after config update")
-			}
+		changedJobs = jobsChangedKeys
+	}
+	applyConfigChanges(ctx, logAction, configChanges{
+		authChanged:        authChanged,
+		mediaServerChanged: mediaServerChanged,
+		changedJobs:        changedJobs,
+	})
+
+	response.Message = "Configuration saved"
+	response.Status = currentConfigStatus(ctx)
+	return response
+}
+
+// applyConfigChanges applies the saved config changes to the running app
+func applyConfigChanges(ctx context.Context, logAction *logging.LogAction, changes configChanges) {
+	// Restart the jobs whose settings changed
+	for _, key := range changes.changedJobs {
+		if err := jobs.StartJob(key); err != nil {
+			logging.LOGGER.Error().Timestamp().Err(err).Str("job", string(key)).Msg("Failed to restart job after config update")
 		}
 	}
 
-	if mediaServerChanged {
+	if changes.mediaServerChanged {
 		autodownload.StartOrRestartPlexWebSocketClient()
 	}
 
 	// Restart OIDC with the new Auth settings, so the login page shows the correct login options
-	if authChanged {
+	if changes.authChanged {
 		oidcCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		oidcErr := routes_auth.InitOIDC(oidcCtx)
 		cancel()
@@ -156,17 +194,6 @@ func UpdateAppConfig(w http.ResponseWriter, r *http.Request) {
 			logAction.SetError("Configuration saved, but Single Sign-On (OIDC) could not be started", oidcErr.Help, oidcErr.Detail)
 		}
 	}
-
-	response.Status = AppConfigStatus{
-		ConfigLoaded:     config.Loaded,
-		ConfigValid:      (config.Valid && config.MediuxValid && config.MediaServerValid),
-		NeedsSetup:       !(config.Loaded && config.Valid && config.MediuxValid && config.MediaServerValid),
-		CurrentSetup:     *newConfig.SanitizeConfig(ctx),
-		MediaServerName:  config.MediaServerName,
-		APIKeyConfigured: config.Current.Auth.APIKeyHash != "",
-	}
-
-	httpx.SendResponse(w, ld, response)
 }
 
 // checkConfigDifferences_Auth compares old and new Auth configurations.
@@ -1134,36 +1161,10 @@ func checkConfigDifferences_SonarrRadarr(ctx context.Context, oldSR config.Confi
 		}
 	}
 
-	return changed, newValid
-}
-
-func checkConfigDifferences_Database(ctx context.Context, oldDB config.Config_Database, newDB *config.Config_Database) (changed, newValid bool) {
-	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: Database", logging.LevelTrace)
-	defer logAction.Complete()
-	changed = false
-	newValid = false
-	if !reflect.DeepEqual(oldDB, newDB) {
-		if oldDB.Type != newDB.Type {
-			logAction.AppendResult("Database.Type changed", fmt.Sprintf("from '%s' to '%s'", oldDB.Type, newDB.Type))
-			logging.LOGGER.Info().
-				Timestamp().
-				Str("old_type", oldDB.Type).
-				Str("new_type", newDB.Type).
-				Msg("Database.Type changed")
-			changed = true
-		}
-
-		if oldDB.DSN != newDB.DSN {
-			logAction.AppendResult("Database.ConnectionString changed", fmt.Sprintf("from '%s' to '%s'", oldDB.DSN, newDB.DSN))
-			logging.LOGGER.Info().
-				Timestamp().
-				Str("old_connection_string", oldDB.DSN).
-				Str("new_connection_string", newDB.DSN).
-				Msg("Database.ConnectionString changed")
-			changed = true
-		}
+	// Catch any other changes not checked above
+	if !changed && !reflect.DeepEqual(oldSR, *newSR) {
+		changed = true
 	}
-	newValid = config.ValidateDatabase(ctx, newDB)
 	return changed, newValid
 }
 

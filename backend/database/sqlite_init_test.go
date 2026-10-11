@@ -16,7 +16,7 @@ func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dir := t.TempDir()
 	config.ConfigPath = dir
-	config.Current.Database = config.Config_Database{Type: "sqlite3", Path: "test.db"}
+	t.Setenv(config.DatabasePathEnv, "test.db")
 	// Pre-create the file so GetDBConnection skips the new-database log path.
 	if err := os.WriteFile(filepath.Join(dir, "test.db"), nil, 0o600); err != nil {
 		t.Fatal(err)

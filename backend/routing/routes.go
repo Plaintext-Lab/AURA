@@ -74,7 +74,7 @@ func AddRoutes(r *chi.Mux) {
 			r.Get("/", routes_config.GetAppConfigStatus)
 			r.Get("/template-variables", routes_config.GetNotificationTemplateVariables)
 			r.Post("/", routes_config.UpdateAppConfig)
-			r.Patch("/", routes_config.ReloadAppConfig)
+			r.Patch("/{section}", routes_config.UpdateAppConfigSection)
 			r.Get("/auth-methods", routes_auth.GetAuthMethods)
 			r.Post("/auth/api-key", routes_auth.GenerateAPIKey)
 		})

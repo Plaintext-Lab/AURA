@@ -16,6 +16,9 @@ import (
 	"net/http"
 )
 
+// Whether the database was created on this startup
+var databaseIsNew bool
+
 func runBootstrap() (success bool) {
 	ctx, ld := logging.CreateLoggingContext(context.Background(), "Bootstrap")
 	defer ld.Log()
@@ -35,9 +38,23 @@ func runBootstrap() (success bool) {
 	config.AppLoadingStep = "Setting UMask for File Permissions"
 	utils.SetUMask(ctx)
 
-	// Load the config file
+	// Database: Initialize
+	// Done before loading the config, as the config is stored in the database
+	config.AppLoadingStep = "Initializing Database"
+	newDB, dbInitErr := database.Init(ctx)
+	if dbInitErr.Message != "" {
+		logging.LOGGER.Error().Timestamp().Str("path", config.DatabasePath()).
+			Str("help", "Make sure no other program (e.g. a SQLite viewer) has the database open. If you deleted AURA.db, also delete AURA.db-wal and AURA.db-shm next to it.").
+			Msgf("Failed to initialize database: %s", dbInitErr.Message)
+		return false
+	}
+	databaseIsNew = newDB
+	config.SetStore(database.ConfigStore())
+	logging.LOGGER.Info().Timestamp().Bool("new_database", newDB).Str("path", config.DatabasePath()).Msg("Database initialized")
+
+	// Load the config from the database
 	config.AppLoadingStep = "Loading Configuration"
-	config.LoadYAML(ctx)
+	config.Load(ctx)
 	logAction.Complete()
 
 	// Print the config details (sanitized)
@@ -127,16 +144,9 @@ func runWarmup() (success bool) {
 	config.AppLoadingStep = "Preloading MediUX Items with Sets into Cache"
 	mediux.PreLoadMediuxItemsWithSets(ctx)
 
-	// Database: Initialize
-	config.AppLoadingStep = "Initializing Database"
-	newDB, dbInitErr := database.Init(ctx)
-	if dbInitErr.Message != "" {
-		return false
-	}
-	logging.LOGGER.Info().Timestamp().Bool("new_database", newDB).Msg("Database initialized")
-
 	// Database-Migration: If not a new DB, run migrations
-	if !newDB {
+	// The database is initialized in runBootstrap
+	if !databaseIsNew {
 		config.AppLoadingStep = "Running Database Migrations"
 		migrationsCompleted, _ := migration.RunMigrations()
 		logging.LOGGER.Info().Timestamp().Msgf("%d database migrations performed", migrationsCompleted)

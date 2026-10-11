@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -16,14 +17,8 @@ func (s *SQliteDB) Backup(ctx context.Context, currentVersion, newVersion int) (
 
 	Err = logging.LogErrorInfo{}
 
-	// Build DSN
-	dsn, Err := BuildDSN()
-	if Err.Message != "" {
-		return Err
-	}
-
-	// Construct the DB path
-	dbPath := path.Join(config.ConfigPath, dsn)
+	// Get the DB path
+	dbPath := config.DatabasePath()
 
 	// Check if the database file exists
 	// If it doesn't exist, there's nothing to back up
@@ -44,7 +39,7 @@ func (s *SQliteDB) Backup(ctx context.Context, currentVersion, newVersion int) (
 
 	// Create a backup file path with version and timestamp
 	timestamp := time.Now().Format("20060102_150405")
-	backupPath := fmt.Sprintf("%s_backup_v%d_to_v%d_%s.db", dbPath[:len(dbPath)-3], currentVersion, newVersion, timestamp)
+	backupPath := fmt.Sprintf("%s_backup_v%d_to_v%d_%s.db", strings.TrimSuffix(dbPath, path.Ext(dbPath)), currentVersion, newVersion, timestamp)
 
 	// Write the backup with VACUUM INTO instead of copying the database file.
 	// In WAL mode, committed writes can still be in the WAL file, and copying the file while

@@ -5,6 +5,7 @@ import (
 	"aura/logging"
 	"aura/mediux"
 	"aura/utils/httpx"
+	"context"
 	"net/http"
 )
 
@@ -42,9 +43,15 @@ func GetAppConfigStatus(w http.ResponseWriter, r *http.Request) {
 	ctx = logging.WithCurrentAction(ctx, logAction)
 	var response configStatusResponse
 
+	response.Status = currentConfigStatus(ctx)
+	httpx.SendResponse(w, ld, response)
+}
+
+// currentConfigStatus returns the current sanitized config status
+func currentConfigStatus(ctx context.Context) AppConfigStatus {
 	currentConfig := config.Current // Make a local copy of the current config for sanitization
 
-	response.Status = AppConfigStatus{
+	return AppConfigStatus{
 		ConfigLoaded:     config.Loaded,
 		ConfigValid:      (config.Valid && config.MediuxValid && config.MediaServerValid),
 		NeedsSetup:       !(config.Loaded && config.Valid && config.MediuxValid && config.MediaServerValid),
@@ -56,5 +63,4 @@ func GetAppConfigStatus(w http.ResponseWriter, r *http.Request) {
 		AppLoadingStep:   config.AppLoadingStep,
 		APIKeyConfigured: config.Current.Auth.APIKeyHash != "",
 	}
-	httpx.SendResponse(w, ld, response)
 }

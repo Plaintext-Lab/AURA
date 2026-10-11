@@ -3,38 +3,39 @@ package config
 import (
 	"aura/logging"
 	"context"
-	"os"
-	"path"
-
-	"gopkg.in/yaml.v3"
+	"sync"
 )
 
+// UpdateLock makes sure only one config update runs at a time, so updates can't overwrite each other
+var UpdateLock sync.Mutex
+
 func (config *Config) Save(ctx context.Context) (Err logging.LogErrorInfo) {
-	ctx, logAction := logging.AddSubActionToContext(ctx, "Saving Config to File", logging.LevelDebug)
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Saving Config to Database", logging.LevelDebug)
 	defer logAction.Complete()
 
-	// Clear the User ID before saving
-	// This is done so that it is loaded on startup
-	config.MediaServer.UserID = ""
-
-	// Sub-action: Marshal config to YAML
-	subActionMarshal := logAction.AddSubAction("Marshal Config to YAML", logging.LevelTrace)
-	data, marshalErr := yaml.Marshal(config)
-	if marshalErr != nil {
-		subActionMarshal.SetError("Failed to marshal config to YAML", marshalErr.Error(), nil)
-		logAction.Status = logging.StatusError
-		return *subActionMarshal.Error
+	if store == nil {
+		logAction.SetError("Config store not initialized", "The database must be initialized before saving the config", nil)
+		return *logAction.Error
 	}
-	subActionMarshal.Complete()
 
-	// Sub-action: Write config to file
-	subActionWrite := logAction.AddSubAction("Write Config to File", logging.LevelTrace)
-	if writeErr := os.WriteFile(path.Join(ConfigPath, "config.yaml"), data, 0644); writeErr != nil {
-		subActionWrite.SetError("Failed to write config to file", writeErr.Error(), nil)
-		logAction.Status = logging.StatusError
-		return *subActionWrite.Error
+	// Sub-action: Convert config to values
+	// The User ID is not saved, as it is retrieved from the media server on startup
+	subActionConvert := logAction.AddSubAction("Convert Config to Values", logging.LevelTrace)
+	values, err := config.ToValues()
+	if err != nil {
+		subActionConvert.SetError("Failed to convert config to values", err.Error(), nil)
+		return *subActionConvert.Error
 	}
-	subActionWrite.Complete()
+	subActionConvert.Complete()
+
+	// Sub-action: Save values to the database
+	subActionSave := logAction.AddSubAction("Save Config Values to Database", logging.LevelTrace)
+	Err = store.SaveConfigValues(ctx, values, false)
+	if Err.Message != "" {
+		subActionSave.SetError("Failed to save config to database", Err.Message, Err.Detail)
+		return *subActionSave.Error
+	}
+	subActionSave.Complete()
 
 	return logging.LogErrorInfo{}
 }

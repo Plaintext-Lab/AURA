@@ -71,6 +71,19 @@ func DefaultConfig() Config {
 			Providers:            []Config_Notification_Provider{},
 			NotificationTemplate: DefaultNotificationTemplates(),
 		},
+		UserPreferences: DefaultUserPreferences(),
+	}
+}
+
+// Image types that can be selected in the Download Modal
+var DownloadImageTypes = []string{"poster", "backdrop", "season_poster", "special_season_poster", "titlecard"}
+
+func DefaultUserPreferences() Config_UserPreferences {
+	return Config_UserPreferences{
+		DownloadDefaults:         append([]string{}, DownloadImageTypes...),
+		ShowOnlyDownloadDefaults: false,
+		ShowDateModified:         false,
+		DefaultAddToQueue:        false,
 	}
 }
 

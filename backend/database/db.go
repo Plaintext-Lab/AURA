@@ -7,7 +7,6 @@ import (
 	"aura/models"
 	"context"
 	"database/sql"
-	"fmt"
 )
 
 const LATEST_DB_VERSION = 8
@@ -15,8 +14,7 @@ const LATEST_DB_VERSION = 8
 var Client DB
 
 type SQliteDB struct {
-	Config config.Config_Database
-	conn   *sql.DB
+	conn *sql.DB
 }
 
 type DB interface {
@@ -26,14 +24,17 @@ type DB interface {
 	// Initialize the database connection
 	Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo)
 
-	// Get Database Type
-	GetConfig() (config config.Config_Database)
-
 	// Create Main Tables
 	CreateTables(ctx context.Context) (Err logging.LogErrorInfo)
 
 	// Create VERSION table
 	CreateVersionTable(ctx context.Context) (Err logging.LogErrorInfo)
+
+	// Get all stored config values
+	GetAllConfigValues(ctx context.Context) (values map[string]string, Err logging.LogErrorInfo)
+
+	// Save config values. Only changed values are written. If replace is true, other stored values are removed.
+	SaveConfigValues(ctx context.Context, values map[string]string, replace bool) (Err logging.LogErrorInfo)
 
 	// Get the current database version (from VERSION table)
 	GetCurrentVersion(ctx context.Context) (version int, Err logging.LogErrorInfo)
@@ -139,33 +140,7 @@ type DB interface {
 }
 
 func NewDatabaseClient() (DB, logging.LogErrorInfo) {
-	dbConfig := config.Current.Database
-	switch dbConfig.Type {
-	case "sqlite3":
-		return &SQliteDB{Config: dbConfig}, logging.LogErrorInfo{}
-	default:
-		return nil, logging.LogErrorInfo{
-			Message: fmt.Sprintf("unsupported database type: %s", dbConfig.Type),
-		}
-	}
-}
-
-func BuildDSN() (string, logging.LogErrorInfo) {
-	dbConfig := config.Current.Database
-	switch dbConfig.Type {
-	case "sqlite3":
-		return dbConfig.Path, logging.LogErrorInfo{}
-	// case "mysql":
-	// 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-	// 		dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Name), logging.LogErrorInfo{}
-	// case "postgresql":
-	// 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-	// 		dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Name), logging.LogErrorInfo{}
-	default:
-		return "", logging.LogErrorInfo{
-			Message: fmt.Sprintf("unsupported database type: %s", dbConfig.Type),
-		}
-	}
+	return &SQliteDB{}, logging.LogErrorInfo{}
 }
 
 func GetDBConnection(ctx context.Context) (conn *sql.DB, newDB bool, Err logging.LogErrorInfo) {
@@ -184,11 +159,34 @@ func Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo) {
 	return dbClient.Init(ctx)
 }
 
-func GetConfig() (cfg config.Config_Database) {
+func GetAllConfigValues(ctx context.Context) (values map[string]string, Err logging.LogErrorInfo) {
 	if Client == nil {
-		return config.Current.Database
+		return map[string]string{}, logging.Error_DBClientNotInitialized()
 	}
-	return Client.GetConfig()
+	return Client.GetAllConfigValues(ctx)
+}
+
+func SaveConfigValues(ctx context.Context, values map[string]string, replace bool) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.SaveConfigValues(ctx, values, replace)
+}
+
+// configStore stores the config in the database
+type configStore struct{}
+
+func (configStore) GetAllConfigValues(ctx context.Context) (map[string]string, logging.LogErrorInfo) {
+	return GetAllConfigValues(ctx)
+}
+
+func (configStore) SaveConfigValues(ctx context.Context, values map[string]string, replace bool) logging.LogErrorInfo {
+	return SaveConfigValues(ctx, values, replace)
+}
+
+// ConfigStore returns the store used to load and save the config
+func ConfigStore() config.Store {
+	return configStore{}
 }
 
 func CreateVersionTable(ctx context.Context) (Err logging.LogErrorInfo) {

@@ -53,6 +53,9 @@ func main() {
 	go func() {
 		bootStrapSuccess := runBootstrap()
 
+		// Rebuild the routes now that the database is open and the config is loaded
+		activeHandler.Store(routing.NewRouter())
+
 		// Keep callback for onboarding finalization path.
 		routing.OnboardingComplete = func() {
 			preflightSuccess := runPreFlight()

@@ -50,7 +50,11 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newConfig := config.Current
+	// Only one config update at a time, so updates can't overwrite each other
+	config.UpdateLock.Lock()
+	defer config.UpdateLock.Unlock()
+
+	newConfig := config.Current.Clone()
 	newConfig.Auth.APIKeyHash = hash
 
 	if saveErr := newConfig.Save(ctx); saveErr.Message != "" {
