@@ -190,6 +190,14 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
     router.push("/");
   };
 
+  // Hide the menu when it would be empty
+  // While the backend is starting, hide the menu and search
+  const appLoading = !!status && !status.needs_setup && !status.app_fully_loaded;
+  const appReady = !!status && !status.needs_setup && status.app_fully_loaded;
+  const hasNewVersion = !appLoading && isNewerVersion(latestVersion ?? "", version);
+  const showLogout = !appLoading && isAuthed && !!status?.current_setup.auth.enabled && !status?.auth_disabled_by_env;
+  const menuHasItems = appReady || hasNewVersion || showLogout;
+
   // Handle Logout
   const handleLogout = async () => {
     await Logout(); // clears the HttpOnly session cookie server-side
@@ -216,11 +224,13 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
         </div>
       </div>
 
-      {/* Center: Search */}
+      {/* Center: Search, only once set up and loaded */}
       <div className="relative flex-1 flex justify-center mx-3">
-        <div className="relative w-full max-w-2xl">
-          <DynamicSearch placeholder="Search" />
-        </div>
+        {appReady && !isLoginPage && !isOnboardingPage && (
+          <div className="relative w-full max-w-2xl">
+            <DynamicSearch placeholder="Search" />
+          </div>
+        )}
       </div>
 
       {/* Right: Arrows and/or Settings */}
@@ -257,21 +267,16 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
             />
           </>
         )}
-        {isAuthed && !isLoginPage && (
+        {isAuthed && !isLoginPage && menuHasItems && (
           <DropdownMenu>
             <DropdownMenuTrigger
               asChild
               className="cursor-pointer hover:brightness-120 active:scale-95 transition text-muted-foreground"
             >
-              <MenuIcon
-                className={cn(
-                  "w-8 h-8 ml-2",
-                  isNewerVersion(latestVersion ?? "", version) && "text-yellow-500 animate-pulse"
-                )}
-              />
+              <MenuIcon className={cn("w-8 h-8 ml-2", hasNewVersion && "text-yellow-500 animate-pulse")} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 md:w-64" side="bottom" align="end">
-              {status && !status.needs_setup && (
+              {appReady && (
                 <>
                   <DropdownMenuItem
                     className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
@@ -311,7 +316,7 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                   )}
                 </>
               )}
-              {status && !status.needs_setup && (
+              {appReady && (
                 <DropdownMenuItem
                   className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
                   onClick={() => router.push("/logs")}
@@ -320,7 +325,7 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                   Logs
                 </DropdownMenuItem>
               )}
-              {status && !status.needs_setup && (
+              {appReady && (
                 <DropdownMenuItem
                   className="cursor-pointer flex items-center active:scale-95 hover:brightness-120"
                   onClick={() => router.push("/jobs")}
@@ -329,7 +334,7 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                   Jobs
                 </DropdownMenuItem>
               )}
-              {isNewerVersion(latestVersion ?? "", version) && (
+              {hasNewVersion && (
                 <DropdownMenuItem
                   className="cursor-pointer flex items-center active:scale-95 hover:brightness-120 text-yellow-500 animate-pulse"
                   onClick={() =>
@@ -342,7 +347,7 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                   New Version Available ({latestVersion})
                 </DropdownMenuItem>
               )}
-              {isAuthed && status?.current_setup.auth.enabled && (
+              {showLogout && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
