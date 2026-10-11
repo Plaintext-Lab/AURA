@@ -12,6 +12,7 @@ import { ApplyLabelsAndTagsToItem } from "@/services/labels-tags/apply";
 import {
   ArrowDownAZ,
   ArrowDownZA,
+  BookmarkIcon,
   ClockArrowDown,
   ClockArrowUp,
   CloudCheck,
@@ -190,7 +191,8 @@ const SavedSetsPage: React.FC = () => {
       }
 
       if (!response.data) {
-        setError(ReturnErrorMessage<Error>("No saved sets found in the database"));
+        // Nothing saved yet is not an error
+        setError(null);
         setSavedSets([]);
         setTotalItems(0);
         setFilterUserOptions([]);
@@ -251,6 +253,20 @@ const SavedSetsPage: React.FC = () => {
 
   // Calculate total pages
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Whether a filter or search is applied
+  const hasActiveFilters =
+    !!searchQuery ||
+    filteredLibraries.length > 0 ||
+    !!filterAutoDownload ||
+    filteredUsers.length > 0 ||
+    filteredTypes.length > 0 ||
+    !!filterMediaItemOnServer ||
+    !!filterMultiSetOnly;
+
+  // Nothing saved yet, so only show the empty state
+  const nothingSavedYet =
+    (!savedSets || savedSets.length === 0) && !hasActiveFilters && !Object.keys(recheckStatus).length;
 
   if (loading) {
     return <Loader className="mt-10" message="Loading saved sets..." />;
@@ -538,73 +554,77 @@ const SavedSetsPage: React.FC = () => {
   return (
     <div className="container mx-auto p-4 min-h-screen flex flex-col items-center">
       {/* Row 1: Filter Icon (left), Autodownload (right) */}
-      <div className="w-full flex items-center justify-between mb-2">
-        <div>
-          <FilterSavedSets
-            getSectionSummaries={getSectionSummaries}
-            librarySectionsLoaded={librarySectionsLoaded}
-            filteredLibraries={filteredLibraries}
-            setFilteredLibraries={setFilteredLibraries}
-            typeOptions={typeOptions}
-            filteredTypes={filteredTypes}
-            setFilteredTypes={setFilteredTypes}
-            filterAutoDownload={filterAutoDownload}
-            setFilterAutoDownload={setFilterAutoDownload}
-            filterUserOptions={filterUserOptions}
-            filteredUsers={filteredUsers}
-            setFilteredUsers={setFilteredUsers}
-            filterMultiSetOnly={filterMultiSetOnly}
-            setFilterMultiSetOnly={setFilterMultiSetOnly}
-            searchTitle={searchTitle}
-            searchYear={searchYear}
-            searchTMDBID={searchTMDBID}
-            searchLibrary={searchLibrary}
-            sortOption={sortOption}
-            sortOrder={sortOrder}
-            setSortOption={setSortOption}
-            setSortOrder={setSortOrder}
-            setCurrentPage={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            setItemsPerPage={setItemsPerPage}
-            filterMediaItemOnServer={filterMediaItemOnServer}
-            setFilterMediaItemOnServer={setFilterMediaItemOnServer}
-          />
-        </div>
+      {!nothingSavedYet && (
+        <div className="w-full flex items-center justify-between mb-2">
+          <div>
+            <FilterSavedSets
+              getSectionSummaries={getSectionSummaries}
+              librarySectionsLoaded={librarySectionsLoaded}
+              filteredLibraries={filteredLibraries}
+              setFilteredLibraries={setFilteredLibraries}
+              typeOptions={typeOptions}
+              filteredTypes={filteredTypes}
+              setFilteredTypes={setFilteredTypes}
+              filterAutoDownload={filterAutoDownload}
+              setFilterAutoDownload={setFilterAutoDownload}
+              filterUserOptions={filterUserOptions}
+              filteredUsers={filteredUsers}
+              setFilteredUsers={setFilteredUsers}
+              filterMultiSetOnly={filterMultiSetOnly}
+              setFilterMultiSetOnly={setFilterMultiSetOnly}
+              searchTitle={searchTitle}
+              searchYear={searchYear}
+              searchTMDBID={searchTMDBID}
+              searchLibrary={searchLibrary}
+              sortOption={sortOption}
+              sortOrder={sortOrder}
+              setSortOption={setSortOption}
+              setSortOrder={setSortOrder}
+              setCurrentPage={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              setItemsPerPage={setItemsPerPage}
+              filterMediaItemOnServer={filterMediaItemOnServer}
+              setFilterMediaItemOnServer={setFilterMediaItemOnServer}
+            />
+          </div>
 
-        {/* Bulk Edit Mode Button  */}
-        <div>
-          <Button
-            variant={bulkEditMode ? "destructive" : "secondary"}
-            onClick={handleBulkEditButtonToggleClick}
-            className={cn(
-              "flex items-center gap-1 text-xs sm:text-sm cursor-pointer",
-              bulkEditMode
-                ? "border-red-600 bg-red-600/10 hover:bg-red-600/20"
-                : "border border-1 border-yellow-500 hover:bg-yellow-800"
-            )}
-          >
-            {bulkEditMode ? "Cancel Bulk Edit" : "Bulk Edit"}
-          </Button>
+          {/* Bulk Edit Mode Button, hidden when there are no sets */}
+          <div className={cn(!bulkEditMode && (!savedSets || savedSets.length === 0) && "hidden")}>
+            <Button
+              variant={bulkEditMode ? "destructive" : "secondary"}
+              onClick={handleBulkEditButtonToggleClick}
+              className={cn(
+                "flex items-center gap-1 text-xs sm:text-sm cursor-pointer",
+                bulkEditMode
+                  ? "border-red-600 bg-red-600/10 hover:bg-red-600/20"
+                  : "border border-1 border-yellow-500 hover:bg-yellow-800"
+              )}
+            >
+              {bulkEditMode ? "Cancel Bulk Edit" : "Bulk Edit"}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Row 2: ViewControl (right) */}
-      <div className="w-full flex items-center justify-end mb-0">
-        {isWideScreen && (
-          <ViewControl
-            options={[
-              { value: "card", label: "Card View" },
-              { value: "table", label: "Table View" },
-            ]}
-            viewOption={viewOption}
-            setViewOption={setViewOption}
-            label="View:"
-            showLabel={true}
-          />
-        )}
-      </div>
+      {!nothingSavedYet && (
+        <div className="w-full flex items-center justify-end mb-0">
+          {isWideScreen && (
+            <ViewControl
+              options={[
+                { value: "card", label: "Card View" },
+                { value: "table", label: "Table View" },
+              ]}
+              viewOption={viewOption}
+              setViewOption={setViewOption}
+              label="View:"
+              showLabel={true}
+            />
+          )}
+        </div>
+      )}
 
-      <Separator className="mt-0 my-4 w-full" />
+      {!nothingSavedYet && <Separator className="mt-0 my-4 w-full" />}
 
       {Object.keys(recheckStatus).length > 0 && (
         <div className="w-full">
@@ -710,57 +730,70 @@ const SavedSetsPage: React.FC = () => {
         </div>
       )}
 
-      {/* If there are no saved sets, show a message */}
-      {(!savedSets || savedSets.length === 0) && !loading && !error && !Object.keys(recheckStatus).length && (
-        <div className="w-full">
-          <ErrorMessage
-            error={ReturnErrorMessage<string>(
-              [
-                `No ${filterMultiSetOnly ? "Multi-Poster" : ""} Sets found`,
-                filteredLibraries.length > 0 ? `in ${filteredLibraries.map((lib) => `"${lib}"`).join(", ")}` : null,
-                filterAutoDownload === "on"
-                  ? "that are set to Auto Download"
-                  : filterAutoDownload === "off"
-                    ? "that are not set to Auto Download"
-                    : null,
-                filteredTypes.length > 0
-                  ? `with ${makePlural(filteredTypes.length, "type")} ${filteredTypes
-                      .map((t) => `"${typeOptions.find((opt) => opt.value === t)?.label || t}"`)
-                      .join(", ")}`
-                  : null,
-                filteredUsers.length > 0
-                  ? `for ${makePlural(filteredUsers.length, "user")} ${filteredUsers
-                      .map((u) => (u === "|||no-user|||" ? '"No User"' : `"${u}"`))
-                      .join(", ")}`
-                  : null,
-                searchQuery ? `matching "${searchQuery}"` : null,
-              ]
-                .filter(Boolean)
-                .join("\n")
-            )}
-          />
-          <div className="text-center text-muted-foreground mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearchQuery("");
-                setFilteredLibraries([]);
-                if (setFilterAutoDownload) setFilterAutoDownload("");
-                setFilteredUsers([]);
-                setFilteredTypes([]);
-                setFilterMediaItemOnServer("");
-                setCurrentPage(1);
-                if (filterMultiSetOnly) setFilterMultiSetOnly(false);
-              }}
-              className="text-sm"
-            >
-              <XCircle className="inline mr-1" />
-              Clear All Filters & Search Query
-            </Button>
-          </div>
+      {/* If nothing has been saved yet, explain how to save a set */}
+      {nothingSavedYet && (
+        <div className="mx-auto mt-10 flex max-w-md flex-col items-center gap-2 text-center">
+          <BookmarkIcon className="h-10 w-10 text-muted-foreground" />
+          <p className="text-lg font-medium">No saved sets yet</p>
+          <p className="text-sm text-muted-foreground">Once you have saved a set, it will appear here.</p>
         </div>
       )}
+
+      {/* If no saved sets match the filters or search */}
+      {(!savedSets || savedSets.length === 0) &&
+        !loading &&
+        !error &&
+        !Object.keys(recheckStatus).length &&
+        hasActiveFilters && (
+          <div className="w-full">
+            <ErrorMessage
+              error={ReturnErrorMessage<string>(
+                [
+                  `No ${filterMultiSetOnly ? "Multi-Poster" : ""} Sets found`,
+                  filteredLibraries.length > 0 ? `in ${filteredLibraries.map((lib) => `"${lib}"`).join(", ")}` : null,
+                  filterAutoDownload === "on"
+                    ? "that are set to Auto Download"
+                    : filterAutoDownload === "off"
+                      ? "that are not set to Auto Download"
+                      : null,
+                  filteredTypes.length > 0
+                    ? `with ${makePlural(filteredTypes.length, "type")} ${filteredTypes
+                        .map((t) => `"${typeOptions.find((opt) => opt.value === t)?.label || t}"`)
+                        .join(", ")}`
+                    : null,
+                  filteredUsers.length > 0
+                    ? `for ${makePlural(filteredUsers.length, "user")} ${filteredUsers
+                        .map((u) => (u === "|||no-user|||" ? '"No User"' : `"${u}"`))
+                        .join(", ")}`
+                    : null,
+                  searchQuery ? `matching "${searchQuery}"` : null,
+                ]
+                  .filter(Boolean)
+                  .join("\n")
+              )}
+            />
+            <div className="text-center text-muted-foreground mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilteredLibraries([]);
+                  if (setFilterAutoDownload) setFilterAutoDownload("");
+                  setFilteredUsers([]);
+                  setFilteredTypes([]);
+                  setFilterMediaItemOnServer("");
+                  setCurrentPage(1);
+                  if (filterMultiSetOnly) setFilterMultiSetOnly(false);
+                }}
+                className="text-sm"
+              >
+                <XCircle className="inline mr-1" />
+                Clear All Filters & Search Query
+              </Button>
+            </div>
+          </div>
+        )}
 
       {/* Table View (only available for larger screens) */}
       {viewOption === "table" && savedSets && savedSets.length > 0 && (
@@ -1034,7 +1067,7 @@ const SavedSetsPage: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {itemsPerPage && (
+      {itemsPerPage && !nothingSavedYet && (
         <CustomPagination
           currentPage={currentPage}
           totalPages={totalPages}
