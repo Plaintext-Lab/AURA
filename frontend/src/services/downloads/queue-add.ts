@@ -2,6 +2,7 @@ import apiClient from "@/services/api-client";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 
 import { log } from "@/lib/logger";
+import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 
 import type { APIResponse } from "@/types/api/api-response";
 import type { DBSavedItem } from "@/types/database/db-poster-set";
@@ -40,6 +41,20 @@ export const AddItemToDownloadQueue = async (
         `Added '${dbItem.media_item.title}' (TMDB ID: ${dbItem.media_item.tmdb_id}) to the download queue`,
         response.data
       );
+    }
+
+    // Mark the item as having these sets in the cached media items.
+    // The queue saves them to the DB later, so this shows them as saved straight away.
+    const { upsertMediaItemSavedSet } = useLibrarySectionsStore.getState();
+    for (const posterSet of dbItem.poster_sets) {
+      upsertMediaItemSavedSet({
+        tmdbID: dbItem.media_item.tmdb_id,
+        libraryTitle: dbItem.media_item.library_title,
+        edition: dbItem.media_item.edition,
+        setID: posterSet.id,
+        setUser: posterSet.user_created,
+        selectedTypes: posterSet.selected_types,
+      });
     }
     return response.data;
   } catch (error) {

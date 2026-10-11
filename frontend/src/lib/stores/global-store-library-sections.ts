@@ -149,6 +149,8 @@ export const useLibrarySectionsStore = create<LibrarySectionsStore>()(
           return;
         }
 
+        mediaItems[idx] = { ...mediaItems[idx], ...mediaItem };
+
         set((state) => ({
           sections: {
             ...state.sections,

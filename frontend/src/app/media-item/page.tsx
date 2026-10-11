@@ -569,7 +569,7 @@ const MediaItemPage = () => {
     if (item.rating_key !== mediaItem?.rating_key || item.library_title !== mediaItem?.library_title) return;
 
     setImageVersion(Date.now());
-    if (item.db_saved_sets && mediaItem.db_saved_sets.length > 0) {
+    if (item.db_saved_sets && item.db_saved_sets.length > 0) {
       setExistsInDB(true);
     } else if (item.ignored_in_db) {
       setIgnoredInDB(true);

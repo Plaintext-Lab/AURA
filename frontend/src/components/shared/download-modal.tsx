@@ -58,12 +58,13 @@ import { Lead } from "@/components/ui/typography";
 
 import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
+import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 
 import type { DBPosterSetDetail, DBSavedItem, PosterSet } from "@/types/database/db-poster-set";
-import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
+import type { MediaItem, SelectedTypes } from "@/types/media-and-posters/media-item-and-library";
 import type { BaseSetInfo, ImageFile } from "@/types/media-and-posters/sets";
 import { DOWNLOAD_IMAGE_TYPE_OPTIONS, TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS } from "@/types/ui-options";
 
@@ -693,6 +694,22 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
     if (relevant.some((t) => t.status === "pending")) return "pending";
     if (relevant.some((t) => t.status === "completed")) return "completed";
     return "skipped"; // all skipped
+  };
+
+  // Mark the item as saved in the cached media items, including libraries that share it, and on the page
+  const markItemSaved = (latestMediaItem: MediaItem, item: FormItemDisplay, selectedTypes: SelectedTypes) => {
+    const { upsertMediaItemSavedSet } = useLibrarySectionsStore.getState();
+    for (const libraryTitle of sharedLibraryTitles) {
+      upsertMediaItemSavedSet({
+        tmdbID: latestMediaItem.tmdb_id,
+        libraryTitle,
+        edition: latestMediaItem.edition,
+        setID: item.Set.id,
+        setUser: item.Set.user_created,
+        selectedTypes,
+      });
+    }
+    onDownloadComplete?.(upsertSavedSets(latestMediaItem, item.Set.id, item.Set.user_created, selectedTypes));
   };
 
   const runDownloadTask = async (taskId: string, payload: DownloadTaskPayload): Promise<boolean> => {
@@ -1382,16 +1399,14 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
             addToDBOnly: selectedOptions.addToDBOnly,
           });
 
-          if (ok && onDownloadComplete) {
-            onDownloadComplete(
-              upsertSavedSets(latestMediaItem, item.Set.id, item.Set.user_created, {
-                poster: selectedOptions.types?.includes("poster"),
-                backdrop: selectedOptions.types?.includes("backdrop"),
-                season_poster: selectedOptions.types?.includes("season_poster"),
-                special_season_poster: selectedOptions.types?.includes("special_season_poster"),
-                titlecard: selectedOptions.types?.includes("titlecard"),
-              })
-            );
+          if (ok) {
+            markItemSaved(latestMediaItem, item, {
+              poster: selectedOptions.types?.includes("poster"),
+              backdrop: selectedOptions.types?.includes("backdrop"),
+              season_poster: selectedOptions.types?.includes("season_poster"),
+              special_season_poster: selectedOptions.types?.includes("special_season_poster"),
+              titlecard: selectedOptions.types?.includes("titlecard"),
+            });
           }
           continue;
         }
@@ -1425,12 +1440,21 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
             },
           });
 
-          await runAddToQueueTask(taskId, {
+          const queued = await runAddToQueueTask(taskId, {
             kind: "addToQueue",
             itemKey: getItemFormKey(item.MediaItem),
             itemTitle: item.MediaItem.title,
             dbItem: createdSavedItem.dbItem,
           });
+          if (queued) {
+            markItemSaved(latestMediaItem, item, {
+              poster: selectedTypes.includes("poster"),
+              backdrop: selectedTypes.includes("backdrop"),
+              season_poster: selectedTypes.includes("season_poster"),
+              special_season_poster: selectedTypes.includes("special_season_poster"),
+              titlecard: selectedTypes.includes("titlecard"),
+            });
+          }
           continue;
         }
 
@@ -1641,16 +1665,14 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
             addToDBOnly: selectedOptions.addToDBOnly || false,
           });
 
-          if (ok && onDownloadComplete) {
-            onDownloadComplete(
-              upsertSavedSets(latestMediaItem, item.Set.id, item.Set.user_created, {
-                poster: selectedOptions.types.includes("poster"),
-                backdrop: selectedOptions.types.includes("backdrop"),
-                season_poster: selectedOptions.types.includes("season_poster"),
-                special_season_poster: selectedOptions.types.includes("special_season_poster"),
-                titlecard: selectedOptions.types.includes("titlecard"),
-              })
-            );
+          if (ok) {
+            markItemSaved(latestMediaItem, item, {
+              poster: selectedOptions.types.includes("poster"),
+              backdrop: selectedOptions.types.includes("backdrop"),
+              season_poster: selectedOptions.types.includes("season_poster"),
+              special_season_poster: selectedOptions.types.includes("special_season_poster"),
+              titlecard: selectedOptions.types.includes("titlecard"),
+            });
           }
           continue;
         }
@@ -1762,16 +1784,14 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           addToDBOnly: selectedOptions.addToDBOnly || false,
         });
 
-        if (ok && onDownloadComplete) {
-          onDownloadComplete(
-            upsertSavedSets(latestMediaItem, item.Set.id, item.Set.user_created, {
-              poster: selectedOptions.types.includes("poster"),
-              backdrop: selectedOptions.types.includes("backdrop"),
-              season_poster: selectedOptions.types.includes("season_poster"),
-              special_season_poster: selectedOptions.types.includes("special_season_poster"),
-              titlecard: selectedOptions.types.includes("titlecard"),
-            })
-          );
+        if (ok) {
+          markItemSaved(latestMediaItem, item, {
+            poster: selectedOptions.types.includes("poster"),
+            backdrop: selectedOptions.types.includes("backdrop"),
+            season_poster: selectedOptions.types.includes("season_poster"),
+            special_season_poster: selectedOptions.types.includes("special_season_poster"),
+            titlecard: selectedOptions.types.includes("titlecard"),
+          });
         }
       }
 
