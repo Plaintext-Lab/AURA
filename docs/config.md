@@ -8,19 +8,32 @@ permalink: /config
 
 # Configuration
 
-aura uses a `config.yaml` file for configuration. You can setup the configuration file during the onboarding process. However, if you would like, below are the instructions for creating and modifying the `config.yaml` file.
+aura stores its configuration in its database (`AURA.db` in the `/config` folder). You can set up the configuration during the onboarding process, and change it any time from the `Settings` page.
 
-1. **Create the `config.yaml` File**:
-    - You can create a new file named `config.yaml` in the root directory of your aura installation.
+The options below use the `config.yaml` format, which you can still use to set up aura:
 
-2. **Edit the `config.yaml` File**:
-    - Open `config.yaml` in your preferred text editor.
-    - Modify the configuration settings according to your needs. Be sure to replace all placeholder values (e.g., `YOUR_API_KEY_HERE`, `YOUR_SERVER_URL`) with your actual credentials and URLs.
+1. **Create a `config.yaml` File**:
+    - Create a new file named `config.yaml`, and set the options you need. Be sure to replace all placeholder values (e.g., `YOUR_API_KEY_HERE`, `YOUR_SERVER_URL`) with your actual credentials and URLs.
 
-3. **Place the `config.yaml` File**:
-    - Place your configuration file in the `/config` directory on your Docker container.
+2. **Place the `config.yaml` File**:
+    - Place the file in the `/config` folder on your Docker container, and start aura.
+    - On startup, aura imports the file into its database and renames it to `config.yaml.imported`.
 
-> **Note:** Always keep your configuration file secure and do not share sensitive information publicly.
+Once the configuration is in the database, aura ignores any new `config.yaml` file. To import a `config.yaml` file again, replacing the current configuration, set the `AURA_IMPORT_CONFIG=true` environment variable and restart aura.
+
+### Environment Variables
+
+- **`CONFIG_PATH`**: The folder aura stores its database, logs and other files in. Defaults to `/config`.
+- **`DATABASE_PATH`**: The path of the database file. A relative path is relative to `CONFIG_PATH`. Defaults to `AURA.db`.
+    - Older versions of aura set this with `Database.Path` in `config.yaml`. If you changed it there, set `DATABASE_PATH` to the same value.
+- **`AURA_IMPORT_CONFIG`**: Set to `true` to import a `config.yaml` file on startup, even if the configuration is already in the database.
+- **`AURA_DISABLE_AUTH`**: Set to `true` to turn off authentication, even if it is enabled in the configuration. Use this if you are locked out (e.g. a forgotten password or a broken identity provider): log in, fix the Authentication settings, then remove the variable and restart aura. While it is set, anyone who can reach aura can use it, and aura logs a warning on every startup.
+
+### Backing Up Your Configuration
+
+In `Settings` → `Advanced`, **Export Configuration** downloads your configuration as a YAML file (the `config.yaml` format), and **Import Configuration** restores one. The exported file includes your passwords, tokens and API keys, so keep it private. Importing checks the configuration (including the Media Server and MediUX connections) before anything is saved. Your API key is not changed by an import.
+
+> **Note:** The database and any `config.yaml` file contain sensitive information (e.g. tokens and API keys). Keep them secure and do not share them publicly.
 
 ---
 
@@ -118,11 +131,13 @@ Auth:
 ```yaml
 Logging:
     Level: DEBUG
+    KeepDays: 7
+    KeepFiles: 7
 ```
 
 ### Level
 
-- **Default**: `TRACE`
+- **Default**: `INFO`
 - **Options**: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`
 - **Description**: The logging level for aura.
 - **Details**:
@@ -132,6 +147,20 @@ Logging:
     - `WARN`: Indicates potential issues that are not necessarily errors.
     - `ERROR`: Indicates errors that occur during the application's operation.
 - **Note**: The logging level can be adjusted based on your needs. For production environments, it is recommended to use `INFO` or `WARN` to reduce log verbosity. If you run into issues, you can temporarily set it to `DEBUG` or `TRACE` for more detailed logs.
+
+### KeepDays
+
+- **Default**: `7`
+- **Options**: `1` to `365`
+- **Description**: How many days old log files are kept before they are deleted.
+- **Details**: aura starts a new log file when the current one reaches 25 MB. Old files are cleaned up at that point, so on a quiet install they can stay a little longer than `KeepDays`.
+
+### KeepFiles
+
+- **Default**: `7`
+- **Options**: `1` to `100`
+- **Description**: How many old log files are kept before the oldest are deleted.
+- **Details**: Old log files are deleted when either limit is reached, `KeepDays` or `KeepFiles`.
 
 ---
 
