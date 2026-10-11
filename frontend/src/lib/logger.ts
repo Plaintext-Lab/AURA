@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+import { redactLogData } from "@/lib/redact";
+
+// Log to the browser console. data is redacted first, so secrets are never logged.
 export function log(level: "INFO" | "WARN" | "ERROR", page: string, action: string, message: string, data?: unknown) {
   const debugMode =
     (typeof window !== "undefined" && localStorage.getItem("debugMode") === "true") ||
@@ -11,6 +14,7 @@ export function log(level: "INFO" | "WARN" | "ERROR", page: string, action: stri
   const formattedTime = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}:${pad(now.getMilliseconds(), 3)}`;
 
   const base = `[${formattedTime}] [${level}] [${page}] [${action}] - ${message}`;
+  if (data !== undefined) data = redactLogData(data);
   if (level === "ERROR") {
     data !== undefined ? console.error(base, data) : console.error(base);
   } else if (level === "WARN") {

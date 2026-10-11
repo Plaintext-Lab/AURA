@@ -192,12 +192,14 @@ func checkConfigDifferences_Auth(ctx context.Context, oldAuth config.Config_Auth
 			changed = true
 		}
 
+		// The password hash is masked on the way out - keep the old value unless a new one was entered
+		if oldAuth.Password != newAuth.Password && strings.HasPrefix(newAuth.Password, "***") {
+			newAuth.Password = oldAuth.Password
+		}
 		if oldAuth.Password != newAuth.Password {
-			logAction.AppendResult("Auth.Password changed", fmt.Sprintf("from '%s' to '%s'", oldAuth.Password, newAuth.Password))
+			logAction.AppendResult("Auth.Password changed", "value redacted")
 			logging.LOGGER.Info().
 				Timestamp().
-				Str("old_password", fmt.Sprintf("%s", oldAuth.Password)).
-				Str("new_password", fmt.Sprintf("%s", newAuth.Password)).
 				Msg("Auth.Password changed")
 			changed = true
 		}
@@ -300,11 +302,9 @@ func checkConfigDifferences_MediaServer(ctx context.Context, oldMediaServer conf
 
 		if oldMediaServer.ApiToken != newMediaServer.ApiToken {
 			if !strings.HasPrefix(newMediaServer.ApiToken, "***") {
-				logAction.AppendResult("MediaServer.ApiToken changed", fmt.Sprintf("from '%s' to '%s'", oldMediaServer.ApiToken, newMediaServer.ApiToken))
+				logAction.AppendResult("MediaServer.ApiToken changed", "value redacted")
 				logging.LOGGER.Info().
 					Timestamp().
-					Str("old_api_token", fmt.Sprintf("%s", oldMediaServer.ApiToken)).
-					Str("new_api_token", fmt.Sprintf("%s", newMediaServer.ApiToken)).
 					Msg("MediaServer.ApiToken changed")
 				changed = true
 			} else {
@@ -372,11 +372,9 @@ func checkConfigDifferences_Mediux(ctx context.Context, oldMediux config.Config_
 	if !reflect.DeepEqual(oldMediux, newMediux) {
 		if oldMediux.ApiToken != newMediux.ApiToken {
 			if !strings.HasPrefix(newMediux.ApiToken, "***") {
-				logAction.AppendResult("Mediux.ApiToken changed", fmt.Sprintf("from '%s' to '%s'", oldMediux.ApiToken, newMediux.ApiToken))
+				logAction.AppendResult("Mediux.ApiToken changed", "value redacted")
 				logging.LOGGER.Info().
 					Timestamp().
-					Str("old_api_token", fmt.Sprintf("%v", oldMediux.ApiToken)).
-					Str("new_api_token", fmt.Sprintf("%v", newMediux.ApiToken)).
 					Msg("Mediux.ApiToken changed")
 				changed = true
 			} else {
@@ -523,11 +521,9 @@ func checkConfigDifferences_TMDB(ctx context.Context, oldTMDB config.Config_TMDB
 	if !reflect.DeepEqual(oldTMDB, newTMDB) {
 		if oldTMDB.ApiToken != newTMDB.ApiToken {
 			if !strings.HasPrefix(newTMDB.ApiToken, "***") {
-				logAction.AppendResult("TMDB.ApiToken changed", fmt.Sprintf("from '%s' to '%s'", oldTMDB.ApiToken, newTMDB.ApiToken))
+				logAction.AppendResult("TMDB.ApiToken changed", "value redacted")
 				logging.LOGGER.Info().
 					Timestamp().
-					Str("old_api_token", fmt.Sprintf("%v", oldTMDB.ApiToken)).
-					Str("new_api_token", fmt.Sprintf("%v", newTMDB.ApiToken)).
 					Msg("TMDB.ApiToken changed")
 				changed = true
 			} else {
@@ -800,11 +796,9 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 				}
 				if oldWebhook != newWebhook {
 					if !config.IsMaskedWebhook(newWebhook) {
-						logAction.AppendResult("Notifications.Discord.Webhook changed", fmt.Sprintf("from '%v' to '%v'", oldWebhook, newWebhook))
+						logAction.AppendResult("Notifications.Discord.Webhook changed", "value redacted")
 						logging.LOGGER.Info().
 							Timestamp().
-							Str("old_webhook", oldWebhook).
-							Str("new_webhook", newWebhook).
 							Msg("Notifications.Discord.Webhook changed")
 						changed = true
 					} else {
@@ -824,11 +818,9 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 				}
 				if oldUserKey != newUserKey {
 					if !strings.HasPrefix(newUserKey, "***") {
-						logAction.AppendResult("Notifications.Pushover.UserKey changed", fmt.Sprintf("from '%v' to '%v'", oldUserKey, newUserKey))
+						logAction.AppendResult("Notifications.Pushover.UserKey changed", "value redacted")
 						logging.LOGGER.Info().
 							Timestamp().
-							Str("old_user_key", oldUserKey).
-							Str("new_user_key", newUserKey).
 							Msg("Notifications.Pushover.UserKey changed")
 						changed = true
 					} else {
@@ -838,11 +830,9 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 				}
 				if oldToken != newToken {
 					if !strings.HasPrefix(newToken, "***") {
-						logAction.AppendResult("Notifications.Pushover.ApiToken changed", fmt.Sprintf("from '%v' to '%v'", oldToken, newToken))
+						logAction.AppendResult("Notifications.Pushover.ApiToken changed", "value redacted")
 						logging.LOGGER.Info().
 							Timestamp().
-							Str("old_api_token", oldToken).
-							Str("new_api_token", newToken).
 							Msg("Notifications.Pushover.ApiToken changed")
 						changed = true
 					} else {
@@ -873,11 +863,9 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 				if oldProv.Gotify != nil && newProv.Gotify != nil {
 					if oldProv.Gotify.ApiToken != newProv.Gotify.ApiToken {
 						if !strings.HasPrefix(newProv.Gotify.ApiToken, "***") {
-							logAction.AppendResult("Notifications.Gotify.ApiToken changed", fmt.Sprintf("from '%v' to '%v'", oldProv.Gotify.ApiToken, newProv.Gotify.ApiToken))
+							logAction.AppendResult("Notifications.Gotify.ApiToken changed", "value redacted")
 							logging.LOGGER.Info().
 								Timestamp().
-								Str("old_api_token", fmt.Sprintf("%s", oldProv.Gotify.ApiToken)).
-								Str("new_api_token", fmt.Sprintf("%s", newProv.Gotify.ApiToken)).
 								Msg("Notifications.Gotify.ApiToken changed")
 							changed = true
 						} else {
@@ -895,11 +883,9 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 					newURL = strings.TrimSpace(newProv.Webhook.URL)
 				}
 				if oldURL != newURL {
-					logAction.AppendResult("Notifications.Webhook.URL changed", fmt.Sprintf("from '%v' to '%v'", oldURL, newURL))
+					logAction.AppendResult("Notifications.Webhook.URL changed", "value redacted")
 					logging.LOGGER.Info().
 						Timestamp().
-						Str("old_webhook_url", oldURL).
-						Str("new_webhook_url", newURL).
 						Msg("Notifications.Webhook.URL changed")
 					changed = true
 				}
@@ -911,29 +897,32 @@ func checkConfigDifferences_Notifications(ctx context.Context, oldNotifications 
 					maps.Copy(oldHeaders, oldProv.Webhook.Headers)
 				}
 				if newProv.Webhook != nil {
+					// Header values are masked on the way out - keep the old value of an unchanged header
+					for k, newV := range newProv.Webhook.Headers {
+						if oldV, ok := oldHeaders[k]; ok && newV != oldV && strings.HasPrefix(newV, "***") {
+							newProv.Webhook.Headers[k] = oldV
+						}
+					}
 					maps.Copy(newHeaders, newProv.Webhook.Headers)
 				}
 				// Check for changes
 				for k, oldV := range oldHeaders {
 					newV, ok := newHeaders[k]
 					if !ok || oldV != newV {
-						logAction.AppendResult("Notifications.Webhook.Header changed", fmt.Sprintf("Header '%s' changed from '%s' to '%s'", k, oldV, newV))
+						logAction.AppendResult("Notifications.Webhook.Header changed", fmt.Sprintf("Header '%s' changed (value redacted)", k))
 						logging.LOGGER.Info().
 							Timestamp().
 							Str("header_key", k).
-							Str("old_value", oldV).
-							Str("new_value", newV).
 							Msg("Notifications.Webhook.Header changed")
 						changed = true
 					}
 				}
-				for k, newV := range newHeaders {
+				for k := range newHeaders {
 					if _, ok := oldHeaders[k]; !ok {
-						logAction.AppendResult("Notifications.Webhook.Header added", fmt.Sprintf("Header '%s' added with value '%s'", k, newV))
+						logAction.AppendResult("Notifications.Webhook.Header added", fmt.Sprintf("Header '%s' added (value redacted)", k))
 						logging.LOGGER.Info().
 							Timestamp().
 							Str("header_key", k).
-							Str("new_value", newV).
 							Msg("Notifications.Webhook.Header added")
 						changed = true
 					}
@@ -1068,12 +1057,10 @@ func checkConfigDifferences_SonarrRadarr(ctx context.Context, oldSR config.Confi
 			// Per App - ApiToken
 			if oldProv.ApiToken != newProv.ApiToken {
 				if !strings.HasPrefix(newProv.ApiToken, "***") {
-					logAction.AppendResult("SonarrRadarr.Application.ApiToken changed", fmt.Sprintf("from '%s' to '%s'", oldProv.ApiToken, newProv.ApiToken))
+					logAction.AppendResult("SonarrRadarr.Application.ApiToken changed", "value redacted")
 					logging.LOGGER.Info().
 						Timestamp().
 						Str("application", name).
-						Str("old_api_token", oldProv.ApiToken).
-						Str("new_api_token", newProv.ApiToken).
 						Msg("SonarrRadarr.Application ApiToken changed")
 					changed = true
 				} else {

@@ -4,6 +4,7 @@ import (
 	"aura/config"
 	"aura/logging"
 	routes_auth "aura/routing/auth"
+	"aura/utils/httpx"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -145,7 +146,8 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		}
 
 		if len(r.URL.Query()) > 0 {
-			ld.Route.Params = r.URL.Query()
+			// Hide sensitive values like an OIDC ?code= in the logs
+			ld.Route.Params = httpx.RedactQuery(r.URL.Query())
 		}
 
 		ctx = logging.WithLogData(r.Context(), ld)

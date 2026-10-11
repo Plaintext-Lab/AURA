@@ -28,10 +28,11 @@ func DecodeRequestBodyToJSON(ctx context.Context, r io.ReadCloser, v any, struct
 		_, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Decoding request body into `%s` struct", structName), logging.LevelTrace)
 		defer logAction.Complete()
 
+		// Don't include the request body, as it can contain secrets
 		errorDetails := map[string]any{
-			"request_body": string(body),
-			"error":        err.Error(),
-			"error_type":   fmt.Sprintf("%T", err),
+			"request_body_size": len(body),
+			"error":             err.Error(),
+			"error_type":        fmt.Sprintf("%T", err),
 		}
 
 		// Enhanced error reporting for JSON errors

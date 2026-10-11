@@ -131,7 +131,8 @@ export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
       const password = value.password.trim();
       if (password.length === 0) {
         errs.password = "Password hash is required when authentication is enabled.";
-      } else if (!hashRegex.test(password)) {
+      } else if (!password.startsWith("***") && !hashRegex.test(password)) {
+        // A masked value is the saved hash, which aura keeps
         errs.password = "Invalid Argon2id hash format.";
       }
     }

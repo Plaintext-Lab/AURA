@@ -43,8 +43,8 @@ func MakeHTTPRequest(ctx context.Context, url, method string, headers map[string
 			"Check error and try again",
 			map[string]any{
 				"method": method,
-				"url":    url,
-				"error":  err.Error(),
+				"url":    RedactURL(url),
+				"error":  RedactURLInText(err.Error(), url),
 			})
 		return nil, nil, *logAction.Error
 	}
@@ -96,8 +96,8 @@ func MakeHTTPRequest(ctx context.Context, url, method string, headers map[string
 			"Check error and try again",
 			map[string]any{
 				"method": method,
-				"url":    url,
-				"error":  err.Error(),
+				"url":    RedactURL(url),
+				"error":  RedactURLInText(err.Error(), url),
 			})
 		return nil, nil, *logAction.Error
 	}
@@ -110,8 +110,8 @@ func MakeHTTPRequest(ctx context.Context, url, method string, headers map[string
 			"Check error and try again",
 			map[string]any{
 				"method":      method,
-				"url":         url,
-				"error":       err.Error(),
+				"url":         RedactURL(url),
+				"error":       RedactURLInText(err.Error(), url),
 				"status_code": resp.StatusCode,
 			})
 		return nil, nil, *logAction.Error

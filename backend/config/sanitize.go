@@ -17,7 +17,7 @@ func (config *Config) SanitizeConfig(ctx context.Context) *Config {
 	c := *config
 
 	// Mask top-level sensitive fields (ensure these are value fields, not shared pointers).
-	//c.Auth.Password = MaskToken(c.Auth.Password)
+	c.Auth.Password = MaskToken(c.Auth.Password)
 	c.Mediux.ApiToken = MaskToken(c.Mediux.ApiToken)
 	c.TMDB.ApiToken = MaskToken(c.TMDB.ApiToken)
 	c.MediaServer.ApiToken = MaskToken(c.MediaServer.ApiToken)
@@ -43,6 +43,17 @@ func (config *Config) SanitizeConfig(ctx context.Context) *Config {
 				cp.Gotify = &Config_Notification_Gotify{
 					URL:      p.Gotify.URL, // URL is not sensitive
 					ApiToken: MaskToken(p.Gotify.ApiToken),
+				}
+			}
+			if p.Webhook != nil {
+				// Header values often hold credentials
+				headers := make(map[string]string, len(p.Webhook.Headers))
+				for key, value := range p.Webhook.Headers {
+					headers[key] = MaskToken(value)
+				}
+				cp.Webhook = &Config_Notification_Webhook{
+					URL:     p.Webhook.URL,
+					Headers: headers,
 				}
 			}
 			c.Notifications.Providers[i] = cp

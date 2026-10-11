@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { cn } from "@/lib/cn";
+import { log } from "@/lib/logger";
 
 import type {
   AppConfigNotificationDiscord,
@@ -932,7 +933,7 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
                                 unknownVars.length > 0
                               }
                               onClick={() => {
-                                console.log("Testing notification with template:", {
+                                log("INFO", "Settings", "Notifications", "Testing notification with template", {
                                   ...tpl,
                                   title: tpl.title || "Test Title",
                                   message: tpl.message || "Test Message",
