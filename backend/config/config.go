@@ -24,6 +24,33 @@ var (
 	AppVersion string = ""
 )
 
+// Adding a new config field:
+//  1. Add the field to its section's struct in config.go, with json and yaml tags.
+//     The yaml name is the key stored in the database, so choose it carefully.
+//     Use json:"-" only for values the frontend must never see, like APIKeyHash.
+//
+//  2. If the default isn't 0, "" or false, set it in DefaultConfig() in defaults.go.
+//     Existing installs use this default until the setting is saved.
+//
+//  3. Optional: validate it in that section's Validate function in validate.go.
+//
+//  4. Optional: if something must happen when it changes, like restarting a job, compare it in that
+//     section's checkConfigDifferences function and act on it in applyConfigChanges in routing/config/update.go.
+//
+//  5. If it's a secret, mask it in SanitizeConfig() in sanitize.go.
+//
+//  6. Update the schema snapshot: go test ./config -run TestConfigSchemaSnapshot -update
+//
+//  7. Frontend: add the field to types/config/config.ts and types/config/config-default-app.ts,
+//     add a control to components/settings-onboarding/ConfigSection<Section>.tsx, and add a search entry
+//     in helper/config/settings-search.ts. If it should only save with Test & Save, add it to
+//     CONFIG_GROUP_KEYS in hooks/use-config-autosave.ts.
+//
+//  8. Document it in docs/config.md.
+//
+// Renaming, moving or changing the type of a field: add a config migration in database/sqlite_config_migrations.go
+// Removing a field needs no migration, the stored value is ignored.
+
 type Config struct {
 	Auth            Config_Auth              `json:"auth" yaml:"Auth,omitempty"`                        // Authentication settings.
 	Logging         Config_Logging           `json:"logging" yaml:"Logging,omitempty"`                  // Logging configuration settings.
