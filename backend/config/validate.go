@@ -28,6 +28,9 @@ func (config *Config) Validate(ctx context.Context) {
 	// // Sub-action: MediaServer Config
 	isMediaServerValid := ValidateMediaServer(ctx, &config.MediaServer)
 
+	// Sub-action: MediaServers Config
+	isMediaServersValid := ValidateMediaServers(ctx, config.MediaServers, config.MainMediaServer)
+
 	// Sub-action: MediUX Config
 	isMediuxValid := ValidateMediux(ctx, &config.Mediux)
 
@@ -50,7 +53,7 @@ func (config *Config) Validate(ctx context.Context) {
 	isUserPreferencesValid := ValidateUserPreferences(ctx, &config.UserPreferences)
 
 	// If any validation failed, set status to error
-	if !isAuthValid || !isLoggingValid || !isMediaServerValid || !isMediuxValid || !isJobsValid || !isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isLabelsAndTagsValid || !isUserPreferencesValid {
+	if !isAuthValid || !isLoggingValid || !isMediaServerValid || !isMediaServersValid || !isMediuxValid || !isJobsValid || !isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isLabelsAndTagsValid || !isUserPreferencesValid {
 		logAction.SetError("Config validation failed", "One or more config sections are invalid", nil)
 		Valid = false
 	} else {
@@ -163,8 +166,20 @@ func ValidateLogging(ctx context.Context, Logging *Config_Logging) bool {
 }
 
 func ValidateMediaServer(ctx context.Context, MediaServer *Config_MediaServer) bool {
+	return validateMediaServer(ctx, MediaServer, "")
+}
+
+// validateMediaServer checks a media server. name is set for media servers that aren't the main one, so errors say which one.
+func validateMediaServer(ctx context.Context, MediaServer *Config_MediaServer, name string) bool {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Validating MediaServer Config", logging.LevelTrace)
 	defer logAction.Complete()
+
+	field := func(field string) string {
+		if name == "" {
+			return "MediaServer." + field
+		}
+		return fmt.Sprintf("Media server '%s': %s", name, field)
+	}
 
 	isValid := true
 
@@ -173,31 +188,31 @@ func ValidateMediaServer(ctx context.Context, MediaServer *Config_MediaServer) b
 
 	// Check if MediaServer.Type is set
 	if MediaServer.Type == "" {
-		logAction.SetError("MediaServer.Type is not set", "Media server type must be specified", nil)
+		logAction.SetError(field("Type")+" is not set", "Media server type must be specified", nil)
 		isValid = false
 	} else if MediaServer.Type != "Plex" && MediaServer.Type != "Emby" && MediaServer.Type != "Jellyfin" && MediaServer.Type != "Silo" {
-		logAction.SetError(fmt.Sprintf("MediaServer.Type: '%s' is not a valid type", MediaServer.Type), "Valid types are Plex, Emby, Jellyfin, Silo", nil)
+		logAction.SetError(fmt.Sprintf("%s: '%s' is not a valid type", field("Type"), MediaServer.Type), "Valid types are Plex, Emby, Jellyfin, Silo", nil)
 		isValid = false
 	}
 
 	// Check if MediaServer.URL is set
 	if MediaServer.URL == "" {
-		logAction.SetError("MediaServer.URL is not set", "Media server URL must be specified", nil)
+		logAction.SetError(field("URL")+" is not set", "Media server URL must be specified", nil)
 		isValid = false
 	} else if !strings.HasPrefix(MediaServer.URL, "http://") && !strings.HasPrefix(MediaServer.URL, "https://") {
-		logAction.SetError(fmt.Sprintf("MediaServer.URL: '%s' must start with http:// or https:// ", MediaServer.URL), "", nil)
+		logAction.SetError(fmt.Sprintf("%s: '%s' must start with http:// or https:// ", field("URL"), MediaServer.URL), "", nil)
 		isValid = false
 	}
 
 	// Check if MediaServer.ApiToken is set
 	if MediaServer.ApiToken == "" {
-		logAction.SetError("MediaServer.ApiToken is not set", "Media server ApiToken must be specified", nil)
+		logAction.SetError(field("ApiToken")+" is not set", "Media server ApiToken must be specified", nil)
 		isValid = false
 	}
 
 	// Check if MediaServer.Libraries is set
 	if len(MediaServer.Libraries) == 0 {
-		logAction.SetError("MediaServer.Libraries is not set", "At least one media server library must be specified", nil)
+		logAction.SetError(field("Libraries")+" is not set", "At least one media server library must be specified", nil)
 		isValid = false
 	}
 

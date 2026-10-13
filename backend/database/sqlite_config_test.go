@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -123,6 +124,72 @@ func TestConfigSchemaMigrations(t *testing.T) {
 	}
 }
 
+func TestMoveMediaServerToMediaServers(t *testing.T) {
+	db := openTestConfigDB(t)
+	ctx := testContext()
+
+	// A config saved before there were multiple media servers
+	if _, err := db.conn.Exec(`UPDATE ConfigSchemaVersion SET version = 1;`); err != nil {
+		t.Fatal(err)
+	}
+	if Err := db.SaveConfigValues(ctx, map[string]string{
+		"MediaServer.Type":                    `"Plex"`,
+		"MediaServer.URL":                     `"http://plex:32400"`,
+		"MediaServer.ApiToken":                `"12345"`,
+		"MediaServer.Libraries":               `[{"Title":"Movies"},{"Title":"4K Movies"}]`,
+		"MediaServer.EnablePlexEventListener": `true`,
+		"Mediux.ApiToken":                     `"mediux-token"`,
+	}, false); Err.Message != "" {
+		t.Fatal(Err.Message)
+	}
+	if Err := db.CreateConfigTables(ctx); Err.Message != "" {
+		t.Fatalf("CreateConfigTables: %s", Err.Message)
+	}
+
+	values, _ := db.GetAllConfigValues(ctx)
+	for key := range values {
+		if strings.HasPrefix(key, "MediaServer.") {
+			t.Errorf("%s should be moved to MediaServers", key)
+		}
+	}
+	cfg, decodeErrors, unknownKeys := config.ConfigFromValues(values)
+	if len(decodeErrors) > 0 || len(unknownKeys) > 0 {
+		t.Fatalf("decodeErrors = %v, unknownKeys = %v", decodeErrors, unknownKeys)
+	}
+	cfg.LoadMainMediaServer()
+	if len(cfg.MediaServers) != 1 || cfg.MainMediaServer == "" || cfg.MediaServers[0].ID != cfg.MainMediaServer {
+		t.Fatalf("MediaServers = %+v, MainMediaServer = %q", cfg.MediaServers, cfg.MainMediaServer)
+	}
+	main := cfg.MediaServer
+	if main.Name != "Plex" || !main.Enabled || main.Type != "Plex" || main.URL != "http://plex:32400" || main.ApiToken != "12345" ||
+		len(main.Libraries) != 2 || !main.EnablePlexEventListener {
+		t.Errorf("main media server = %+v", main)
+	}
+	if cfg.Mediux.ApiToken != "mediux-token" {
+		t.Error("other values should not change")
+	}
+}
+
+func TestMoveMediaServerToMediaServersNotSetUp(t *testing.T) {
+	db := openTestConfigDB(t)
+	ctx := testContext()
+
+	if _, err := db.conn.Exec(`UPDATE ConfigSchemaVersion SET version = 1;`); err != nil {
+		t.Fatal(err)
+	}
+	if Err := db.SaveConfigValues(ctx, map[string]string{"MediaServer.Type": `""`, "MediaServer.URL": `""`}, false); Err.Message != "" {
+		t.Fatal(Err.Message)
+	}
+	if Err := db.CreateConfigTables(ctx); Err.Message != "" {
+		t.Fatalf("CreateConfigTables: %s", Err.Message)
+	}
+
+	values, _ := db.GetAllConfigValues(ctx)
+	if values["MediaServers"] != "null" || values["MainMediaServer"] != `""` {
+		t.Errorf("MediaServers = %s, MainMediaServer = %s, want no media servers", values["MediaServers"], values["MainMediaServer"])
+	}
+}
+
 func writeConfigYAML(t *testing.T, url string) string {
 	t.Helper()
 	yamlFile := filepath.Join(config.ConfigPath, "config.yaml")
@@ -170,8 +237,8 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("config.yaml.imported: %v", err)
 	}
 	values, _ := db.GetAllConfigValues(ctx)
-	if values["MediaServer.URL"] != `"http://plex:32400"` {
-		t.Errorf("stored MediaServer.URL = %s", values["MediaServer.URL"])
+	if !strings.Contains(values["MediaServers"], `"URL":"http://plex:32400"`) || values["MainMediaServer"] == `""` {
+		t.Errorf("stored MediaServers = %s, MainMediaServer = %s", values["MediaServers"], values["MainMediaServer"])
 	}
 
 	// Next startup: the config loads from the database

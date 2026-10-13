@@ -125,6 +125,7 @@ func Load(ctx context.Context) {
 	if len(unknownKeys) > 0 {
 		logging.LOGGER.Debug().Timestamp().Strs("keys", unknownKeys).Msg("Ignoring stored config values that are no longer used")
 	}
+	cfg.LoadMainMediaServer()
 	actionBuild.Complete()
 
 	Current = cfg
@@ -143,9 +144,8 @@ func importConfigYAMLFile(ctx context.Context, yamlFile string, replace bool) {
 		actionRead.SetError("Failed to read config file", err.Error(), map[string]any{"path": yamlFile})
 		return
 	}
-	// Older config files don't have User Preferences, so start from the defaults
-	cfg := Config{UserPreferences: DefaultUserPreferences()}
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	cfg, err := ParseConfigYAML(data)
+	if err != nil {
 		actionRead.SetError("Failed to parse config file", err.Error(), map[string]any{"path": yamlFile})
 		return
 	}

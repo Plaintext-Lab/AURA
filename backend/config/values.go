@@ -14,12 +14,6 @@ import (
 // The key is the path of YAML field names, like "MediaServer.URL".
 // Lists and maps are stored as a single value. Values are stored as JSON.
 
-// Fields that are not stored in the database
-var configValuesExcludedKeys = map[string]bool{
-	// The User ID is retrieved from the media server on startup
-	"MediaServer.UserID": true,
-}
-
 type configField struct {
 	Key   string
 	Value reflect.Value
@@ -41,9 +35,6 @@ func collectConfigFields(v reflect.Value, prefix string, fields *[]configField) 
 			continue
 		}
 		key := joinConfigKey(prefix, name)
-		if configValuesExcludedKeys[key] {
-			continue
-		}
 
 		// Nested structs are flattened into their fields
 		if structField.Type.Kind() == reflect.Struct {

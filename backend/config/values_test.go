@@ -21,16 +21,33 @@ func testConfig() Config {
 	cfg.Auth.APIKeyHash = "$argon2id$hash"
 	cfg.Auth.AllowedOrigins = []string{"https://a.example.com", "https://b.example.com"}
 	cfg.Auth.OIDC.ClientSecret = "secret: with \"quotes\" and\nnew lines"
-	cfg.MediaServer = Config_MediaServer{
-		Type:     "Plex",
-		URL:      "http://10.1.1.100:32400",
-		ApiToken: "12345",
-		UserID:   "not-saved",
-		Libraries: []models.LibrarySection{
-			{LibrarySectionBase: models.LibrarySectionBase{ID: "1", Title: "Movies", Type: "movie"}},
+	cfg.MediaServers = []Config_MediaServer{
+		{
+			ID:       "main",
+			Name:     "Plex",
+			Enabled:  true,
+			Type:     "Plex",
+			URL:      "http://10.1.1.100:32400",
+			ApiToken: "12345",
+			UserID:   "not-saved",
+			Libraries: []models.LibrarySection{
+				{LibrarySectionBase: models.LibrarySectionBase{ID: "1", Title: "Movies", Type: "movie"}},
+			},
+			EnablePlexEventListener: true,
 		},
-		EnablePlexEventListener: true,
+		{
+			ID:         "second",
+			Name:       "Silo",
+			Enabled:    true,
+			Type:       "Silo",
+			URL:        "http://10.1.1.100:8090",
+			ApiToken:   "67890",
+			Libraries:  []models.LibrarySection{{LibrarySectionBase: models.LibrarySectionBase{ID: "movies", Title: "Films", Type: "movie"}}},
+			LibraryMap: map[string]string{"Films": "Movies"},
+		},
 	}
+	cfg.MainMediaServer = "main"
+	cfg.LoadMainMediaServer()
 	disabled := false
 	cfg.Jobs.AutoDownload.Enabled = &disabled
 	cfg.Jobs.CheckMediuxSiteLink.Enabled = nil
@@ -54,11 +71,17 @@ func TestConfigValuesRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, found := values["MediaServer.UserID"]; found {
-		t.Error("MediaServer.UserID should not be stored")
+	// The User ID and the main media server copy in MediaServer are not stored
+	for key, value := range values {
+		if strings.HasPrefix(key, "MediaServer.") || strings.Contains(value, "not-saved") {
+			t.Errorf("%s should not be stored: %s", key, value)
+		}
 	}
-	if got := values["MediaServer.URL"]; got != `"http://10.1.1.100:32400"` {
-		t.Errorf("MediaServer.URL = %s", got)
+	if got := values["MediaServers"]; !strings.Contains(got, `"URL":"http://10.1.1.100:32400"`) || !strings.Contains(got, `"LibraryMap":{"Films":"Movies"}`) {
+		t.Errorf("MediaServers = %s", got)
+	}
+	if got := values["MainMediaServer"]; got != `"main"` {
+		t.Errorf("MainMediaServer = %s", got)
 	}
 
 	loaded, decodeErrors, unknownKeys := ConfigFromValues(values)
@@ -67,7 +90,9 @@ func TestConfigValuesRoundTrip(t *testing.T) {
 	}
 
 	// The User ID is not stored, so it is empty after loading
+	loaded.LoadMainMediaServer()
 	cfg.MediaServer.UserID = ""
+	cfg.MediaServers[0].UserID = ""
 	if !reflect.DeepEqual(cfg, loaded) {
 		t.Errorf("config changed after saving and loading\nsaved:  %+v\nloaded: %+v", cfg, loaded)
 	}
@@ -83,7 +108,7 @@ func TestConfigFromValuesUsesDefaults(t *testing.T) {
 	delete(values, "Mediux.DownloadQuality")
 	// A value that doesn't decode uses the default value
 	values["Logging.Level"] = `{"not": "a string"}`
-	values["MediaServer.EnablePlexEventListener"] = `not json`
+	values["MainMediaServer"] = `not json`
 	// A value that is no longer used is reported
 	values["Removed.Field"] = `"old"`
 
@@ -96,21 +121,21 @@ func TestConfigFromValuesUsesDefaults(t *testing.T) {
 	if loaded.Logging.Level != defaults.Logging.Level {
 		t.Errorf("Logging.Level = %q, want default %q", loaded.Logging.Level, defaults.Logging.Level)
 	}
-	if loaded.MediaServer.EnablePlexEventListener != defaults.MediaServer.EnablePlexEventListener {
-		t.Errorf("MediaServer.EnablePlexEventListener = %v, want default", loaded.MediaServer.EnablePlexEventListener)
+	if loaded.MainMediaServer != defaults.MainMediaServer {
+		t.Errorf("MainMediaServer = %q, want default", loaded.MainMediaServer)
 	}
 	if _, found := decodeErrors["Logging.Level"]; !found {
 		t.Error("expected a decode error for Logging.Level")
 	}
-	if _, found := decodeErrors["MediaServer.EnablePlexEventListener"]; !found {
-		t.Error("expected a decode error for MediaServer.EnablePlexEventListener")
+	if _, found := decodeErrors["MainMediaServer"]; !found {
+		t.Error("expected a decode error for MainMediaServer")
 	}
 	if len(unknownKeys) != 1 || unknownKeys[0] != "Removed.Field" {
 		t.Errorf("unknownKeys = %v, want [Removed.Field]", unknownKeys)
 	}
 	// Other values still load
-	if loaded.MediaServer.URL != "http://10.1.1.100:32400" {
-		t.Errorf("MediaServer.URL = %q", loaded.MediaServer.URL)
+	if len(loaded.MediaServers) != 2 || loaded.MediaServers[0].URL != "http://10.1.1.100:32400" {
+		t.Errorf("MediaServers = %+v", loaded.MediaServers)
 	}
 }
 
@@ -201,9 +226,6 @@ func collectConfigSchema(t reflect.Type, prefix string, lines *[]string) {
 			continue
 		}
 		key := joinConfigKey(prefix, name)
-		if configValuesExcludedKeys[key] {
-			continue
-		}
 		if structField.Type.Kind() == reflect.Struct {
 			collectConfigSchema(structField.Type, key, lines)
 			continue

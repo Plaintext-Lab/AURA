@@ -54,7 +54,9 @@ var (
 type Config struct {
 	Auth            Config_Auth              `json:"auth" yaml:"Auth,omitempty"`                        // Authentication settings.
 	Logging         Config_Logging           `json:"logging" yaml:"Logging,omitempty"`                  // Logging configuration settings.
-	MediaServer     Config_MediaServer       `json:"media_server" yaml:"MediaServer,omitempty"`         // Media server integration settings.
+	MediaServers    []Config_MediaServer     `json:"media_servers" yaml:"MediaServers"`                 // Every media server. One of them is the main server.
+	MainMediaServer string                   `json:"main_media_server" yaml:"MainMediaServer"`          // ID of the main media server.
+	MediaServer     Config_MediaServer       `json:"media_server" yaml:"-"`                             // The main media server, kept in sync with its entry in MediaServers. Not stored.
 	Mediux          Config_Mediux            `json:"mediux" yaml:"Mediux,omitempty"`                    // MediUX integration settings.
 	Jobs            Config_Jobs              `json:"jobs" yaml:"Jobs,omitempty"`                        // Background jobs scheduling configuration.
 	Images          Config_Images            `json:"images" yaml:"Images,omitempty"`                    // Image settings.
@@ -112,11 +114,15 @@ type Config_Logging struct {
 }
 
 type Config_MediaServer struct {
+	ID                           string                  `json:"id" yaml:"ID"`                                                          // Unique ID of the media server.
+	Name                         string                  `json:"name" yaml:"Name"`                                                      // Name of the media server shown in aura.
+	Enabled                      bool                    `json:"enabled" yaml:"Enabled"`                                                // Whether aura uses this media server. The main server is always enabled.
 	Type                         string                  `json:"type" yaml:"Type"`                                                      // Type of media server (e.g., plex, emby, jellyfin).
 	URL                          string                  `json:"url" yaml:"URL"`                                                        // Base URL of the media server. This is either the IP:Port or the domain name (e.g., plex.domain.com).
 	ApiToken                     string                  `json:"api_token" yaml:"ApiToken"`                                             // Authentication token for accessing the media server.
 	Libraries                    []models.LibrarySection `json:"libraries,omitempty" yaml:"Libraries,omitempty"`                        // List of media server libraries to manage.
-	UserID                       string                  `json:"user_id,omitempty" yaml:"UserID,omitempty"`                             // User ID for accessing the media server. This is used for Emby and Jellyfin servers. For Silo servers, this is the Profile ID.
+	LibraryMap                   map[string]string       `json:"library_map,omitempty" yaml:"LibraryMap,omitempty"`                     // Which main server library each library matches, by title. Not used for the main server.
+	UserID                       string                  `json:"user_id,omitempty" yaml:"-"`                                            // User ID for accessing the media server. This is used for Emby and Jellyfin servers. For Silo servers, this is the Profile ID.
 	EnableSortByEpisodeAddedDate bool                    `json:"enable_sort_by_episode_added_date" yaml:"EnableSortByEpisodeAddedDate"` // Whether to check episodes for added date when getting Media Items. This is only for Plex servers.
 	EnablePlexEventListener      bool                    `json:"enable_plex_event_listener" yaml:"EnablePlexEventListener"`             // Whether to enable the Plex event listener for reapplying images on refresh. Plex exclusive feature.
 }

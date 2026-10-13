@@ -18,6 +18,9 @@ func (config *Config) Save(ctx context.Context) (Err logging.LogErrorInfo) {
 		return *logAction.Error
 	}
 
+	// Copy the main media server into MediaServers
+	config.SyncMediaServers()
+
 	// Sub-action: Convert config to values
 	// The User ID is not saved, as it is retrieved from the media server on startup
 	subActionConvert := logAction.AddSubAction("Convert Config to Values", logging.LevelTrace)

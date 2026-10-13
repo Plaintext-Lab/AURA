@@ -164,9 +164,46 @@ Logging:
 
 ---
 
-## MediaServer
+## MediaServers
 
-- **Example for Plex**:
+aura applies images to one **main** media server, and can also apply them to any number of other media servers. Set them up in **Settings > Media Servers**.
+
+- The main media server is the one shown on the Home page. It is the only one that saves images locally and listens for Plex events.
+- When an image is applied, it is applied on the main media server first, then on each other media server that has the same item. Items are matched by their TMDB ID, in the libraries that match the item's library on the main media server.
+- If another media server has no matching edition of a movie, the image is applied to its base movie.
+- Ratings are applied on every Plex and Silo media server, and labels on every Plex media server.
+- A media server that can't be reached is skipped and logged as a warning. It doesn't stop aura or the main media server.
+
+- **Example with a main Plex server and a Silo server**:
+
+```yaml
+MainMediaServer: f2b0e57bbb20ec07
+MediaServers:
+    - ID: f2b0e57bbb20ec07
+      Name: Plex
+      Enabled: true
+      Type: Plex
+      URL: YOUR_PLEX_SERVER_URL_HERE
+      ApiToken: YOUR_PLEX_API_TOKEN_HERE
+      Libraries:
+          - Title: 4K Movies
+          - Title: Movies
+          - Title: Series
+    - ID: 7c41d2a90b3e5f18
+      Name: Silo
+      Enabled: true
+      Type: Silo
+      URL: YOUR_SILO_SERVER_URL_HERE
+      ApiToken: YOUR_SILO_API_KEY_HERE
+      Libraries:
+          - Title: Films
+          - Title: TV Shows
+      LibraryMap:
+          Films: Movies
+          TV Shows: Series
+```
+
+- **Config files from older versions** have a single `MediaServer`. It can still be imported, and becomes the main media server:
 
 ```yaml
 MediaServer:
@@ -174,49 +211,35 @@ MediaServer:
     URL: YOUR_PLEX_SERVER_URL_HERE
     ApiToken: YOUR_PLEX_API_TOKEN_HERE
     Libraries:
-        - Title: 4K Movies
         - Title: Movies
-        - Title: 4K Series
-        - Title: Series
 ```
 
--- **Example for Emby**:
+### MainMediaServer
 
-```yaml
-MediaServer:
-    Type: Emby
-    URL: YOUR_EMBY_SERVER_URL_HERE
-    ApiToken: YOUR_EMBY_API_TOKEN_HERE
-    Libraries:
-        - Title: Movies
-        - Title: TV Shows
-```
+- **Description**: The `ID` of the main media server.
+- **Details**: Change the main media server with **Make Main** on a media server in **Settings > Media Servers**, not by editing this value. aura first shows what happens to your saved items, then moves them to the new main media server's items: their saved sets, ignored status and download history move with them. Saved items that aren't on the new main media server are kept, and marked as not on the server. The library maps change to the new main media server's libraries. The switch can't happen while downloads are in the queue.
 
--- **Example for Jellyfin**:
+### ID
 
-```yaml
-MediaServer:
-    Type: Jellyfin
-    URL: YOUR_JELLYFIN_SERVER_URL_HERE
-    ApiToken: YOUR_JELLYFIN_API_TOKEN_HERE
-    Libraries:
-        - Title: Movies
-        - Title: TV Shows
-    EnableSortByEpisodeAddedDate: false
-    EnablePlexEventListener: false
-```
+- **Description**: A unique ID for the media server.
+- **Details**: aura creates the ID when the media server is added. Keep it the same when editing a config file, as `MainMediaServer` and the saved sets use it.
 
--- **Example for Silo**:
+### Name
 
-```yaml
-MediaServer:
-    Type: Silo
-    URL: YOUR_SILO_SERVER_URL_HERE
-    ApiToken: YOUR_SILO_API_KEY_HERE
-    Libraries:
-        - Title: Movies
-        - Title: TV Shows
-```
+- **Default**: The media server type
+- **Description**: The name shown for the media server in aura.
+
+### Enabled
+
+- **Default**: `true`
+- **Options**: `true` or `false`
+- **Description**: Whether aura applies images to this media server.
+- **Details**: Turn a media server off to stop using it without removing it. The main media server is always enabled.
+
+### LibraryMap
+
+- **Description**: Which main media server library each library of this media server matches, by title.
+- **Details**: Libraries with the same title as a main media server library match it automatically. An empty value means the library doesn't match any main media server library. Not used for the main media server.
 
 ### Type
 
@@ -236,7 +259,7 @@ MediaServer:
 - **Description**: The authentication token for the media server.
 - **Details**: This option specifies the authentication token required to access the media server's API. You can obtain this token from your media server's settings or API documentation.
 - **Note**: The token is necessary for aura to authenticate and perform actions on your media server. Make sure to keep this token secure and do not share it publicly.
-- **Silo**: Create the API Key from an admin account, as applying images and refreshing metadata require admin access. Silo limits how many requests an API Key can make, and aura makes one request per item when loading your libraries. Setting the API Key's rate tier to `elevated` on the Silo server is recommended, especially for large libraries.
+- **Silo**: Create the API Key from an admin account, as applying images and refreshing metadata require admin access. Silo limits how many requests an API Key can make by default, and aura makes one request per item when loading your libraries. Setting the API Key's rate tier to `elevated` on the Silo server is recommended, especially for large libraries. If you notice that you are still hitting the rate limit, you can set it to a higher number in Silo (Admin > Settings > Security & Access, and then changing the Elevated API Key Rate Limit).
 
 ### Libraries
 
@@ -244,18 +267,18 @@ MediaServer:
 - **Details**: This option specifies the title of the library on your media server that aura will interact with. aura will use this library to manage images and metadata.
 - **Note**: Ensure that the library title matches exactly with the title on your media server, including case sensitivity. Only show and movies libraries are supported.
 
-## EnableSortByEpisodeAddedDate (Plex Only)
+### EnableSortByEpisodeAddedDate (Plex Only)
 
 - **Default**: `false`
 - **Options**: `true` or `false`
-- **Description**: Whether the option to Sort content by Episode Added Date should be enabled in the UI for Plex users.
+- **Description**: Whether the option to Sort content by Episode Added Date should be enabled in the UI for Plex users. Only used for the main media server.
 - **Details**: If set to `true`, users will have the option to sort their Plex library content by the date episodes were added. This can be useful for quickly identifying recently added content. If set to `false`, this sorting option will not be available in the UI. The recommended setting is `false` as it is very slow to sort by episode added date, especially for larger libraries.
 
-# EnablePlexEventListener (Plex Only)
+### EnablePlexEventListener (Plex Only)
 
 - **Default**: `false`
 - **Options**: `true` or `false`
-- **Description**: Whether to enable the Plex Event Listener for real-time updates for the "Refresh Metadata" action.
+- **Description**: Whether to enable the Plex Event Listener for real-time updates for the "Refresh Metadata" action. Only used for the main media server.
 - **Details**: If set to `true`, aura will listen for Plex events to trigger real-time updates when the "Refresh Metadata" action is performed. This allows for faster updates to your media library without waiting for the next scheduled update. If set to `false`, updates will only occur during the scheduled update process. Enabling this option may increase resource usage, so it is recommended to only enable it if you want real-time updates and have the resources to support it.
 
 ---

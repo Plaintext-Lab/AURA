@@ -98,9 +98,8 @@ func ImportAppConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Older config files don't have User Preferences, so start from the defaults
-	newConfig := config.Config{UserPreferences: config.DefaultUserPreferences()}
-	if err := yaml.Unmarshal([]byte(req.YAML), &newConfig); err != nil {
+	newConfig, err := config.ParseConfigYAML([]byte(req.YAML))
+	if err != nil {
 		logAction.SetError("The config file could not be read", "Make sure the file is a valid aura config file (config.yaml format)", map[string]any{"error": err.Error()})
 		httpx.SendResponse(w, ld, response)
 		return

@@ -21,6 +21,13 @@ func (config *Config) SanitizeConfig(ctx context.Context) *Config {
 	c.Mediux.ApiToken = MaskToken(c.Mediux.ApiToken)
 	c.TMDB.ApiToken = MaskToken(c.TMDB.ApiToken)
 	c.MediaServer.ApiToken = MaskToken(c.MediaServer.ApiToken)
+	if config.MediaServers != nil {
+		c.MediaServers = make([]Config_MediaServer, len(config.MediaServers))
+		for i, server := range config.MediaServers {
+			c.MediaServers[i] = server.clone()
+			c.MediaServers[i].ApiToken = MaskToken(server.ApiToken)
+		}
+	}
 	c.Auth.OIDC.ClientSecret = MaskToken(c.Auth.OIDC.ClientSecret)
 
 	// Deep copy notifications.providers slice and nested pointer
