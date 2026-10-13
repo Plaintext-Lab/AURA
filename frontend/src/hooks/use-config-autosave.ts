@@ -53,12 +53,17 @@ const valueAtPath = (value: unknown, path: string): unknown =>
 const isSecretPath = (path: string) => /token|password|secret|key|webhook/i.test(path);
 
 // savedMessage describes a saved change, e.g. "Level changed to DEBUG" or "Cache Images turned on"
-const savedMessage = (section: AppConfigSection, changes: Record<string, unknown>): string => {
+const savedMessage = (
+  section: AppConfigSection,
+  changes: Record<string, unknown>,
+  labelFor?: (section: AppConfigSection, path: string) => string | undefined
+): string => {
   const paths = changedPaths(changes);
   if (paths.length !== 1) return `${configSectionLabel(section)} settings saved`;
 
   const path = paths[0];
   const label =
+    labelFor?.(section, path) ??
     configSettingLabel(section, path) ??
     path
       .split(".")
@@ -87,6 +92,7 @@ interface UseConfigAutosaveOptions {
   setSavedConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   setDraftConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   validationErrors: Partial<Record<AppConfigSection, Record<string, string>>>;
+  settingLabel?: (section: AppConfigSection, path: string) => string | undefined; // Names settings that aren't on the Settings page
 }
 
 // Whether a validation error is for one of the group keys
@@ -102,6 +108,7 @@ export function useConfigAutosave({
   setSavedConfig,
   setDraftConfig,
   validationErrors,
+  settingLabel,
 }: UseConfigAutosaveOptions) {
   const [saveState, setSaveState] = useState<Partial<Record<AppConfigSection, ConfigSectionSaveState>>>({});
 
@@ -183,7 +190,7 @@ export function useConfigAutosave({
 
         // Offer to undo automatic saves, but not connection changes
         if (!includeGroup && !options?.silent) {
-          toast.success(savedMessage(section, changes), {
+          toast.success(savedMessage(section, changes, settingLabel), {
             id: `config-saved-${section}`,
             duration: UNDO_TOAST_MS,
             action: {
@@ -215,7 +222,7 @@ export function useConfigAutosave({
       }
       return success;
     },
-    [getChanges, setDraftConfig, setSavedConfig]
+    [getChanges, setDraftConfig, setSavedConfig, settingLabel]
   );
 
   // Schedule an automatic save for each section with changes

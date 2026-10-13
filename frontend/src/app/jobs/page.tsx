@@ -1,7 +1,8 @@
 "use client";
 
 import { ReturnErrorMessage } from "@/services/api-error-return";
-import { UpdateAppConfigSection } from "@/services/config/update-section";
+import { GetAppConfigStatus } from "@/services/config/status";
+import type { AppConfigSection } from "@/services/config/update-section";
 import type { JobInfo } from "@/services/jobs/get";
 import { GetAllJobs } from "@/services/jobs/get";
 import { RunJob } from "@/services/jobs/run";
@@ -9,10 +10,11 @@ import cronstrue from "cronstrue";
 import { CalendarClock, History, Loader2, Play, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Link from "next/link";
 
+import { ConfigSaveStatus } from "@/components/settings-onboarding/ConfigSaveStatus";
 import { ErrorMessage } from "@/components/shared/error-message";
 import Loader from "@/components/shared/loader";
 import { Badge } from "@/components/ui/badge";
@@ -24,20 +26,42 @@ import { Switch } from "@/components/ui/switch";
 
 import { cn } from "@/lib/cn";
 
-import type { APIResponse } from "@/types/api/api-response";
-import type { AppConfigJobSetting } from "@/types/config/config";
+import { useConfigAutosave } from "@/hooks/use-config-autosave";
 
-type JobEdits = Record<string, AppConfigJobSetting>;
+import type { APIResponse } from "@/types/api/api-response";
+import type { AppConfig, AppConfigJobSetting, AppConfigJobs } from "@/types/config/config";
+import { defaultAppConfig } from "@/types/config/config-default-app";
+
+const AUTOSAVE_SECTIONS: readonly AppConfigSection[] = ["jobs"];
 
 const validateCron = (expr: string): string | null => {
   const trimmed = expr.trim();
-  if (!trimmed) return "Cron expression is required when enabled.";
+  if (!trimmed) return "A schedule is needed while the job is on.";
   try {
     cronstrue.toString(trimmed);
     return null;
   } catch {
     return "Not a valid cron expression.";
   }
+};
+
+// describeCron returns the schedule in words, e.g. "At 04:00 AM"
+const describeCron = (expr: string): string | null => {
+  try {
+    return cronstrue.toString(expr.trim());
+  } catch {
+    return null;
+  }
+};
+
+// withJobValues fills in the schedules a job uses when its settings are left at the default
+const withJobValues = (cfg: AppConfig, jobs: JobInfo[]): AppConfig => {
+  const filled = { ...cfg.jobs } as Record<string, AppConfigJobSetting>;
+  for (const job of jobs) {
+    const setting = filled[job.id] ?? { cron: "" };
+    filled[job.id] = { enabled: setting.enabled ?? job.enabled, cron: setting.cron || job.spec };
+  }
+  return { ...cfg, jobs: filled as unknown as AppConfigJobs };
 };
 
 // The backend formats timestamps as "YYYY-MM-DD HH:MM:SS" with no timezone
@@ -80,12 +104,12 @@ export default function JobsPage() {
   // States - Loading & Error
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<APIResponse<JobInfo[]> | null>(null);
-  const [savingJobId, setSavingJobId] = useState<string | null>(null);
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
 
   // States - Data
   const [jobs, setJobs] = useState<JobInfo[]>([]);
-  const [edits, setEdits] = useState<JobEdits>({});
+  const [savedConfig, setSavedConfig] = useState<AppConfig>(() => defaultAppConfig());
+  const [draftConfig, setDraftConfig] = useState<AppConfig>(() => defaultAppConfig());
 
   // Ticks once a second so "Next Run" labels (and the under-a-minute countdown)
   // stay live without needing to refetch from the server.
@@ -95,35 +119,118 @@ export default function JobsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
+  // The saved jobs the run times were last loaded for
+  const lastSavedJobs = useRef("");
 
-      const jobsResponse = await GetAllJobs();
-      if (jobsResponse.status === "error") {
-        setError(ReturnErrorMessage<JobInfo[]>(jobsResponse.error?.message || "Failed to fetch jobs"));
-        setJobs([]);
-        return;
-      }
-
-      const items = jobsResponse.data?.jobs || [];
-
-      // Sort jobs by next_run date ascending
+  // Get the jobs again, keeping their order so a card doesn't move while it is being edited
+  const jobOrder = useRef<string[]>([]);
+  const fetchJobs = useCallback(async (): Promise<JobInfo[] | null> => {
+    const response = await GetAllJobs();
+    if (response.status === "error") {
+      setError(ReturnErrorMessage<JobInfo[]>(response.error?.message || "Failed to fetch jobs"));
+      return null;
+    }
+    const items = response.data?.jobs || [];
+    if (jobOrder.current.length === 0) {
+      // Soonest next run first
       items.sort((a, b) => {
         const dateA = parseServerTimestamp(a.next_run) || Infinity;
         const dateB = parseServerTimestamp(b.next_run) || Infinity;
         return dateA - dateB;
       });
-
-      setJobs(items);
-      setEdits(Object.fromEntries(items.map((job) => [job.id, { enabled: job.enabled, cron: job.spec }])) as JobEdits);
-      setError(null);
-    } catch (e) {
-      setError(ReturnErrorMessage<JobInfo[]>(e));
-      setJobs([]);
-    } finally {
-      setLoading(false);
+      jobOrder.current = items.map((job) => job.id);
+    } else {
+      const position = (id: string) => {
+        const index = jobOrder.current.indexOf(id);
+        return index === -1 ? Infinity : index;
+      };
+      items.sort((a, b) => position(a.id) - position(b.id));
     }
+    setJobs(items);
+    setError(null);
+    return items;
+  }, []);
+
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    const configResponse = await GetAppConfigStatus();
+    if (configResponse.status === "error") {
+      setError(ReturnErrorMessage<JobInfo[]>(configResponse.error?.message || "Failed to fetch configuration"));
+      setLoading(false);
+      return;
+    }
+    const items = await fetchJobs();
+    const cfg = withJobValues(configResponse.data?.status.current_setup ?? defaultAppConfig(), items ?? []);
+    lastSavedJobs.current = JSON.stringify(cfg.jobs);
+    setSavedConfig(cfg);
+    setDraftConfig(cfg);
+    setLoading(false);
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    void loadPage();
+  }, [loadPage]);
+
+  // A job that isn't on has no schedule to check
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    for (const [id, setting] of Object.entries(draftConfig.jobs ?? {}) as [string, AppConfigJobSetting][]) {
+      const cronErr = setting.enabled ? validateCron(setting.cron) : null;
+      if (cronErr) errors[id] = cronErr;
+    }
+    return { jobs: errors };
+  }, [draftConfig.jobs]);
+
+  // Saved messages name the job, e.g. "AutoDownload Job turned off"
+  const jobSettingLabel = useCallback(
+    (section: AppConfigSection, path: string) => {
+      if (section !== "jobs") return undefined;
+      const [id, field] = path.split(".");
+      const name = jobs.find((job) => job.id === id)?.job_name;
+      if (!name) return undefined;
+      return field === "cron" ? `${name} schedule` : name;
+    },
+    [jobs]
+  );
+
+  // The saved jobs section leaves out settings at their default, so fill them in again
+  const jobsRef = useRef<JobInfo[]>([]);
+  jobsRef.current = jobs;
+  const fillJobValues = useCallback(
+    (set: React.Dispatch<React.SetStateAction<AppConfig>>): React.Dispatch<React.SetStateAction<AppConfig>> =>
+      (update) =>
+        set((prev) => withJobValues(typeof update === "function" ? update(prev) : update, jobsRef.current)),
+    []
+  );
+  const setSavedJobsConfig = useMemo(() => fillJobValues(setSavedConfig), [fillJobValues]);
+  const setDraftJobsConfig = useMemo(() => fillJobValues(setDraftConfig), [fillJobValues]);
+
+  const { saveState, isBlockedByErrors, retry } = useConfigAutosave({
+    sections: AUTOSAVE_SECTIONS,
+    savedConfig,
+    draftConfig,
+    setSavedConfig: setSavedJobsConfig,
+    setDraftConfig: setDraftJobsConfig,
+    validationErrors,
+    settingLabel: jobSettingLabel,
+  });
+
+  // Get the next run times again once a schedule is saved
+  const savedJobs = JSON.stringify(savedConfig.jobs ?? {});
+  useEffect(() => {
+    if (loading || lastSavedJobs.current === savedJobs) return;
+    lastSavedJobs.current = savedJobs;
+    void fetchJobs();
+  }, [savedJobs, loading, fetchJobs]);
+
+  const updateJob = <K extends keyof AppConfigJobSetting>(jobId: string, field: K, value: AppConfigJobSetting[K]) => {
+    setDraftConfig((prev) => ({
+      ...prev,
+      jobs: {
+        ...prev.jobs,
+        [jobId]: { ...prev.jobs[jobId as keyof AppConfigJobs], [field]: value },
+      },
+    }));
   };
 
   const handleRunJobNowClick = async (job: JobInfo) => {
@@ -138,57 +245,10 @@ export default function JobsPage() {
     }
   };
 
-  const handleEditChange = <K extends keyof AppConfigJobSetting>(
-    jobId: string,
-    field: K,
-    value: AppConfigJobSetting[K]
-  ) => {
-    setEdits((prev) => ({
-      ...prev,
-      [jobId]: { ...prev[jobId], [field]: value },
-    }));
-  };
-
-  const handleDiscardClick = (job: JobInfo) => {
-    setEdits((prev) => ({ ...prev, [job.id]: { enabled: job.enabled, cron: job.spec } }));
-  };
-
-  const handleSaveJobClick = async (job: JobInfo) => {
-    const edited = edits[job.id];
-    if (!edited) return;
-
-    if (edited.enabled) {
-      const cronErr = validateCron(edited.cron);
-      if (cronErr) {
-        toast.error(cronErr);
-        return;
-      }
-    }
-
-    setSavingJobId(job.id);
-    try {
-      const response = await UpdateAppConfigSection("jobs", { [job.id]: { ...edited, cron: edited.cron.trim() } });
-      if (response.status === "error") {
-        toast.error(response.error?.message || `Failed to save "${job.job_name}"`);
-      } else if (!response.data?.changed) {
-        toast.warning("No changes to save");
-      } else {
-        toast.success(`"${job.job_name}" saved`);
-        await fetchJobs();
-      }
-    } finally {
-      setSavingJobId(null);
-    }
-  };
-
-  useEffect(() => {
-    void fetchJobs();
-  }, []);
-
-  const isJobDirty = (job: JobInfo) => {
-    const edited = edits[job.id];
-    if (!edited) return false;
-    return edited.enabled !== job.enabled || edited.cron !== job.spec;
+  const handleRefreshClick = async () => {
+    setLoading(true);
+    await fetchJobs();
+    setLoading(false);
   };
 
   return (
@@ -207,19 +267,26 @@ export default function JobsPage() {
             >
               crontab.guru
             </Link>{" "}
-            to create and test them.
+            to create and test them. Changes save automatically.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchJobs}
-          disabled={loading}
-          className="shrink-0 self-start cursor-pointer"
-        >
-          <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex shrink-0 items-center gap-3 self-start">
+          <ConfigSaveStatus
+            state={saveState.jobs}
+            blockedByErrors={isBlockedByErrors("jobs")}
+            onRetry={() => void retry("jobs")}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshClick}
+            disabled={loading}
+            className="cursor-pointer"
+          >
+            <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {loading && jobs.length === 0 ? (
@@ -231,10 +298,12 @@ export default function JobsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {jobs.map((job) => {
-            const edited = edits[job.id] ?? { enabled: job.enabled, cron: job.spec };
-            const dirty = isJobDirty(job);
-            const cronErr = edited.enabled ? validateCron(edited.cron) : null;
-            const schedule = !cronErr && edited.cron.trim() ? cronstrue.toString(edited.cron.trim()) : null;
+            const draft = draftConfig.jobs?.[job.id as keyof AppConfigJobs] ?? { enabled: job.enabled, cron: job.spec };
+            const saved = savedConfig.jobs?.[job.id as keyof AppConfigJobs];
+            const enabled = draft.enabled ?? false;
+            const changed = !!saved && (enabled !== (saved.enabled ?? false) || draft.cron !== saved.cron);
+            const cronErr = validationErrors.jobs[job.id] ?? null;
+            const schedule = !cronErr && enabled ? describeCron(draft.cron) : null;
 
             const nextRunLabel = job.enabled
               ? job.next_run
@@ -244,19 +313,19 @@ export default function JobsPage() {
             const prevRunLabel = job.prev_run ? formatPrevRun(parseServerTimestamp(job.prev_run), now) : null;
 
             return (
-              <Card key={job.id} className={cn("gap-4 p-4", dirty && "border-amber-500")}>
+              <Card key={job.id} className={cn("gap-4 p-4", changed && "border-amber-500")}>
                 {/* Name, description and on/off */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
                       <h2 className="font-semibold leading-tight">{job.job_name || "Unknown Job"}</h2>
-                      {!job.enabled && <Badge variant="secondary">Off</Badge>}
+                      {!enabled && <Badge variant="secondary">Off</Badge>}
                     </div>
                     {job.description && <p className="text-sm text-muted-foreground">{job.description}</p>}
                   </div>
                   <Switch
-                    checked={edited.enabled}
-                    onCheckedChange={(v) => handleEditChange(job.id, "enabled", v)}
+                    checked={enabled}
+                    onCheckedChange={(v) => updateJob(job.id, "enabled", v)}
                     aria-label={`Turn ${job.job_name} on or off`}
                     className="mt-0.5 cursor-pointer"
                   />
@@ -269,20 +338,20 @@ export default function JobsPage() {
                   </Label>
                   <Input
                     id={`job-cron-${job.id}`}
-                    disabled={!edited.enabled}
+                    disabled={!enabled}
                     placeholder="0 3 * * *"
-                    value={edited.cron}
-                    onChange={(e) => handleEditChange(job.id, "cron", e.target.value)}
-                    className={cn("font-mono", cronErr && "border-red-500", dirty && !cronErr && "border-amber-500")}
+                    value={draft.cron}
+                    onChange={(e) => updateJob(job.id, "cron", e.target.value)}
+                    className={cn("font-mono", cronErr ? "border-red-500" : changed && "border-amber-500")}
                   />
                   {cronErr ? (
                     <p className="text-xs text-red-500">{cronErr}</p>
                   ) : (
-                    schedule && edited.enabled && <p className="text-xs text-muted-foreground">{schedule}</p>
+                    schedule && <p className="text-xs text-muted-foreground">{schedule}</p>
                   )}
                 </div>
 
-                {/* Next and last run, and actions */}
+                {/* Next and last run, and Run Now */}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1" title={job.next_run || undefined}>
@@ -297,45 +366,20 @@ export default function JobsPage() {
                     )}
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2">
-                    {dirty ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDiscardClick(job)}
-                          disabled={savingJobId === job.id}
-                          className="cursor-pointer"
-                        >
-                          Discard
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveJobClick(job)}
-                          disabled={savingJobId === job.id || !!cronErr}
-                          className="cursor-pointer"
-                        >
-                          {savingJobId === job.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                          {savingJobId === job.id ? "Saving..." : "Save"}
-                        </Button>
-                      </>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRunJobNowClick(job)}
+                    disabled={runningJobId === job.id}
+                    className="ml-auto cursor-pointer"
+                  >
+                    {runningJobId === job.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRunJobNowClick(job)}
-                        disabled={runningJobId === job.id}
-                        className="cursor-pointer"
-                      >
-                        {runningJobId === job.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                        Run Now
-                      </Button>
+                      <Play className="h-4 w-4" />
                     )}
-                  </div>
+                    Run Now
+                  </Button>
                 </div>
               </Card>
             );
