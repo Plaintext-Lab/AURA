@@ -2,6 +2,7 @@ package utils
 
 import (
 	"aura/logging"
+	"aura/models"
 	"context"
 	"testing"
 	"time"
@@ -61,5 +62,29 @@ func TestFormatting(t *testing.T) {
 	}
 	if ParseFileSize("2048") != 2048 || ParseFileSize("big") != 0 {
 		t.Error("ParseFileSize should read a number and return 0 for anything else")
+	}
+}
+
+func TestGetFileDownloadName(t *testing.T) {
+	tests := []struct {
+		image models.ImageFile
+		want  string
+	}{
+		{models.ImageFile{Type: "poster"}, "Poster"},
+		{models.ImageFile{Type: "backdrop"}, "Backdrop"},
+		{models.ImageFile{Type: "season_poster", SeasonNumber: num(1)}, "Season 01 Poster"},
+		{models.ImageFile{Type: "season_poster", SeasonNumber: num(0)}, "Special Season Poster"},
+		{models.ImageFile{Type: "season_poster"}, "Season Poster"},
+		{models.ImageFile{Type: "titlecard", SeasonNumber: num(2), EpisodeNumber: num(3)}, "S02E03 Titlecard"},
+		{models.ImageFile{Type: "titlecard", SeasonNumber: num(2)}, "S02 Titlecard"},
+		{models.ImageFile{Type: "titlecard", EpisodeNumber: num(3)}, "E03 Titlecard"},
+		{models.ImageFile{Type: "titlecard", Title: "Pilot"}, "Pilot Titlecard"},
+		{models.ImageFile{Type: "titlecard"}, "Titlecard"},
+		{models.ImageFile{Type: "logo"}, "Movie - Image"},
+	}
+	for _, tt := range tests {
+		if got := GetFileDownloadName("Movie", tt.image); got != tt.want {
+			t.Errorf("GetFileDownloadName(%+v) = %q, want %q", tt.image, got, tt.want)
+		}
 	}
 }
