@@ -24,10 +24,10 @@ To install aura using a Dockerfile, follow these steps:
     docker build -t aura .
     ```
 
-3. Run the Docker Container (adjust the volume paths and ports as needed):
+3. Run the Docker Container (adjust the volume paths, ports and user/group IDs as needed):
 
     ```sh
-    docker run -d -p 3000:3000 -p 8888:8888 -v '/mnt/user/appdata/aura/':'/config':'rw' -v '/mnt/user/data/media/':'/data/media':'rw' aura
+    docker run -d -p 3000:3000 --user 99:100 -v '/mnt/user/appdata/aura/':'/config':'rw' -v '/mnt/user/data/media/':'/data/media':'rw' aura
     ```
 
 4. **Access the Web UI**: Open your web browser and go to `http://localhost:3000` to access the aura web interface.

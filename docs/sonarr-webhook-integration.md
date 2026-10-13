@@ -32,7 +32,7 @@ Set up a webhook in Sonarr to notify Aura when an episode file is upgraded. Aura
         ```
 
         - Replace `<AURA_HOST>` with the hostname or IP address where Aura is running.
-        - Replace `<AURA_PORT>` with the backend port number for Aura. By default, this is `8888` unless you have changed it.
+        - Replace `<AURA_PORT>` with the port you open Aura's web interface on. By default, this is `3000`.
         - Replace `4K%20Series` with your library name (URL encode spaces/special characters).
     - **Method:**  
       `POST`

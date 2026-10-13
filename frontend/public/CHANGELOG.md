@@ -6,6 +6,7 @@
 - `Database.Path` in `config.yaml` is replaced by the `DATABASE_PATH` environment variable. A custom path from an existing `config.yaml` is still used, but set `DATABASE_PATH` to the same value going forward.
 - When aura needs to be set up and no login is configured (e.g. a fresh install), the setup page asks for a setup code, which aura prints in its logs on startup. If a login is configured, setup requires logging in instead.
 - Search now requires a login when authentication is enabled.
+- Port `8888` no longer needs to be mapped. The web interface port (`3000`) also serves the API, the Sonarr webhook and the API docs (`/swagger/index.html`).
 
 ### Added
 

@@ -81,7 +81,7 @@ While this password authentication method is effective, it is important to keep 
 - **Default**: `auto`
 - **Options**: `auto`, `always`, `never`
 - **Description**: Controls the `Secure` attribute on the browser session cookie.
-- **Details**: `auto` (recommended) sets `Secure` based on whether the incoming request actually used HTTPS - this is what most self-hosted/LAN setups (e.g. `http://192.168.1.50:8888`) need, since a hardcoded `Secure` cookie is silently rejected by the browser over plain HTTP and login will appear to fail with no clear error. Only override this if you know your deployment needs it.
+- **Details**: `auto` (recommended) sets `Secure` based on whether the incoming request actually used HTTPS - this is what most self-hosted/LAN setups (e.g. `http://192.168.1.50:3000`) need, since a hardcoded `Secure` cookie is silently rejected by the browser over plain HTTP and login will appear to fail with no clear error. Only override this if you know your deployment needs it.
 
 ### TrustProxyForCookieSecure
 

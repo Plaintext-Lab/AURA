@@ -88,9 +88,8 @@ ENV XDG_CACHE_HOME=/tmp/.cache
 ENV GOCACHE=/tmp/.cache/go-build
 ENV GOMODCACHE=/tmp/.cache/go-mod
 
-# Expose the ports for both the backend and frontend
+# Expose the port of the web interface. It forwards /api and /swagger to the backend
 EXPOSE 3000
-EXPOSE 8888
 
 # Check that the backend is running and can read its database
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
