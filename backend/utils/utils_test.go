@@ -52,3 +52,14 @@ func TestIsNewerDate(t *testing.T) {
 		t.Error("an older or equal date should not be newer")
 	}
 }
+
+func TestFormatting(t *testing.T) {
+	for n, want := range map[int]string{0: "00", 7: "07", 10: "10", 123: "123"} {
+		if got := FormatIntAsTwoDigitString(n); got != want {
+			t.Errorf("FormatIntAsTwoDigitString(%d) = %q, want %q", n, got, want)
+		}
+	}
+	if ParseFileSize("2048") != 2048 || ParseFileSize("big") != 0 {
+		t.Error("ParseFileSize should read a number and return 0 for anything else")
+	}
+}
