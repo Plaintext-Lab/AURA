@@ -280,6 +280,21 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
     keywords: ["log rotation", "delete old logs", "keep logs", "retention", "backups"],
     configPath: "keep_files",
   },
+  {
+    sectionId: "backups",
+    sectionLabel: "Backups",
+    label: "Keep Backups",
+    description: "How many database backups are kept",
+    keywords: ["backup", "database", "restore", "retention"],
+    configPath: "keep",
+  },
+  {
+    sectionId: "backups",
+    sectionLabel: "Backups",
+    label: "Back Up Now",
+    description: "Back up the database now",
+    keywords: ["backup", "database", "restore", "copy"],
+  },
 
   // User Preferences
   {
@@ -402,6 +417,7 @@ const CONFIG_SECTIONS: Record<string, { sectionId: string; label: string }> = {
   logging: { sectionId: "logging", label: "Logging" },
   user_preferences: { sectionId: "user-preferences", label: "User Preferences" },
   jobs: { sectionId: "jobs", label: "Jobs" },
+  backups: { sectionId: "backups", label: "Backups" },
 };
 
 // configSectionLabel returns the name of a config section

@@ -60,6 +60,9 @@ func DefaultConfig() Config {
 			DownloadQuality: "optimized",
 		},
 		Jobs: DefaultJobsConfig(),
+		Backups: Config_Backups{
+			Keep: 7,
+		},
 		Images: Config_Images{
 			CacheImages: Config_CacheImages{
 				Enabled: false,
@@ -96,6 +99,7 @@ var JobDefaults = struct {
 	HandleTempIgnoredItems          JobSettingDefault
 	RefreshMediuxUsers              JobSettingDefault
 	CheckMediuxSiteLink             JobSettingDefault
+	BackupDatabase                  JobSettingDefault
 }{
 	AutoDownload:                    JobSettingDefault{Enabled: true, Cron: "0 0 * * *"},
 	RefreshMediaItemsAndCollections: JobSettingDefault{Enabled: true, Cron: "0 4 * * *"},
@@ -103,6 +107,7 @@ var JobDefaults = struct {
 	HandleTempIgnoredItems:          JobSettingDefault{Enabled: true, Cron: "0 */6 * * *"},
 	RefreshMediuxUsers:              JobSettingDefault{Enabled: true, Cron: "0 */12 * * *"},
 	CheckMediuxSiteLink:             JobSettingDefault{Enabled: true, Cron: "0 */1 * * *"},
+	BackupDatabase:                  JobSettingDefault{Enabled: true, Cron: "0 3 * * *"},
 }
 
 func boolPtr(b bool) *bool { return new(b) }
@@ -132,6 +137,10 @@ func DefaultJobsConfig() Config_Jobs {
 		CheckMediuxSiteLink: Config_JobSetting{
 			Enabled: boolPtr(JobDefaults.CheckMediuxSiteLink.Enabled),
 			Cron:    JobDefaults.CheckMediuxSiteLink.Cron,
+		},
+		BackupDatabase: Config_JobSetting{
+			Enabled: boolPtr(JobDefaults.BackupDatabase.Enabled),
+			Cron:    JobDefaults.BackupDatabase.Cron,
 		},
 	}
 }

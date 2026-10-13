@@ -32,6 +32,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/config.Config_Auth'
         description: Authentication settings.
+      backups:
+        allOf:
+        - $ref: '#/definitions/config.Config_Backups'
+        description: Database backup settings.
       images:
         allOf:
         - $ref: '#/definitions/config.Config_Images'
@@ -144,6 +148,12 @@ definitions:
         description: Full callback URL registered with the IdP, e.g. https://aura.example.com/api/auth/oidc/callback.
         type: string
     type: object
+  config.Config_Backups:
+    properties:
+      keep:
+        description: Number of database backups to keep before the oldest are deleted.
+        type: integer
+    type: object
   config.Config_CacheImages:
     properties:
       enabled:
@@ -190,6 +200,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/config.Config_JobSetting'
         description: Schedule for auto-downloads.
+      backup_database:
+        allOf:
+        - $ref: '#/definitions/config.Config_JobSetting'
+        description: Schedule for backing up the database.
       check_for_media_item_changes:
         allOf:
         - $ref: '#/definitions/config.Config_JobSetting'
@@ -493,6 +507,16 @@ definitions:
             type: string
           type: array
         type: object
+    type: object
+  database.DatabaseBackup:
+    properties:
+      created_at:
+        type: string
+      name:
+        type: string
+      size:
+        description: Bytes
+        type: integer
     type: object
   database.DownloadHistoryEntry:
     properties:
@@ -1468,6 +1492,38 @@ definitions:
       result:
         $ref: '#/definitions/autodownload.AutoDownloadResult'
     type: object
+  routes_db.createDatabaseBackupResponse:
+    properties:
+      backup:
+        allOf:
+        - $ref: '#/definitions/database.DatabaseBackup'
+        description: The new backup
+      backups:
+        description: Newest first
+        items:
+          $ref: '#/definitions/database.DatabaseBackup'
+        type: array
+      folder:
+        description: Where the backups are saved
+        type: string
+      keep:
+        description: How many backups are kept
+        type: integer
+    type: object
+  routes_db.databaseBackupsResponse:
+    properties:
+      backups:
+        description: Newest first
+        items:
+          $ref: '#/definitions/database.DatabaseBackup'
+        type: array
+      folder:
+        description: Where the backups are saved
+        type: string
+      keep:
+        description: How many backups are kept
+        type: integer
+    type: object
   routes_db.getAllItemsResponse:
     properties:
       items:
@@ -1980,6 +2036,7 @@ paths:
         - media_servers
         - mediux
         - jobs
+        - backups
         - images
         - tmdb
         - labels_and_tags
@@ -2448,6 +2505,64 @@ paths:
       - SessionCookie: []
       - ApiKeyAuth: []
       summary: Add Item To Database
+      tags:
+      - Database
+  /api/db/backups:
+    get:
+      description: List the database backups in the backups folder, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_db.databaseBackupsResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Get Database Backups
+      tags:
+      - Database
+    post:
+      description: Back up the database now, then delete the oldest backups so only
+        the number set in Backups.Keep are left.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_db.createDatabaseBackupResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Create Database Backup
       tags:
       - Database
   /api/db/force-recheck:

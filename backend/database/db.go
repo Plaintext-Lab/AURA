@@ -28,6 +28,9 @@ type DB interface {
 	// Check the database can be read
 	Check(ctx context.Context) error
 
+	// Back up the database to the backups folder, keeping the newest backups
+	CreateBackup(ctx context.Context, keep int) (backup DatabaseBackup, Err logging.LogErrorInfo)
+
 	// Initialize the database connection
 	Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo)
 
@@ -189,6 +192,13 @@ func Check(ctx context.Context) error {
 		return errors.New("the database is not open")
 	}
 	return Client.Check(ctx)
+}
+
+func CreateBackup(ctx context.Context, keep int) (backup DatabaseBackup, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return backup, logging.Error_DBClientNotInitialized()
+	}
+	return Client.CreateBackup(ctx, keep)
 }
 
 func GetAllConfigValues(ctx context.Context) (values map[string]string, Err logging.LogErrorInfo) {

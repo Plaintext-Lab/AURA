@@ -218,6 +218,12 @@ func runWarmup() (success bool) {
 		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Handle Temp Ignored Items cron job")
 	}
 
+	// Cronjob: Start Backup Database Job
+	err = jobs.StartBackupDatabaseJob()
+	if err != nil {
+		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Backup Database cron job")
+	}
+
 	// Cron: Start Jobs Scheduler
 	jobs.StartJobs()
 

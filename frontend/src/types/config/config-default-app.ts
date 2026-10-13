@@ -44,6 +44,10 @@ export const defaultAppConfig = (): AppConfig =>
       handle_temp_ignored_items: { enabled: true, cron: "0 */6 * * *" },
       refresh_mediux_users: { enabled: true, cron: "0 */12 * * *" },
       check_mediux_site_link: { enabled: true, cron: "0 */1 * * *" },
+      backup_database: { enabled: true, cron: "0 3 * * *" },
+    },
+    backups: {
+      keep: 7,
     },
     images: {
       cache_images: { enabled: false },

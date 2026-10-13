@@ -3,11 +3,12 @@
 import { ClearLogFiles } from "@/services/logs/clear";
 import { toast } from "sonner";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
+import { NumberInput } from "@/components/shared/number-input";
 import { PopoverHelp } from "@/components/shared/popover-help";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,48 +30,6 @@ interface ConfigSectionLoggingProps {
 }
 
 const LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
-
-// NumberInput keeps its own text, so the field can be cleared to type a new number
-function NumberInput({
-  id,
-  value,
-  disabled,
-  placeholder,
-  min,
-  max,
-  onChange,
-}: {
-  id: string;
-  value: number | undefined;
-  disabled?: boolean;
-  placeholder?: string;
-  min?: number;
-  max?: number;
-  onChange: (value: number) => void;
-}) {
-  const valueText = value?.toString() ?? "";
-  const [text, setText] = useState(valueText);
-  // Show the saved value again when it changes elsewhere
-  useEffect(() => setText(valueText), [valueText]);
-  return (
-    <Input
-      id={id}
-      type="number"
-      inputMode="numeric"
-      disabled={disabled}
-      placeholder={placeholder}
-      min={min}
-      max={max}
-      value={text}
-      onChange={(e) => {
-        setText(e.target.value);
-        const number = e.target.valueAsNumber;
-        if (!Number.isNaN(number)) onChange(number);
-      }}
-      onBlur={() => setText(valueText)}
-    />
-  );
-}
 
 export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
   value,

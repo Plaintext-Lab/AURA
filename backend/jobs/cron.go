@@ -21,6 +21,7 @@ const (
 	JobKeyHandleTempIgnoredItems          JobKey = "handle_temp_ignored_items"
 	JobKeyRefreshMediuxUsers              JobKey = "refresh_mediux_users"
 	JobKeyCheckMediuxSiteLink             JobKey = "check_mediux_site_link"
+	JobKeyBackupDatabase                  JobKey = "backup_database"
 )
 
 type jobDefinition struct {
@@ -87,6 +88,15 @@ var jobDefinitions = []jobDefinition{
 		Default:     config.JobDefaults.AutoDownload,
 		Start:       StartAutoDownloadJob,
 		RunNow:      RunAutoDownloadJobNow,
+	},
+	{
+		Key:         JobKeyBackupDatabase,
+		Name:        "Backup Database Job",
+		Description: "Saves a copy of the database, with your settings and saved sets, to the backups folder next to it. The oldest copies are deleted so only the number set in Settings > Backups are kept.",
+		Setting:     func() config.Config_JobSetting { return config.Current.Jobs.BackupDatabase },
+		Default:     config.JobDefaults.BackupDatabase,
+		Start:       StartBackupDatabaseJob,
+		RunNow:      RunBackupDatabaseJobNow,
 	},
 }
 

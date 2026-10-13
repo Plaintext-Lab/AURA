@@ -9,6 +9,7 @@ import type { AppConfigSection } from "@/services/config/update-section";
 import {
   Bell,
   Clapperboard,
+  DatabaseBackup,
   Download,
   ImageIcon,
   Loader2,
@@ -29,6 +30,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ConfigSaveStatus } from "@/components/settings-onboarding/ConfigSaveStatus";
 import { ConfigSectionAuth } from "@/components/settings-onboarding/ConfigSectionAuth";
+import { ConfigSectionBackups } from "@/components/settings-onboarding/ConfigSectionBackups";
 import { ConfigSectionImages } from "@/components/settings-onboarding/ConfigSectionImages";
 import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/ConfigSectionLabelsAndTags";
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
@@ -157,6 +159,14 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Download defaults and display options. These are saved to aura, so they apply on every device.",
     icon: UserCog,
     group: "Personal",
+  },
+  {
+    id: "backups",
+    label: "Backups",
+    description: "Backups of the database, with your settings and saved sets.",
+    icon: DatabaseBackup,
+    group: "System",
+    configSection: "backups",
   },
   {
     id: "advanced",
@@ -577,6 +587,15 @@ function SettingsPageContent() {
             dirtyFields={dirtyFieldsAs(dirty.logging)}
             onChange={(field, value) => updateConfigField("logging", field, value)}
             errorsUpdate={(errs) => updateSectionErrors("logging", errs as Record<string, string>)}
+          />
+        );
+      case "backups":
+        return (
+          <ConfigSectionBackups
+            value={draftConfig.backups}
+            dirtyFields={dirtyFieldsAs(dirty.backups)}
+            onChange={(field, value) => updateConfigField("backups", field, value)}
+            errorsUpdate={(errs) => updateSectionErrors("backups", errs as Record<string, string>)}
           />
         );
       case "user-preferences":

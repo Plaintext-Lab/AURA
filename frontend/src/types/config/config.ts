@@ -8,6 +8,7 @@ export interface AppConfig {
   main_media_server?: string; // ID of the main media server
   mediux: AppConfigMediux; // MediUX integration settings
   jobs: AppConfigJobs; // Background jobs scheduling configuration
+  backups: AppConfigBackups; // Database backup settings
   images: AppConfigImages;
   tmdb: AppConfigTMDB; // TMDB (The Movie Database) integration settings
   labels_and_tags: AppConfigLabelsAndTags; // Labels and tags management settings
@@ -75,6 +76,11 @@ export interface AppConfigJobs {
   handle_temp_ignored_items: AppConfigJobSetting; // Schedule for checking if temporarily ignored items now have sets on MediUX
   refresh_mediux_users: AppConfigJobSetting; // Schedule for refreshing tracked MediUX users/creators
   check_mediux_site_link: AppConfigJobSetting; // Schedule for checking MediUX site link availability
+  backup_database: AppConfigJobSetting; // Schedule for backing up the database
+}
+
+export interface AppConfigBackups {
+  keep: number; // Number of database backups to keep before the oldest are deleted
 }
 
 export interface AppConfigJobSetting {

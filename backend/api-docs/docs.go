@@ -563,6 +563,7 @@ const docTemplate = `{
                             "media_servers",
                             "mediux",
                             "jobs",
+                            "backups",
                             "images",
                             "tmdb",
                             "labels_and_tags",
@@ -937,6 +938,108 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/routes_db.updateItemResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/db/backups": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "List the database backups in the backups folder, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Database"
+                ],
+                "summary": "Get Database Backups",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_db.databaseBackupsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Back up the database now, then delete the oldest backups so only the number set in Backups.Keep are left.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Database"
+                ],
+                "summary": "Create Database Backup",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_db.createDatabaseBackupResponse"
                                         }
                                     }
                                 }
@@ -3970,6 +4073,14 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "backups": {
+                    "description": "Database backup settings.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_Backups"
+                        }
+                    ]
+                },
                 "images": {
                     "description": "Image settings.",
                     "allOf": [
@@ -4138,6 +4249,15 @@ const docTemplate = `{
                 }
             }
         },
+        "config.Config_Backups": {
+            "type": "object",
+            "properties": {
+                "keep": {
+                    "description": "Number of database backups to keep before the oldest are deleted.",
+                    "type": "integer"
+                }
+            }
+        },
         "config.Config_CacheImages": {
             "type": "object",
             "properties": {
@@ -4206,6 +4326,14 @@ const docTemplate = `{
             "properties": {
                 "auto_download": {
                     "description": "Schedule for auto-downloads.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_JobSetting"
+                        }
+                    ]
+                },
+                "backup_database": {
+                    "description": "Schedule for backing up the database.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/config.Config_JobSetting"
@@ -4657,6 +4785,21 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "database.DatabaseBackup": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Bytes",
+                    "type": "integer"
                 }
             }
         },
@@ -6072,6 +6215,54 @@ const docTemplate = `{
             "properties": {
                 "result": {
                     "$ref": "#/definitions/autodownload.AutoDownloadResult"
+                }
+            }
+        },
+        "routes_db.createDatabaseBackupResponse": {
+            "type": "object",
+            "properties": {
+                "backup": {
+                    "description": "The new backup",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/database.DatabaseBackup"
+                        }
+                    ]
+                },
+                "backups": {
+                    "description": "Newest first",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/database.DatabaseBackup"
+                    }
+                },
+                "folder": {
+                    "description": "Where the backups are saved",
+                    "type": "string"
+                },
+                "keep": {
+                    "description": "How many backups are kept",
+                    "type": "integer"
+                }
+            }
+        },
+        "routes_db.databaseBackupsResponse": {
+            "type": "object",
+            "properties": {
+                "backups": {
+                    "description": "Newest first",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/database.DatabaseBackup"
+                    }
+                },
+                "folder": {
+                    "description": "Where the backups are saved",
+                    "type": "string"
+                },
+                "keep": {
+                    "description": "How many backups are kept",
+                    "type": "integer"
                 }
             }
         },

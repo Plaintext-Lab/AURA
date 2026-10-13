@@ -83,6 +83,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 	mediaServersChanged, mediaServersValid := checkConfigDifferences_MediaServers(ctx, config.Current, &newConfig)
 	mediuxChanged, mediuxValid := checkConfigDifferences_Mediux(ctx, config.Current.Mediux, &newConfig.Mediux)
 	jobsChanged, jobsChangedKeys, jobsValid := checkConfigDifferences_Jobs(ctx, config.Current.Jobs, &newConfig.Jobs)
+	backupsChanged, backupsValid := checkConfigDifferences_Backups(ctx, config.Current.Backups, &newConfig.Backups)
 	imagesChanged, imagesValid := checkConfigDifferences_Images(ctx, config.Current.Images, &newConfig.Images, newConfig.MediaServer)
 	tmdbChanged, tmdbValid := checkConfigDifferences_TMDB(ctx, config.Current.TMDB, &newConfig.TMDB)
 	labelsAndTagsChanged, labelsAndTagsValid := checkConfigDifferences_LabelsAndTags(ctx, config.Current.LabelsAndTags, &newConfig.LabelsAndTags)
@@ -96,7 +97,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 		userPreferencesChanged, userPreferencesValid = checkConfigDifferences_UserPreferences(ctx, config.Current.UserPreferences, &newConfig.UserPreferences)
 	}
 
-	if !authValid || !loggingValid || !mediaServerValid || !mediaServersValid || !mediuxValid || !jobsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !userPreferencesValid {
+	if !authValid || !loggingValid || !mediaServerValid || !mediaServersValid || !mediuxValid || !jobsValid || !backupsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !userPreferencesValid {
 		ld.Status = logging.StatusError
 		message, help := "Invalid configuration", "The provided configuration is invalid. Check the results for details."
 		// Use the first error as the message, if there is one
@@ -113,6 +114,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 			"media_servers_valid":    mediaServersValid,
 			"mediux_valid":           mediuxValid,
 			"jobs_valid":             jobsValid,
+			"backups_valid":          backupsValid,
 			"images_valid":           imagesValid,
 			"tmdb_valid":             tmdbValid,
 			"labels_and_tags_valid":  labelsAndTagsValid,
@@ -125,7 +127,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 	}
 
 	if !authChanged && !loggingChanged && !mediaServerChanged && !mediaServersChanged && !mediuxChanged &&
-		!jobsChanged && !imagesChanged && !tmdbChanged && !labelsAndTagsChanged &&
+		!jobsChanged && !backupsChanged && !imagesChanged && !tmdbChanged && !labelsAndTagsChanged &&
 		!notificationsChanged && !sonarrRadarrChanged && !userPreferencesChanged {
 		// If nothing has changed AND the config is valid, log a warning
 		if config.Valid {
@@ -666,6 +668,7 @@ func checkConfigDifferences_Jobs(ctx context.Context, oldJobs config.Config_Jobs
 		{jobs.JobKeyHandleTempIgnoredItems, "HandleTempIgnoredItems", oldJobs.HandleTempIgnoredItems, &newJobs.HandleTempIgnoredItems, config.JobDefaults.HandleTempIgnoredItems},
 		{jobs.JobKeyRefreshMediuxUsers, "RefreshMediuxUsers", oldJobs.RefreshMediuxUsers, &newJobs.RefreshMediuxUsers, config.JobDefaults.RefreshMediuxUsers},
 		{jobs.JobKeyCheckMediuxSiteLink, "CheckMediuxSiteLink", oldJobs.CheckMediuxSiteLink, &newJobs.CheckMediuxSiteLink, config.JobDefaults.CheckMediuxSiteLink},
+		{jobs.JobKeyBackupDatabase, "BackupDatabase", oldJobs.BackupDatabase, &newJobs.BackupDatabase, config.JobDefaults.BackupDatabase},
 	}
 
 	for _, f := range fields {
@@ -689,6 +692,24 @@ func checkConfigDifferences_Jobs(ctx context.Context, oldJobs config.Config_Jobs
 
 	newValid = config.ValidateJobs(ctx, newJobs)
 	return changed, changedKeys, newValid
+}
+
+// checkConfigDifferences_Backups compares old and new Backups configurations.
+func checkConfigDifferences_Backups(ctx context.Context, oldBackups config.Config_Backups, newBackups *config.Config_Backups) (changed, newValid bool) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: Backups", logging.LevelTrace)
+	defer logAction.Complete()
+
+	newValid = config.ValidateBackups(ctx, newBackups)
+	if oldBackups.Keep != newBackups.Keep {
+		logAction.AppendResult("Backups.Keep changed", fmt.Sprintf("from '%d' to '%d'", oldBackups.Keep, newBackups.Keep))
+		logging.LOGGER.Info().
+			Timestamp().
+			Int("old_keep", oldBackups.Keep).
+			Int("new_keep", newBackups.Keep).
+			Msg("Backups.Keep changed")
+		changed = true
+	}
+	return changed, newValid
 }
 
 // checkConfigDifferences_Images compares old and new Images configurations.

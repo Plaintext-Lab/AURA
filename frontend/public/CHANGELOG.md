@@ -27,6 +27,7 @@
 - Added Keep Old Logs (days) and Keep Old Logs (files) to Settings > Logging, to choose how long and how many old log files are kept.
 - Added the previously hidden settings to the Settings page.
 - Added a Docker health check, so Docker, Unraid and Portainer show whether aura is healthy. `/api/health` now also reports whether aura is starting or in setup, and whether its database can be read.
+- Added daily database backups, which keep the last 7 copies in `/config/backups`. Change how many are kept, see the backups and back up now in Settings > Backups, and change the schedule on the Jobs page.
 
 ### UI Tweaks
 

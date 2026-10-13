@@ -340,6 +340,9 @@ Jobs:
     CheckMediuxSiteLink:
         Enabled: true
         Cron: "0 */1 * * *"
+    BackupDatabase:
+        Enabled: true
+        Cron: "0 3 * * *"
 ```
 
 Every job entry has the same two fields:
@@ -377,6 +380,41 @@ Every job entry has the same two fields:
 
 - **Default**: `Enabled: true`, `Cron: "0 */1 * * *"` (hourly)
 - **Description**: MediUX currently has 2 sites: one for live and one for testing. This job checks the availability of the testing site, and falls back to the live site if the testing site is unavailable.
+
+### BackupDatabase
+
+- **Default**: `Enabled: true`, `Cron: "0 3 * * *"` (daily at 3:00 AM)
+- **Description**: Saves a copy of the database, with your settings and saved sets, to the `backups` folder next to it. The oldest copies are deleted so only the number set in [Backups](#backups) are kept.
+
+---
+
+## Backups
+
+aura backs up its database with the [BackupDatabase](#backupdatabase) job. You can also back it up any time with **Back Up Now** in **Settings > Backups**, which lists the backups too.
+
+- **Example**:
+
+```yaml
+Backups:
+    Keep: 7
+```
+
+### Keep
+
+- **Default**: `7`
+- **Options**: `1` to `100`
+- **Description**: How many backups are kept. The oldest are deleted when a new backup is made.
+
+### Where Backups Are Saved
+
+Backups are saved in a `backups` folder next to the database, so `/config/backups` by default, as `AURA_<date>_<time>.db`. Each one is a complete copy of the database.
+
+To restore a backup:
+
+1. Stop aura.
+2. Move `AURA.db` out of the `/config` folder, along with `AURA.db-wal` and `AURA.db-shm` if they are there.
+3. Copy the backup into the `/config` folder and rename it to `AURA.db`.
+4. Start aura.
 
 ---
 

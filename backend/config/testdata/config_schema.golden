@@ -11,6 +11,7 @@ Auth.OIDC.RedirectURL: string
 Auth.Password: string
 Auth.SessionCookieSecure: string
 Auth.TrustProxyForCookieSecure: bool
+Backups.Keep: int
 Images.CacheImages.Enabled: bool
 Images.SaveImagesLocally.Enabled: bool
 Images.SaveImagesLocally.EpisodeNamingConvention: string
@@ -18,6 +19,8 @@ Images.SaveImagesLocally.Path: string
 Images.SaveImagesLocally.RunningOnWindows: bool
 Jobs.AutoDownload.Cron: string
 Jobs.AutoDownload.Enabled: *bool
+Jobs.BackupDatabase.Cron: string
+Jobs.BackupDatabase.Enabled: *bool
 Jobs.CheckForMediaItemChanges.Cron: string
 Jobs.CheckForMediaItemChanges.Enabled: *bool
 Jobs.CheckMediuxSiteLink.Cron: string

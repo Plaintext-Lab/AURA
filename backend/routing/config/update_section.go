@@ -83,6 +83,13 @@ var configSections = map[string]configSection{
 			return configSectionCheck{changed: changed, valid: valid, applied: configChanges{changedJobs: changedKeys}}
 		},
 	},
+	"backups": {
+		field: func(cfg *config.Config) any { return &cfg.Backups },
+		check: func(ctx context.Context, current config.Config, newConfig *config.Config) configSectionCheck {
+			changed, valid := checkConfigDifferences_Backups(ctx, current.Backups, &newConfig.Backups)
+			return configSectionCheck{changed: changed, valid: valid}
+		},
+	},
 	"images": {
 		field: func(cfg *config.Config) any { return &cfg.Images },
 		check: func(ctx context.Context, current config.Config, newConfig *config.Config) configSectionCheck {
@@ -133,7 +140,7 @@ var configSections = map[string]configSection{
 // @Tags         Config
 // @Accept       json
 // @Produce      json
-// @Param        section  path      string  true  "Config section"  Enums(auth, logging, media_server, media_servers, mediux, jobs, images, tmdb, labels_and_tags, notifications, sonarr_radarr, user_preferences)
+// @Param        section  path      string  true  "Config section"  Enums(auth, logging, media_server, media_servers, mediux, jobs, backups, images, tmdb, labels_and_tags, notifications, sonarr_radarr, user_preferences)
 // @Param        changes  body      object  true  "The settings to change, using the same field names as the config (e.g. {\"url\": \"http://plex:32400\"} for media_server)"
 // @Security     SessionCookie
 // @Security     ApiKeyAuth

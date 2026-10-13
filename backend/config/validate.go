@@ -37,6 +37,9 @@ func (config *Config) Validate(ctx context.Context) {
 	// Sub-action: Jobs Config
 	isJobsValid := ValidateJobs(ctx, &config.Jobs)
 
+	// Sub-action: Backups Config
+	isBackupsValid := ValidateBackups(ctx, &config.Backups)
+
 	// Sub-action: Images Config
 	isImagesValid := ValidateImages(ctx, &config.Images, config.MediaServer)
 
@@ -53,7 +56,7 @@ func (config *Config) Validate(ctx context.Context) {
 	isUserPreferencesValid := ValidateUserPreferences(ctx, &config.UserPreferences)
 
 	// If any validation failed, set status to error
-	if !isAuthValid || !isLoggingValid || !isMediaServerValid || !isMediaServersValid || !isMediuxValid || !isJobsValid || !isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isLabelsAndTagsValid || !isUserPreferencesValid {
+	if !isAuthValid || !isLoggingValid || !isMediaServerValid || !isMediaServersValid || !isMediuxValid || !isJobsValid || !isBackupsValid || !isImagesValid || !isNotificationsValid || !isSonarrRadarrValid || !isLabelsAndTagsValid || !isUserPreferencesValid {
 		logAction.SetError("Config validation failed", "One or more config sections are invalid", nil)
 		Valid = false
 	} else {
@@ -277,6 +280,9 @@ func ValidateJobs(ctx context.Context, Jobs *Config_Jobs) bool {
 		isValid = false
 	}
 	if !ValidateJobSetting(ctx, &Jobs.CheckMediuxSiteLink, JobDefaults.CheckMediuxSiteLink) {
+		isValid = false
+	}
+	if !ValidateJobSetting(ctx, &Jobs.BackupDatabase, JobDefaults.BackupDatabase) {
 		isValid = false
 	}
 
@@ -692,4 +698,18 @@ func (config Config) IsSetUp() bool {
 		config.MediaServer.URL != "" ||
 		config.MediaServer.ApiToken != "" ||
 		config.Mediux.ApiToken != ""
+}
+
+func ValidateBackups(ctx context.Context, Backups *Config_Backups) bool {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Validating Backups Config", logging.LevelTrace)
+	defer logAction.Complete()
+
+	// Backups.Keep: default to 7 backups, at most 100
+	if Backups.Keep <= 0 {
+		Backups.Keep = 7
+	} else if Backups.Keep > 100 {
+		logAction.SetError("Backups.Keep is too large", "Use a value between 1 and 100", nil)
+		return false
+	}
+	return true
 }

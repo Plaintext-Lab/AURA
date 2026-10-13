@@ -59,6 +59,7 @@ type Config struct {
 	MediaServer     Config_MediaServer       `json:"media_server" yaml:"-"`                             // The main media server, kept in sync with its entry in MediaServers. Not stored.
 	Mediux          Config_Mediux            `json:"mediux" yaml:"Mediux,omitempty"`                    // MediUX integration settings.
 	Jobs            Config_Jobs              `json:"jobs" yaml:"Jobs,omitempty"`                        // Background jobs scheduling configuration.
+	Backups         Config_Backups           `json:"backups" yaml:"Backups,omitempty"`                  // Database backup settings.
 	Images          Config_Images            `json:"images" yaml:"Images,omitempty"`                    // Image settings.
 	TMDB            Config_TMDB              `json:"tmdb" yaml:"TMDB,omitempty"`                        // TMDB (The Movie Database) integration settings.
 	LabelsAndTags   Config_LabelsAndTags     `json:"labels_and_tags" yaml:"LabelsAndTags,omitempty"`    // Labels and tags settings.
@@ -139,6 +140,11 @@ type Config_Jobs struct {
 	HandleTempIgnoredItems          Config_JobSetting `json:"handle_temp_ignored_items" yaml:"HandleTempIgnoredItems,omitempty"`                    // Schedule for checking if temporarily ignored items now have sets on MediUX.
 	RefreshMediuxUsers              Config_JobSetting `json:"refresh_mediux_users" yaml:"RefreshMediuxUsers,omitempty"`                             // Schedule for refreshing tracked MediUX users/creators.
 	CheckMediuxSiteLink             Config_JobSetting `json:"check_mediux_site_link" yaml:"CheckMediuxSiteLink,omitempty"`                          // Schedule for checking MediUX site link availability.
+	BackupDatabase                  Config_JobSetting `json:"backup_database" yaml:"BackupDatabase,omitempty"`                                      // Schedule for backing up the database.
+}
+
+type Config_Backups struct {
+	Keep int `json:"keep" yaml:"Keep"` // Number of database backups to keep before the oldest are deleted.
 }
 
 type Config_JobSetting struct {
