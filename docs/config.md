@@ -172,14 +172,15 @@ aura applies images to one **main** media server, and can also apply them to any
 - When an image is applied, it is applied on the main media server first, then on each other media server that has the same item. Items are matched by their TMDB ID, in the libraries that match the item's library on the main media server.
 - If another media server has no matching edition of a movie, the image is applied to its base movie.
 - Ratings are applied on every Plex and Silo media server, and labels on every Plex media server.
+- Collection images are only applied on the main media server.
 - A media server that can't be reached is skipped and logged as a warning. It doesn't stop aura or the main media server.
 
 - **Example with a main Plex server and a Silo server**:
 
 ```yaml
-MainMediaServer: f2b0e57bbb20ec07
+MainMediaServer: a1b2c3d4e5f60718
 MediaServers:
-    - ID: f2b0e57bbb20ec07
+    - ID: a1b2c3d4e5f60718
       Name: Plex
       Enabled: true
       Type: Plex
@@ -189,7 +190,7 @@ MediaServers:
           - Title: 4K Movies
           - Title: Movies
           - Title: Series
-    - ID: 7c41d2a90b3e5f18
+    - ID: 9f8e7d6c5b4a3921
       Name: Silo
       Enabled: true
       Type: Silo
@@ -217,12 +218,12 @@ MediaServer:
 ### MainMediaServer
 
 - **Description**: The `ID` of the main media server.
-- **Details**: Change the main media server with **Make Main** on a media server in **Settings > Media Servers**, not by editing this value. aura first shows what happens to your saved items, then moves them to the new main media server's items: their saved sets, ignored status and download history move with them. Saved items that aren't on the new main media server are kept, and marked as not on the server. The library maps change to the new main media server's libraries. The switch can't happen while downloads are in the queue.
+- **Details**: Change the main media server with **Make Main** on a media server in **Settings > Media Servers**, not by editing this value. aura first shows what happens to your saved items, then moves them to the new main media server's items: their saved sets, ignored status and download history move with them. Saved items that aren't on the new main media server are kept, and marked as not on the server. Saved items that become the same item on the new main media server, like two editions of a movie on a media server without editions, are merged and keep the saved sets of both. The library maps change to the new main media server's libraries. The switch can't happen while downloads are in the queue.
 
 ### ID
 
 - **Description**: A unique ID for the media server.
-- **Details**: aura creates the ID when the media server is added. Keep it the same when editing a config file, as `MainMediaServer` and the saved sets use it.
+- **Details**: aura creates the ID when the media server is added. Keep it the same when editing a config file, as `MainMediaServer` uses it.
 
 ### Name
 

@@ -30,5 +30,5 @@ The first time aura starts (or whenever its configuration needs fixing), it open
 aura stores its database (`AURA.db`, which also holds the configuration) and logs in the `/config` folder. See [Configuration](/AURA/config) for the environment variables that change these locations.
 
 - The `/config` folder must be on a local filesystem. A local Docker volume or bind mount is fine (including on a NAS), but a network share (NFS/SMB) is not supported, as the database relies on file locking and shared memory that network shares do not reliably provide.
-- While aura is running, `AURA.db-wal` and `AURA.db-shm` files will appear next to `AURA.db`. These are part of the database. To back up the database manually, stop aura first, or copy all three files together.
+- While aura is running, `AURA.db-wal` and `AURA.db-shm` files appear next to `AURA.db`. These are part of the database, and aura removes them when it stops. To back up the database manually, stop aura first, or copy all three files together.
 - aura also creates a backup of the database (e.g. `AURA_backup_v7_to_v8_<timestamp>.db`) before each database migration.
