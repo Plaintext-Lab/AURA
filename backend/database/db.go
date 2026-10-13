@@ -21,6 +21,9 @@ type DB interface {
 	// Open Database Connection
 	GetDBConnection(ctx context.Context) (conn *sql.DB, newDB bool, Err logging.LogErrorInfo)
 
+	// Close Database Connection
+	Close(ctx context.Context) (Err logging.LogErrorInfo)
+
 	// Initialize the database connection
 	Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo)
 
@@ -157,6 +160,13 @@ func Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo) {
 	}
 	Client = dbClient
 	return dbClient.Init(ctx)
+}
+
+func Close(ctx context.Context) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.LogErrorInfo{}
+	}
+	return Client.Close(ctx)
 }
 
 func GetAllConfigValues(ctx context.Context) (values map[string]string, Err logging.LogErrorInfo) {

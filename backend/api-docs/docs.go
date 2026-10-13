@@ -349,6 +349,138 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/config/main-media-server": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Make another media server the main one. The saved items move to its items, and the library maps change to its libraries.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Switch Main Media Server",
+                "parameters": [
+                    {
+                        "description": "Media server",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_config.mainMediaServerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_config.mainMediaServerResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/config/main-media-server/preview": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Show what happens to the saved items if another media server becomes the main one. Nothing is changed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Preview Main Media Server Switch",
+                "parameters": [
+                    {
+                        "description": "Media server",
+                        "name": "server",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_config.mainMediaServerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_config.mainMediaServerResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/config/template-variables": {
             "get": {
                 "security": [
@@ -422,6 +554,7 @@ const docTemplate = `{
                             "auth",
                             "logging",
                             "media_server",
+                            "media_servers",
                             "mediux",
                             "jobs",
                             "images",
@@ -3857,13 +3990,24 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "main_media_server": {
+                    "description": "ID of the main media server.",
+                    "type": "string"
+                },
                 "media_server": {
-                    "description": "Media server integration settings.",
+                    "description": "The main media server, kept in sync with its entry in MediaServers. Not stored.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/config.Config_MediaServer"
                         }
                     ]
+                },
+                "media_servers": {
+                    "description": "Every media server. One of them is the main server.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Config_MediaServer"
+                    }
                 },
                 "mediux": {
                     "description": "MediUX integration settings.",
@@ -4175,12 +4319,31 @@ const docTemplate = `{
                     "description": "Whether to check episodes for added date when getting Media Items. This is only for Plex servers.",
                     "type": "boolean"
                 },
+                "enabled": {
+                    "description": "Whether aura uses this media server. The main server is always enabled.",
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": "Unique ID of the media server.",
+                    "type": "string"
+                },
                 "libraries": {
                     "description": "List of media server libraries to manage.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.LibrarySection"
                     }
+                },
+                "library_map": {
+                    "description": "Which main server library each library matches, by title. Not used for the main server.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "description": "Name of the media server shown in aura.",
+                    "type": "string"
                 },
                 "type": {
                     "description": "Type of media server (e.g., plex, emby, jellyfin).",
@@ -4795,6 +4958,78 @@ const docTemplate = `{
                 },
                 "response_bytes": {
                     "description": "Number of bytes written in the response (middleware can capture)",
+                    "type": "integer"
+                }
+            }
+        },
+        "mediaserver.SwitchMainItem": {
+            "type": "object",
+            "properties": {
+                "edition": {
+                    "type": "string"
+                },
+                "found": {
+                    "description": "Whether the item is on the new main media server",
+                    "type": "boolean"
+                },
+                "library_title": {
+                    "type": "string"
+                },
+                "merged": {
+                    "description": "Whether another saved item becomes the same item, e.g. two editions",
+                    "type": "boolean"
+                },
+                "new_edition": {
+                    "type": "string"
+                },
+                "new_library_title": {
+                    "description": "Empty if no library on the new main media server matches",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "tmdb_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "mediaserver.SwitchMainPlan": {
+            "type": "object",
+            "properties": {
+                "blocked": {
+                    "description": "Why the switch can't happen right now",
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mediaserver.SwitchMainItem"
+                    }
+                },
+                "library_changes": {
+                    "description": "Library on the new main media server for each library on the current one",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "media_server_name": {
+                    "type": "string"
+                },
+                "merged": {
+                    "type": "integer"
+                },
+                "moved": {
+                    "type": "integer"
+                },
+                "not_found": {
                     "type": "integer"
                 }
             }
@@ -5675,6 +5910,31 @@ const docTemplate = `{
                 "yaml": {
                     "description": "The config file contents in config.yaml format",
                     "type": "string"
+                }
+            }
+        },
+        "routes_config.mainMediaServerRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "ID of the media server to make the main one",
+                    "type": "string"
+                }
+            }
+        },
+        "routes_config.mainMediaServerResponse": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "$ref": "#/definitions/mediaserver.SwitchMainPlan"
+                },
+                "status": {
+                    "description": "Set once the main media server has changed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/routes_config.AppConfigStatus"
+                        }
+                    ]
                 }
             }
         },

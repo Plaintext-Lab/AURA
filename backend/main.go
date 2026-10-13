@@ -18,9 +18,12 @@ import (
 	"aura/logging"
 	"aura/notification"
 	"aura/routing"
+	"context"
 	"os"
+	"os/signal"
 	"strings"
 	"sync/atomic"
+	"syscall"
 )
 
 var (
@@ -40,6 +43,10 @@ func init() {
 }
 
 func main() {
+	// Shut down cleanly when aura is stopped
+	stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Serve immediately with onboarding/public routes first.
 	config.AppFullyLoaded = false
 	config.AppVersion = APP_VERSION
@@ -105,6 +112,9 @@ func main() {
 		activeHandler.Store(routing.NewRouter())
 	}()
 
-	// Keep process alive while startAPI runs.
-	select {}
+	// Keep running until aura is stopped
+	<-stopCtx.Done()
+	// A second Ctrl+C stops aura right away
+	stop()
+	shutdown()
 }

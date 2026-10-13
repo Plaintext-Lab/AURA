@@ -116,3 +116,49 @@ func TestConcurrentReadThenWriteTransactionsDoNotFail(t *testing.T) {
 		t.Errorf("counter = %d, want %d", n, workers*iterations)
 	}
 }
+
+func TestCloseRemovesWALFiles(t *testing.T) {
+	db := &SQliteDB{conn: openTestDB(t)}
+	if _, err := db.conn.Exec("CREATE TABLE items (n INTEGER NOT NULL); INSERT INTO items (n) VALUES (1);"); err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(config.ConfigPath, "test.db")
+	if _, err := os.Stat(dbPath + "-wal"); err != nil {
+		t.Fatalf("expected a WAL file before closing: %v", err)
+	}
+
+	if Err := db.Close(testContext()); Err.Message != "" {
+		t.Fatalf("Close: %s", Err.Message)
+	}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if _, err := os.Stat(dbPath + suffix); !os.IsNotExist(err) {
+			t.Errorf("test.db%s still exists after Close", suffix)
+		}
+	}
+
+	// The data is in the database file
+	conn, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	var n int
+	if err := conn.QueryRow("SELECT COUNT(*) FROM items").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("items = %d, want 1", n)
+	}
+}
+
+func TestGetDBConnectionReusesTheOpenConnection(t *testing.T) {
+	db := &SQliteDB{conn: openTestDB(t)}
+	conn, _, Err := db.GetDBConnection(testContext())
+	if Err.Message != "" {
+		t.Fatalf("GetDBConnection: %s", Err.Message)
+	}
+	if conn != db.conn {
+		t.Error("GetDBConnection opened a new connection instead of using the open one")
+	}
+}

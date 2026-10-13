@@ -3,6 +3,7 @@ package jobs
 import (
 	"aura/config"
 	"aura/logging"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -117,6 +118,18 @@ func StartJobs() {
 	if c != nil {
 		c.Start()
 		logging.LOGGER.Info().Timestamp().Msg("Cron Jobs Scheduler Started")
+	}
+}
+
+// StopJobs stops the scheduler and waits for running jobs to finish, or for ctx to end
+func StopJobs(ctx context.Context) {
+	if c == nil {
+		return
+	}
+	select {
+	case <-c.Stop().Done():
+	case <-ctx.Done():
+		logging.LOGGER.Warn().Timestamp().Msg("Stopped waiting for running cron jobs to finish")
 	}
 }
 

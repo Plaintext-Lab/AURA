@@ -4,6 +4,7 @@ import (
 	"aura/logging"
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -14,6 +15,11 @@ var (
 	wakeCh   = make(chan struct{}, 1)
 	draining atomic.Bool
 	workerID = fmt.Sprintf("worker-%d", time.Now().UnixNano())
+
+	// Closed on shutdown, so the worker stops claiming jobs
+	stopCh   = make(chan struct{})
+	stopOnce sync.Once
+	workerWG sync.WaitGroup
 )
 
 // SignalNewJob wakes the worker loop to check for new pending jobs. Safe to
@@ -30,7 +36,9 @@ func SignalNewJob() {
 // enqueue) and by a periodic safety-net tick, so a job can never be picked up
 // twice: claiming is an atomic DB operation regardless of what triggered it.
 func StartWorker(ctx context.Context) {
+	workerWG.Add(1)
 	go func() {
+		defer workerWG.Done()
 		ticker := time.NewTicker(workerSafetyTickInterval)
 		defer ticker.Stop()
 
@@ -38,12 +46,29 @@ func StartWorker(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
+			case <-stopCh:
+				return
 			case <-wakeCh:
 			case <-ticker.C:
 			}
 			drainQueue(ctx)
 		}
 	}()
+}
+
+// StopWorker stops the worker from claiming more jobs and waits for the current job to finish, or for ctx to end
+func StopWorker(ctx context.Context) {
+	stopOnce.Do(func() { close(stopCh) })
+	done := make(chan struct{})
+	go func() {
+		workerWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		logging.LOGGER.Warn().Timestamp().Msg("Stopped waiting for the current download queue job to finish")
+	}
 }
 
 func drainQueue(ctx context.Context) {
@@ -56,6 +81,8 @@ func drainQueue(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-stopCh:
 			return
 		default:
 		}

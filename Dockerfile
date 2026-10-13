@@ -93,5 +93,5 @@ EXPOSE 3000
 EXPOSE 8888
 
 # Command to run both the backend and frontend
-#CMD ["sh", "-c", "./main & NODE_ENV=production npm start --prefix /frontend"]
-CMD ["sh", "-c", "./main & HOSTNAME=0.0.0.0 node server.js"]
+COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+CMD ["/app/docker-entrypoint.sh"]

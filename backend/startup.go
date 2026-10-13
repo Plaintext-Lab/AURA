@@ -12,6 +12,7 @@ import (
 	"aura/mediux"
 	"aura/utils"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -234,13 +235,17 @@ func runWarmup() (success bool) {
 	return success
 }
 
+// The HTTP server, kept so it can be shut down
+var apiServer = &http.Server{Handler: http.HandlerFunc(dispatch)}
+
 func startAPI() {
 	// Start HTTP Server
 	logging.LOGGER.Info().Timestamp().Int("port", APP_PORT).
 		Bool("full_routes", config.Loaded && config.Valid).
 		Str("log_level", logging.LOGGER.GetLevel().String()).
 		Msg("Starting HTTP Server")
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", APP_PORT), http.HandlerFunc(dispatch)); err != nil {
+	apiServer.Addr = fmt.Sprintf(":%d", APP_PORT)
+	if err := apiServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logging.LOGGER.Fatal().Err(err).Msg("Failed to start server")
 	}
 }

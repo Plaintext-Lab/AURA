@@ -72,6 +72,11 @@ func (s *SQliteDB) GetDBConnection(ctx context.Context) (conn *sql.DB, newDB boo
 	newDB = false
 	Err = logging.LogErrorInfo{}
 
+	// Use the open connection, so the last one closed on shutdown removes the WAL files
+	if s.conn != nil {
+		return s.conn, false, Err
+	}
+
 	// Get the DB path
 	dbPath := config.DatabasePath()
 
@@ -93,4 +98,23 @@ func (s *SQliteDB) GetDBConnection(ctx context.Context) (conn *sql.DB, newDB boo
 	}
 
 	return conn, newDB, Err
+}
+
+// Close moves the WAL into the database file and closes the connection.
+// SQLite removes the -wal and -shm files when the last connection closes.
+func (s *SQliteDB) Close(ctx context.Context) (Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Closing Database", logging.LevelInfo)
+	defer logAction.Complete()
+
+	if s.conn == nil {
+		return logging.LogErrorInfo{}
+	}
+	if _, err := s.conn.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE);"); err != nil {
+		logAction.AppendWarning("checkpoint_error", err.Error())
+	}
+	if err := s.conn.Close(); err != nil {
+		logAction.SetError("Failed to close the database", "", map[string]any{"error": err.Error()})
+		return *logAction.Error
+	}
+	return logging.LogErrorInfo{}
 }

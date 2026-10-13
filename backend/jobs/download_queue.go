@@ -8,3 +8,7 @@ import (
 func StartDownloadQueueWorker(ctx context.Context) {
 	downloadqueue.StartWorker(ctx)
 }
+
+func StopDownloadQueueWorker(ctx context.Context) {
+	downloadqueue.StopWorker(ctx)
+}
