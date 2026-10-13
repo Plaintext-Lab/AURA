@@ -43,3 +43,12 @@ func TestConvertDateStringToTime(t *testing.T) {
 		}
 	}
 }
+
+func TestIsNewerDate(t *testing.T) {
+	if !IsNewerDate("2025-03-05", "2025-03-04") {
+		t.Error("the 5th should be newer than the 4th")
+	}
+	if IsNewerDate("2025-03-04", "2025-03-05") || IsNewerDate("2025-03-04", "2025-03-04") {
+		t.Error("an older or equal date should not be newer")
+	}
+}
