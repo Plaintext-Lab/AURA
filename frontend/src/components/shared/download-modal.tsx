@@ -1,7 +1,7 @@
 "use client";
 
+import { compareSeasonImages, formatDownloadProgressText } from "@/helper/format-download-progress";
 import { formatDownloadSize } from "@/helper/format-download-size";
-import { makePlural } from "@/helper/make_plural";
 import { upsertSavedSets } from "@/helper/media-item-update-saved-sets";
 import { AddNewItemToDB } from "@/services/database/add";
 import { downloadImageFileForMediaItem } from "@/services/downloads/download-image";
@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation";
 
 import { AssetImage } from "@/components/shared/asset-image";
 import DownloadModalPopover from "@/components/shared/download-modal-popover";
+import { DownloadProgressBar } from "@/components/shared/download-progress-bar";
 import { PopoverHelp } from "@/components/shared/popover-help";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,7 +54,6 @@ import {
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Progress } from "@/components/ui/progress";
 import { Lead } from "@/components/ui/typography";
 
 import { cn } from "@/lib/cn";
@@ -1677,64 +1677,34 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           continue;
         }
 
-        if (totalForItem > 0) {
-          setCurrentText(`Downloading images for "${item.MediaItem.title}" (0/${totalForItem})`);
-        }
-
-        // Split poster and backdrop into separate batches, then process the rest
+        // Posters, then backdrops, then each season's poster and its titlecards, like the Download Queue
         const posterJobs = downloadJobs.filter((j) => j.payload.imageFile.type === "poster");
         const backdropJobs = downloadJobs.filter((j) => j.payload.imageFile.type === "backdrop");
-        const otherJobs = downloadJobs.filter(
-          (j) => j.payload.imageFile.type !== "poster" && j.payload.imageFile.type !== "backdrop"
-        );
+        const otherJobs = downloadJobs
+          .filter((j) => j.payload.imageFile.type !== "poster" && j.payload.imageFile.type !== "backdrop")
+          .sort((a, b) => compareSeasonImages(a.payload.imageFile, b.payload.imageFile));
+
+        // One count for all the images of the item, the same text as the Download Queue
+        let started = 0;
+        const downloadJob = async (job: (typeof downloadJobs)[number]) => {
+          if (cancelRef.current) return false;
+          started += 1;
+          const image = job.payload.imageFile;
+          setCurrentText(
+            formatDownloadProgressText(
+              { image_type: image.type, season_number: image.season_number, episode_number: image.episode_number },
+              item.MediaItem.title,
+              started,
+              totalForItem
+            )
+          );
+          return runDownloadTask(job.taskId, job.payload);
+        };
 
         let downloadResults: boolean[] = [];
-        let posterDone = 0;
-        let backdropDone = 0;
-        let otherDone = 0;
-
-        if (posterJobs.length > 0) {
-          setCurrentText(
-            `Downloading ${makePlural(posterJobs, "poster")} for "${item.MediaItem.title}" (0/${posterJobs.length})`
-          );
-          const posterResults = await runInBatches(posterJobs, DOWNLOAD_BATCH_SIZE, async (job) => {
-            if (cancelRef.current) return false;
-            const ok = await runDownloadTask(job.taskId, job.payload);
-            posterDone += 1;
-            setCurrentText(
-              `Downloading ${makePlural(posterJobs, "poster")} for "${item.MediaItem.title}" (${posterDone}/${posterJobs.length})`
-            );
-            return ok;
-          });
-          downloadResults = downloadResults.concat(posterResults);
-        }
-
-        if (backdropJobs.length > 0) {
-          setCurrentText(
-            `Downloading ${makePlural(backdropJobs, "backdrop")} for "${item.MediaItem.title}" (0/${backdropJobs.length})`
-          );
-          const backdropResults = await runInBatches(backdropJobs, DOWNLOAD_BATCH_SIZE, async (job) => {
-            if (cancelRef.current) return false;
-            const ok = await runDownloadTask(job.taskId, job.payload);
-            backdropDone += 1;
-            setCurrentText(
-              `Downloading ${makePlural(backdropJobs, "backdrop")} for "${item.MediaItem.title}" (${backdropDone}/${backdropJobs.length})`
-            );
-            return ok;
-          });
-          downloadResults = downloadResults.concat(backdropResults);
-        }
-
-        if (otherJobs.length > 0) {
-          setCurrentText(`Downloading images for "${item.MediaItem.title}" (0/${otherJobs.length})`);
-          const otherResults = await runInBatches(otherJobs, DOWNLOAD_BATCH_SIZE, async (job) => {
-            if (cancelRef.current) return false;
-            const ok = await runDownloadTask(job.taskId, job.payload);
-            otherDone += 1;
-            setCurrentText(`Downloading images for "${item.MediaItem.title}" (${otherDone}/${otherJobs.length})`);
-            return ok;
-          });
-          downloadResults = downloadResults.concat(otherResults);
+        for (const jobs of [posterJobs, backdropJobs, otherJobs]) {
+          if (jobs.length === 0) continue;
+          downloadResults = downloadResults.concat(await runInBatches(jobs, DOWNLOAD_BATCH_SIZE, downloadJob));
         }
 
         const downloadedAtLeastOneForItem = downloadResults.some(Boolean);
@@ -1999,38 +1969,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
                     const errors = getErrorsByItem(progress);
                     const hasErrors = errors.length > 0;
 
-                    return (
-                      <div className="w-full">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="relative w-full min-w-0">
-                            <Progress
-                              value={overall}
-                              className={cn(
-                                "w-full rounded-md overflow-hidden h-3",
-                                overall < 100 && "animate-pulse h-5",
-                                overall === 100 && !hasErrors && "[&>div]:bg-green-500",
-                                overall === 100 && hasErrors && "[&>div]:bg-destructive"
-                              )}
-                            />
-
-                            {overall < 100 && (
-                              <span
-                                className={cn(
-                                  "absolute inset-0 flex items-center justify-center",
-                                  "text-xs text-white pointer-events-none mt-0.5",
-                                  "px-2 min-w-0"
-                                )}
-                                title={progress.currentText}
-                              >
-                                <span className="w-full min-w-0 truncate text-center">{progress.currentText}</span>
-                              </span>
-                            )}
-                          </div>
-
-                          <span className="ml-1 text-sm text-muted-foreground min-w-[30px] text-right">{overall}%</span>
-                        </div>
-                      </div>
-                    );
+                    return <DownloadProgressBar value={overall} label={progress.currentText} hasErrors={hasErrors} />;
                   })()}
 
                 {/* Errors */}

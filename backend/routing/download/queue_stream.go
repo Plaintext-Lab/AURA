@@ -44,6 +44,10 @@ func StreamDownloadQueueEvents(w http.ResponseWriter, r *http.Request) {
 		jobs = []database.DownloadQueueJob{}
 	}
 	writeSSEEvent(w, flusher, downloadqueue.QueueEvent{Type: "snapshot", Jobs: jobs})
+	// So the progress shows straight away while a job is downloading
+	if progress := downloadqueue.QueueBroadcaster.LatestProgress(); progress != nil {
+		writeSSEEvent(w, flusher, downloadqueue.QueueEvent{Type: "job_progress", Progress: progress})
+	}
 
 	keepAlive := time.NewTicker(sseKeepAliveInterval)
 	defer keepAlive.Stop()

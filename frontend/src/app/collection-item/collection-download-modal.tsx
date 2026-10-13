@@ -14,6 +14,7 @@ import { useForm, useWatch } from "react-hook-form";
 import Link from "next/link";
 
 import { AssetImage } from "@/components/shared/asset-image";
+import { DownloadProgressBar } from "@/components/shared/download-progress-bar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,7 +31,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Progress } from "@/components/ui/progress";
 
 import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
@@ -121,13 +121,11 @@ const CollectionsDownloadModal: React.FC<CollectionsDownloadModalProps> = ({ ite
 
   type ProgressValues = {
     value: number;
-    color: string;
   };
 
   // Download Progress
   const [progressValues, setProgressValues] = useState<ProgressValues>({
     value: 0,
-    color: "",
   });
 
   const progressRef = useRef(0);
@@ -151,7 +149,6 @@ const CollectionsDownloadModal: React.FC<CollectionsDownloadModalProps> = ({ ite
     progressDownloadRef.current = 0;
     setProgressValues({
       value: 0,
-      color: "",
     });
   };
 
@@ -360,15 +357,13 @@ const CollectionsDownloadModal: React.FC<CollectionsDownloadModalProps> = ({ ite
 
               {progressValues.value > 0 && (
                 <div className="w-full">
-                  <div className="flex items-center justify-between">
-                    <Progress
-                      value={progressValues.value}
-                      className={`flex-1 
-												rounded-md ${progressValues.value < 100 ? "animate-pulse" : ""}
-												${progressValues.color ? `[&>div]:bg-${progressValues.color}-500` : ""}`}
-                    />
-                    <span className="ml-2 text-sm text-muted-foreground">{Math.round(progressValues.value)}%</span>
-                  </div>
+                  <DownloadProgressBar
+                    value={progressValues.value}
+                    label={[progress.poster_progress, progress.backdrop_progress].find((status) =>
+                      status?.toLowerCase().startsWith("downloading")
+                    )}
+                    hasErrors={!!(errors.poster_error || errors.backdrop_error)}
+                  />
 
                   {(progress.poster_progress || progress.backdrop_progress) && (
                     <div className="space-y-1 mt-2">

@@ -27,6 +27,9 @@ export interface DownloadQueueProgress {
   image_type: string;
   season_number?: number;
   episode_number?: number;
+  done: number; // Images of the job already downloaded
+  failed: number; // Images of the job that couldn't be downloaded
+  total: number; // Images the job downloads
 }
 
 export interface DownloadQueueEvent {

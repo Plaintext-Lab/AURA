@@ -1,6 +1,5 @@
 "use client";
 
-import { formatImageTypeLabel } from "@/helper/format-image-type";
 import { GetDownloadHistory } from "@/services/downloads/history-get";
 import { RemoveAllDownloadHistory } from "@/services/downloads/history-remove";
 import { GetAllDownloadQueueItems } from "@/services/downloads/queue-get";
@@ -12,6 +11,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import DownloadEntryCard from "@/components/shared/download-entry";
+import { DownloadQueueProgressPanel } from "@/components/shared/download-queue-progress";
 import { ErrorMessage } from "@/components/shared/error-message";
 import Loader from "@/components/shared/loader";
 import { ResponsiveGrid } from "@/components/shared/responsive-grid";
@@ -133,12 +133,7 @@ const DownloadQueuePage: React.FC = () => {
     .filter((j) => j.status === "pending" || j.status === "processing")
     .sort((a, b) => (a.status === b.status ? 0 : a.status === "processing" ? -1 : 1));
 
-  const progressLabel = progress
-    ? (() => {
-        const label = formatImageTypeLabel(progress);
-        return `Downloading ${label || "image"} for ${progress.media_item_title}`;
-      })()
-    : null;
+  const processingJob = activeJobs.find((j) => j.status === "processing");
 
   return (
     <div className="container mx-auto p-4 min-h-screen flex flex-col items-center">
@@ -173,8 +168,12 @@ const DownloadQueuePage: React.FC = () => {
                 </ConfirmDestructiveDialogActionButton>
               </div>
 
-              {progressLabel && (
-                <p className="w-full text-center text-sm text-muted-foreground mb-4">{progressLabel}</p>
+              {processingJob && (
+                <DownloadQueueProgressPanel
+                  progress={progress?.job_id === processingJob.id ? progress : null}
+                  processingTitle={processingJob.media_item_title}
+                  waiting={activeJobs.length - 1}
+                />
               )}
 
               {activeJobs.length === 0 ? (

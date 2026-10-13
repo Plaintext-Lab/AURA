@@ -108,6 +108,10 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 		return
 	}
 
+	// Images the job downloads, for the progress
+	total := countJobImages(queueItem)
+	done, failed := 0, 0
+
 	for _, posterSet := range queueItem.PosterSets {
 		setErrors := []string{}
 		setWarnings := []string{}
@@ -162,6 +166,9 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 				ImageType:      image.Type,
 				SeasonNumber:   image.SeasonNumber,
 				EpisodeNumber:  image.EpisodeNumber,
+				Done:           done,
+				Failed:         failed,
+				Total:          total,
 			}})
 
 			downloadFileName := utils.GetFileDownloadName(queueItem.MediaItem.Title, image)
@@ -175,7 +182,9 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 			if downloadErr.Message != "" {
 				setErrors = append(setErrors, fmt.Sprintf("%s: %s", downloadFileName, downloadErr.Message))
 				result.FailureReason = downloadErr.Message
+				failed++
 			}
+			done++
 			imageResults = append(imageResults, result)
 		}
 
@@ -262,4 +271,19 @@ func recordDownloadHistoryFailure(ctx context.Context, mediaItem models.MediaIte
 	recordDownloadHistory(ctx, mediaItem, setID, setTitle, []models.ImageDownloadResult{
 		{FailureReason: reason},
 	})
+}
+
+// countJobImages counts the images a job downloads, skipping the same sets and images as processQueueJob
+func countJobImages(queueItem models.DBSavedItem) (total int) {
+	for _, posterSet := range queueItem.PosterSets {
+		if posterSet.ID == "" || posterSet.Type == "" || posterSet.Title == "" {
+			continue
+		}
+		for _, image := range posterSet.Images {
+			if models.IsKnownImageType(image.Type) && models.ImageIsSelected(queueItem.MediaItem, posterSet.SelectedTypes, image) {
+				total++
+			}
+		}
+	}
+	return total
 }

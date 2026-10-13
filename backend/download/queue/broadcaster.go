@@ -21,11 +21,17 @@ type QueueProgress struct {
 	ImageType      string `json:"image_type"`
 	SeasonNumber   *int   `json:"season_number,omitempty"`
 	EpisodeNumber  *int   `json:"episode_number,omitempty"`
+	Done           int    `json:"done"`   // Images of the job already downloaded
+	Failed         int    `json:"failed"` // Images of the job that couldn't be downloaded
+	Total          int    `json:"total"`  // Images the job downloads
 }
 
 type broadcaster struct {
 	mu   sync.Mutex
 	subs map[chan QueueEvent]struct{}
+
+	// The latest progress, sent to new subscribers after the snapshot
+	progress *QueueProgress
 }
 
 var QueueBroadcaster = &broadcaster{subs: map[chan QueueEvent]struct{}{}}
@@ -52,6 +58,12 @@ func (b *broadcaster) Unsubscribe(ch chan QueueEvent) {
 func (b *broadcaster) Publish(evt QueueEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	switch evt.Type {
+	case "job_progress":
+		b.progress = evt.Progress
+	case "job_started", "job_finished", "queue_cleared":
+		b.progress = nil
+	}
 	for ch := range b.subs {
 		select {
 		case ch <- evt:
@@ -60,4 +72,11 @@ func (b *broadcaster) Publish(evt QueueEvent) {
 			// state from the next mutation or a fresh snapshot on reconnect.
 		}
 	}
+}
+
+// LatestProgress returns the progress of the job being downloaded, if there is one
+func (b *broadcaster) LatestProgress() *QueueProgress {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.progress
 }
