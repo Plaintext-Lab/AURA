@@ -9,6 +9,7 @@
 
 ### Added
 
+- Added support for configuring multiple Media Servers at once. This will allow user to have one Main Media Server and multiple Secondary Media Servers. The Main Media Server is used for the Home Page, Saved Sets, and Download Queue. The Secondary Media Servers have new images applied to them to maintain consistency across all media servers.
 - Added support for Silo Media Server
 - Added support for saving local images for Jellyfin/Emby/Silo users.
 - Added option to have "Add to Queue" checked by default in the Download Modal for better user experience.
@@ -43,6 +44,7 @@
 - Fixed passwords, tokens and other secrets being written to the logs and shown in the browser.
 - Fixed the Emby/Jellyfin User ID not updating when the media server token changed.
 - Fixed the Silo Profile ID not updating when the media server token changed.
+- Fixed aura not shutting down cleanly when its Docker container is stopped.
 
 ### Updated
 
