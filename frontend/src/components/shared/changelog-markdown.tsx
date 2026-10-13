@@ -15,7 +15,7 @@ export function ChangelogMarkdown({ currentVersion, children }: ChangelogMarkdow
     <div>
       <ReactMarkdown
         components={{
-          a: ({ href, children, ...props }) => {
+          a: ({ node: _node, href, children, ...props }) => {
             const isGithub = href?.includes("github.com");
             return (
               <a
@@ -30,7 +30,7 @@ export function ChangelogMarkdown({ currentVersion, children }: ChangelogMarkdow
               </a>
             );
           },
-          h2: ({ ...props }) => {
+          h2: ({ node: _node, ...props }) => {
             const headingText = Array.isArray(props.children)
               ? props.children.map(String).join("")
               : String(props.children ?? "");
@@ -110,23 +110,23 @@ export function ChangelogMarkdown({ currentVersion, children }: ChangelogMarkdow
             }
             return <h3 className="text-lg font-semibold mt-4 mb-1">{props.children}</h3>;
           },
-          ul: (props) => <ul className="text-md list-disc ml-6 mb-2" {...props} />,
-          ol: (props) => <ol className="text-md list-decimal ml-6 mb-2" {...props} />,
-          li: (props) => <li className="text-md mb-1" {...props} />,
+          ul: ({ node: _node, ...props }) => <ul className="text-md list-disc ml-6 mb-2" {...props} />,
+          ol: ({ node: _node, ...props }) => <ol className="text-md list-decimal ml-6 mb-2" {...props} />,
+          li: ({ node: _node, ...props }) => <li className="text-md mb-1" {...props} />,
           // react-markdown no longer says if code is inline, so code blocks are styled by pre
-          pre: (props) => (
+          pre: ({ node: _node, ...props }) => (
             <pre
               className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded mb-4 overflow-x-auto [&>code]:p-0 [&>code]:text-base"
               {...props}
             />
           ),
-          code: ({ className, ...props }) => (
+          code: ({ node: _node, className, ...props }) => (
             <code className={cn("bg-zinc-100 dark:bg-zinc-800 px-1 rounded text-sm", className)} {...props} />
           ),
-          blockquote: (props) => (
+          blockquote: ({ node: _node, ...props }) => (
             <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground my-4" {...props} />
           ),
-          p: (props) => <p className="mb-2" {...props} />,
+          p: ({ node: _node, ...props }) => <p className="mb-2" {...props} />,
           hr: () => <hr className="my-6 border-muted-foreground/20" />,
         }}
       >
