@@ -3,7 +3,9 @@ import type { TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS } from "@/types/ui-options";
 export interface AppConfig {
   auth: AppConfigAuth;
   logging: AppConfigLogging; // Logging configuration settings
-  media_server: AppConfigMediaServer; // Media server integration settings
+  media_server: AppConfigMediaServer; // The main media server
+  media_servers?: AppConfigMediaServer[]; // Every media server, including the main one
+  main_media_server?: string; // ID of the main media server
   mediux: AppConfigMediux; // MediUX integration settings
   jobs: AppConfigJobs; // Background jobs scheduling configuration
   images: AppConfigImages;
@@ -41,6 +43,9 @@ export interface AppConfigLogging {
 }
 
 export interface AppConfigMediaServer {
+  id?: string; // Unique ID of the media server
+  name?: string; // Name of the media server shown in aura
+  enabled?: boolean; // Whether aura uses this media server. The main server is always enabled
   type: string; // Type of media server (e.g., plex, emby, jellyfin)
   url: string; // Base URL of the media server
   api_token: string; // Authentication token for accessing the media server
@@ -48,6 +53,7 @@ export interface AppConfigMediaServer {
   user_id?: string; // User ID for accessing the media server (optional for Emby/Jellyfin)
   enable_sort_by_episode_added_date?: boolean; // Whether to enable sorting shows by latest episode added date (Plex only)
   enable_plex_event_listener?: boolean; // Whether to enable the Plex event listener for reapplying images on refresh (Plex only)
+  library_map?: Record<string, string>; // Which main server library each library matches, by title. Not used for the main server
 }
 
 export interface AppConfigMediaServerLibrary {

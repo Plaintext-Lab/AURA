@@ -35,6 +35,7 @@ import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSec
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
 import { ConfigSectionMediux } from "@/components/settings-onboarding/ConfigSectionMediux";
 import { ConfigSectionNotifications } from "@/components/settings-onboarding/ConfigSectionNotifications";
+import { ConfigSectionOtherMediaServers } from "@/components/settings-onboarding/ConfigSectionOtherMediaServers";
 import { ConfigSectionSonarrRadarr } from "@/components/settings-onboarding/ConfigSectionSonarrRadarr";
 import { UserPreferencesCard } from "@/components/settings-onboarding/UserPreferences";
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
@@ -74,6 +75,7 @@ import { useConfigAutosave } from "@/hooks/use-config-autosave";
 import type { APIResponse } from "@/types/api/api-response";
 import type { AppConfig, NotificationTemplateVariablesCatalog } from "@/types/config/config";
 import { defaultAppConfig } from "@/types/config/config-default-app";
+import type { AppStatusResponse } from "@/types/config/response-status";
 
 interface SettingsSection {
   id: string;
@@ -95,8 +97,8 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: "media-server",
-    label: "Media Server",
-    description: "The media server aura applies images to, and the libraries it manages.",
+    label: "Media Servers",
+    description: "The main media server, and any other media servers aura applies images to.",
     icon: Server,
     group: "Connections",
     configSection: "media_server",
@@ -164,6 +166,9 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "System",
   },
 ];
+
+// Config sections that are objects of settings, not the media server list
+type AppConfigObjectSection = Exclude<keyof AppConfig, "media_servers" | "main_media_server">;
 
 // Config sections that save automatically. Defined here so it stays stable
 const AUTOSAVE_SECTIONS = SETTINGS_SECTIONS.flatMap((section) =>
@@ -312,6 +317,17 @@ function SettingsPageContent() {
     validationErrors,
   });
 
+  // The other media servers are saved on their own, so only the media server list is updated
+  const applyMediaServersStatus = useCallback((status: AppStatusResponse) => {
+    const mediaServers = {
+      media_servers: status.current_setup.media_servers,
+      main_media_server: status.current_setup.main_media_server,
+    };
+    setSavedConfig((prev) => ({ ...prev, ...mediaServers }));
+    setDraftConfig((prev) => ({ ...prev, ...mediaServers }));
+    useOnboardingStore.getState().setStatus(status);
+  }, []);
+
   // Changed fields are highlighted in the cards until they are saved
   const dirty = useMemo(
     () => configDirtyFields(savedConfig, draftConfig) as Partial<Record<keyof AppConfig, unknown>>,
@@ -319,7 +335,7 @@ function SettingsPageContent() {
   );
 
   const updateConfigField = useCallback(
-    <S extends keyof AppConfig, F extends keyof AppConfig[S]>(section: S, field: F, value: AppConfig[S][F]) => {
+    <S extends AppConfigObjectSection, F extends keyof AppConfig[S]>(section: S, field: F, value: AppConfig[S][F]) => {
       setDraftConfig((prev) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
     },
     []
@@ -456,15 +472,26 @@ function SettingsPageContent() {
         );
       case "media-server":
         return (
-          <ConfigSectionMediaServer
-            value={draftConfig.media_server}
-            editing={true}
-            showActions={true}
-            configAlreadyLoaded={true}
-            dirtyFields={dirtyFieldsAs(dirty.media_server)}
-            onChange={(field, value) => updateConfigField("media_server", field, value)}
-            errorsUpdate={(errs) => updateSectionErrors("media_server", errs as Record<string, string>)}
-          />
+          <>
+            <ConfigSectionMediaServer
+              value={draftConfig.media_server}
+              editing={true}
+              showActions={true}
+              configAlreadyLoaded={true}
+              title={draftConfig.media_server.name || draftConfig.media_server.type || "Media Server"}
+              badge="Main"
+              showName={true}
+              dirtyFields={dirtyFieldsAs(dirty.media_server)}
+              onChange={(field, value) => updateConfigField("media_server", field, value)}
+              errorsUpdate={(errs) => updateSectionErrors("media_server", errs as Record<string, string>)}
+            />
+            <ConfigSectionOtherMediaServers
+              servers={savedConfig.media_servers ?? []}
+              mainMediaServer={savedConfig.main_media_server ?? ""}
+              mainLibraries={savedConfig.media_server.libraries ?? []}
+              onSaved={applyMediaServersStatus}
+            />
+          </>
         );
       case "sonarr-radarr":
         return (

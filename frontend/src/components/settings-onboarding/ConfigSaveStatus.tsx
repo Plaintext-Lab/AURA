@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, CircleDashed, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -13,7 +13,7 @@ interface ConfigSaveStatusProps {
   className?: string;
 }
 
-// Shows whether a settings section is saving, saved, or failed to save
+// Shows whether a settings section is saving, saved, or failed to save. Shows nothing until a change is saved
 export function ConfigSaveStatus({ state, blockedByErrors, onRetry, className }: ConfigSaveStatusProps) {
   const status = state?.status ?? "idle";
 
@@ -52,12 +52,8 @@ export function ConfigSaveStatus({ state, blockedByErrors, onRetry, className }:
       </span>
     );
   } else {
-    content = (
-      <span className="flex items-center gap-1.5 text-muted-foreground">
-        <CircleDashed className="h-4 w-4" />
-        Changes save automatically
-      </span>
-    );
+    // Nothing to show until a change is saved
+    return null;
   }
 
   return (

@@ -33,7 +33,29 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   // Media Server
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
+    label: "Name",
+    description: "The name shown for a media server",
+    keywords: ["server name", "rename"],
+    configPath: "name",
+  },
+  {
+    sectionId: "media-server",
+    sectionLabel: "Media Servers",
+    label: "Other Media Servers",
+    description: "Apply images to more Plex, Emby, Jellyfin or Silo servers",
+    keywords: ["multiple", "second", "add server", "another server", "secondary"],
+  },
+  {
+    sectionId: "media-server",
+    sectionLabel: "Media Servers",
+    label: "Library Mapping",
+    description: "Which main server library each library of another media server matches",
+    keywords: ["map", "match", "libraries", "other server"],
+  },
+  {
+    sectionId: "media-server",
+    sectionLabel: "Media Servers",
     label: "Type",
     description: "Plex, Emby, Jellyfin or Silo",
     keywords: ["plex", "emby", "jellyfin", "silo", "server"],
@@ -41,7 +63,7 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   },
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
     label: "URL",
     description: "The address of your media server",
     keywords: ["address", "host", "port", "server url"],
@@ -49,7 +71,7 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   },
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
     label: "Token",
     description: "The media server API token or key",
     keywords: ["api", "key", "plex token"],
@@ -57,7 +79,7 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   },
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
     label: "Libraries",
     description: "The libraries aura manages",
     keywords: ["movies", "shows", "library", "sections"],
@@ -65,7 +87,7 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   },
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
     label: 'Enable "Sort by Episode Added Date"',
     description: "Sort shows by the date their latest episode was added (Plex)",
     keywords: ["sort", "episode", "added"],
@@ -73,7 +95,7 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   },
   {
     sectionId: "media-server",
-    sectionLabel: "Media Server",
+    sectionLabel: "Media Servers",
     label: "Enable Plex Websocket Listener",
     description: "Reapply images when Plex refreshes an item",
     keywords: ["websocket", "event", "listener", "reapply", "refresh"],
@@ -370,7 +392,8 @@ export const settingURL = (entry: SettingsSearchEntry) =>
 // Settings page section of each config section, and its name
 const CONFIG_SECTIONS: Record<string, { sectionId: string; label: string }> = {
   mediux: { sectionId: "mediux", label: "MediUX" },
-  media_server: { sectionId: "media-server", label: "Media Server" },
+  media_server: { sectionId: "media-server", label: "Main Media Server" },
+  media_servers: { sectionId: "media-server", label: "Media Servers" },
   sonarr_radarr: { sectionId: "sonarr-radarr", label: "Sonarr & Radarr" },
   auth: { sectionId: "authentication", label: "Authentication" },
   images: { sectionId: "images", label: "Images" },

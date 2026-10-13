@@ -41,6 +41,10 @@ interface ConfigSectionMediaServerProps {
   autoLoadLibraries?: boolean; // Load all libraries once connected, if none are added yet
   onConnectionVerifiedChange?: (verified: boolean, checking: boolean) => void; // Reports whether the connection has been checked and works
   configAlreadyLoaded: boolean;
+  title?: string; // Card title
+  badge?: string; // Badge shown next to the title
+  isMainServer?: boolean; // Options that only apply to the main media server are hidden for the other media servers
+  showName?: boolean; // Show the name field
   dirtyFields?: Partial<Record<keyof AppConfigMediaServer, boolean>>;
   onChange: <K extends keyof AppConfigMediaServer>(field: K, value: AppConfigMediaServer[K]) => void;
   errorsUpdate?: (errors: Partial<Record<keyof AppConfigMediaServer, string>>) => void;
@@ -56,6 +60,9 @@ const SERVER_TYPE_ICONS: Record<string, string> = {
 };
 const USER_ID_REQUIRED_TYPES = new Set<string>(["Emby", "Jellyfin", "Silo"]);
 const DEFAULT_PORTS: Record<string, string> = { Plex: "32400", Emby: "8096", Jellyfin: "8096", Silo: "8090" };
+
+// Wait this long after the URL stops changing before checking the connection
+const URL_CHECK_DELAY = 800; // milliseconds
 
 // Silo uses a Profile ID instead of a User ID
 const getUserIDLabel = (type: string) => (type === "Silo" ? "Profile ID" : "User ID");
@@ -79,6 +86,10 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
   autoLoadLibraries = false,
   onConnectionVerifiedChange,
   configAlreadyLoaded,
+  title = "Media Server",
+  badge,
+  isMainServer = true,
+  showName = false,
   dirtyFields = {},
   onChange,
   errorsUpdate,
@@ -195,19 +206,34 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
     onConnectionVerifiedChange?.(connectionStatus.status === "ok" && !testingToken, testingToken);
   }, [connectionStatus.status, testingToken, onConnectionVerifiedChange]);
 
-  // Check the connection when the URL changes.
+  // Check the connection when the URL changes, once typing stops.
   // In Settings, skip the first check as it was already checked on load.
   const isFirstURLCheck = useRef(true);
+  const urlCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const skipFirstCheck = isFirstURLCheck.current && showActions;
     isFirstURLCheck.current = false;
     if (skipFirstCheck) return;
-    if (editing && value.url) {
+    if (!editing || !value.url) return;
+    urlCheckTimer.current = setTimeout(() => {
+      urlCheckTimer.current = null;
       runRemoteValidation();
-    }
+    }, URL_CHECK_DELAY);
+    return () => {
+      if (urlCheckTimer.current) clearTimeout(urlCheckTimer.current);
+      urlCheckTimer.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.url]);
 
+  // Leaving the URL field checks it right away instead of waiting
+  const checkURLNow = () => {
+    if (urlCheckTimer.current) clearTimeout(urlCheckTimer.current);
+    urlCheckTimer.current = null;
+    runRemoteValidation();
+  };
+
+  const latestCheck = useRef(0);
   const runRemoteValidation = useCallback(
     async (showToast = true) => {
       setConnectionStatus({ status: "unknown", color: GetConnectionColor("unknown") });
@@ -218,6 +244,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
       }
 
       setTestingToken(true);
+      const check = ++latestCheck.current;
       const start = Date.now();
       const { valid, message, media_server } = await ValidateMediaServerInfo(current, showToast);
       const elapsed = Date.now() - start;
@@ -226,6 +253,8 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
       if (elapsed < minDelay) {
         await new Promise((resolve) => setTimeout(resolve, minDelay - elapsed));
       }
+      // A newer check has started
+      if (check !== latestCheck.current) return;
       setTestingToken(false);
 
       if (valid) {
@@ -355,12 +384,15 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
   return (
     <Card className={`p-5 ${Object.values(displayErrors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className={`text-xl font-semibold text-${connectionStatus.color}`}>Media Server</h2>
-          <span
-            className={`h-2 w-2 rounded-full ${CONNECTION_STATUS_COLORS_BG[connectionStatus.status]} animate-pulse`}
-            title={`Connection status: ${connectionStatus.status}`}
-          />
+        <div className="space-y-1">
+          {badge && <Badge variant="secondary">{badge}</Badge>}
+          <div className="flex items-center gap-2">
+            <h2 className={`text-xl font-semibold text-${connectionStatus.color}`}>{title}</h2>
+            <span
+              className={`h-2 w-2 rounded-full ${CONNECTION_STATUS_COLORS_BG[connectionStatus.status]} animate-pulse`}
+              title={`Connection status: ${connectionStatus.status}`}
+            />
+          </div>
         </div>
         <Button
           variant="outline"
@@ -373,6 +405,28 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
           {testingToken ? "Testing..." : "Test Connection"}
         </Button>
       </div>
+
+      {/* Name */}
+      {showName && (
+        <div className={cn("space-y-1")}>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={`media-server-name-${value.id ?? "new"}`}>Name</Label>
+            {editing && (
+              <PopoverHelp ariaLabel="help-media-server-name">
+                <p>The name shown for this media server in aura.</p>
+              </PopoverHelp>
+            )}
+          </div>
+          <Input
+            id={`media-server-name-${value.id ?? "new"}`}
+            disabled={!editing}
+            placeholder={value.type || "Media Server"}
+            value={value.name ?? ""}
+            onChange={(e) => onChange("name", e.target.value)}
+            className={cn(dirtyFields.name && "border-amber-500")}
+          />
+        </div>
+      )}
 
       {/* Type */}
       <div className={cn("space-y-1")}>
@@ -561,7 +615,7 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
             placeholder="https://server.example.com"
             value={value.url}
             onChange={(e) => onChange("url", e.target.value)}
-            onBlur={() => runRemoteValidation()}
+            onBlur={checkURLNow}
             className={cn("w-full", dirtyFields.url && "border-amber-500")}
           />
 
@@ -683,7 +737,8 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
       </div>
 
       {/* Enable Sort by Episode Added Date */}
-      {value.type === "Plex" && (
+      {/* Only the main media server's items are shown on the Home page */}
+      {value.type === "Plex" && isMainServer && (
         <div
           className={cn(
             "flex items-center justify-between border rounded-md p-3 transition",
@@ -714,7 +769,8 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
       )}
 
       {/* Plex Websocket Listener */}
-      {value.type === "Plex" && (
+      {/* Only the main media server listens for Plex events */}
+      {value.type === "Plex" && isMainServer && (
         <div
           className={cn(
             "flex items-center justify-between border rounded-md p-3 transition",

@@ -21,6 +21,7 @@ import {
   Loader2,
   ScrollText,
   Server,
+  ServerCog,
   ShieldCheck,
   Sparkles,
   Tags,
@@ -39,7 +40,9 @@ import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSec
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
 import { ConfigSectionMediux } from "@/components/settings-onboarding/ConfigSectionMediux";
 import { ConfigSectionNotifications } from "@/components/settings-onboarding/ConfigSectionNotifications";
+import { ConfigSectionOtherMediaServersSetup } from "@/components/settings-onboarding/ConfigSectionOtherMediaServersSetup";
 import { ConfigSectionSonarrRadarr } from "@/components/settings-onboarding/ConfigSectionSonarrRadarr";
+import { NEW_SERVER_PREFIX } from "@/components/settings-onboarding/OtherMediaServerFields";
 import { MediuxLogoIcon } from "@/components/shared/mediux-logo-icon";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,7 +54,7 @@ import { cn } from "@/lib/cn";
 import { redactSecrets } from "@/lib/redact";
 import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 
-import type { AppConfig, NotificationTemplateVariablesCatalog } from "@/types/config/config";
+import type { AppConfig, AppConfigMediaServer, NotificationTemplateVariablesCatalog } from "@/types/config/config";
 import { defaultAppConfig } from "@/types/config/config-default-app";
 
 type SectionGroup = "Get Started" | "Required" | "Optional" | "Finish";
@@ -88,6 +91,14 @@ const SECTIONS: OnboardingSection[] = [
     icon: Server,
     group: "Required",
     configSection: "media_server",
+  },
+  {
+    id: "other-media-servers",
+    label: "Other Media Servers",
+    description: "Other media servers aura also applies images to. Only the main media server saves images locally.",
+    icon: ServerCog,
+    group: "Optional",
+    configSection: "media_servers",
   },
   {
     id: "authentication",
@@ -156,7 +167,7 @@ const SECTIONS: OnboardingSection[] = [
 const GROUPS: SectionGroup[] = ["Get Started", "Required", "Optional", "Finish"];
 
 // Sections with a connection that must be checked before moving on
-const CONNECTION_SECTIONS = ["mediux", "media-server", "sonarr-radarr"] as const;
+const CONNECTION_SECTIONS = ["mediux", "media-server", "other-media-servers", "sonarr-radarr"] as const;
 type ConnectionSectionId = (typeof CONNECTION_SECTIONS)[number];
 const isConnectionSection = (sectionId: string): sectionId is ConnectionSectionId =>
   (CONNECTION_SECTIONS as readonly string[]).includes(sectionId);
@@ -288,6 +299,26 @@ const OnboardingPage = () => {
       );
     },
     []
+  );
+
+  // The other media servers. The main one stays in media_servers when it is already saved.
+  const otherMediaServers = useMemo(
+    () =>
+      (configState.media_servers ?? []).filter(
+        (server) => !configState.main_media_server || server.id !== configState.main_media_server
+      ),
+    [configState.media_servers, configState.main_media_server]
+  );
+  const updateOtherMediaServers = useCallback((update: (servers: AppConfigMediaServer[]) => AppConfigMediaServer[]) => {
+    setConfigState((prev) => {
+      const isMain = (server: AppConfigMediaServer) => !!prev.main_media_server && server.id === prev.main_media_server;
+      const all = prev.media_servers ?? [];
+      return { ...prev, media_servers: [...all.filter(isMain), ...update(all.filter((server) => !isMain(server)))] };
+    });
+  }, []);
+  const updateOtherMediaServerErrors = useCallback(
+    (errs: Record<string, string>) => updateSectionErrors("media_servers", errs),
+    [updateSectionErrors]
   );
 
   const updateImagesField = useCallback(
@@ -448,7 +479,13 @@ const OnboardingPage = () => {
     setApplyLoading(true);
 
     try {
-      const resp = await UpdateAppConfig(configState);
+      // Media servers added during setup get their ID when they are saved
+      const resp = await UpdateAppConfig({
+        ...configState,
+        media_servers: configState.media_servers?.map((server) =>
+          server.id?.startsWith(NEW_SERVER_PREFIX) ? { ...server, id: undefined } : server
+        ),
+      });
       if (resp.status === "success") {
         if (resp.data?.status) {
           const finalizeResp = await finalizeOnboarding(resp.data.status.current_setup);
@@ -534,6 +571,16 @@ const OnboardingPage = () => {
             dirtyFields={{}}
             onChange={(f, v) => updateSectionField("media_server", f, v)}
             errorsUpdate={(errs) => updateSectionErrors("media_server", errs as Record<string, string>)}
+          />
+        );
+      case "other-media-servers":
+        return (
+          <ConfigSectionOtherMediaServersSetup
+            servers={otherMediaServers}
+            mainLibraries={configState.media_server.libraries ?? []}
+            onChange={updateOtherMediaServers}
+            onConnectionVerifiedChange={connectionReporters["other-media-servers"]}
+            errorsUpdate={updateOtherMediaServerErrors}
           />
         );
       case "authentication":
