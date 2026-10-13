@@ -11,3 +11,11 @@ trap 'rm -rf "$CONFIG_PATH"' EXIT
 
 go vet ./...
 go test "$@" ./...
+
+# Every package should have tests. api-docs is generated, so it has none
+untested=$(go list -f '{{if and (not .TestGoFiles) (not .XTestGoFiles)}}{{.ImportPath}}{{end}}' ./... | grep -v '^aura/api-docs$' || true)
+if [ -n "$untested" ]; then
+	echo
+	echo "Packages without tests:"
+	echo "$untested" | sed 's/^/  /'
+fi
