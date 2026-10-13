@@ -101,3 +101,17 @@ func TestMediaItemInfo(t *testing.T) {
 		t.Errorf("CollectionItemInfo = %q", got)
 	}
 }
+
+func TestRenderTemplate(t *testing.T) {
+	vars := MergeTemplateVars(map[string]string{"Title": "Old"}, map[string]string{"Title": "Movie", "Year": "2020"})
+	got := RenderTemplate("{{Title}} ({{ Year }}) {{Unknown}}", vars)
+	if want := "Movie (2020) {{Unknown}}"; got != want {
+		t.Errorf("RenderTemplate = %q, want %q", got, want)
+	}
+	if RenderTemplate("", vars) != "" {
+		t.Error("an empty template should stay empty")
+	}
+	if _, ok := BaseTemplateVars()["Timestamp"]; !ok {
+		t.Error("the base variables should include the timestamp")
+	}
+}
