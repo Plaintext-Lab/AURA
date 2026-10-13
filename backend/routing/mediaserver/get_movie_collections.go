@@ -125,7 +125,7 @@ func getEmbyJellyfinMovieCollections(ctx context.Context) (collections []models.
 	collections = []models.CollectionItem{}
 
 	// Get the Media Server Collection Section
-	collectionSection, Err := ej.GetMovieCollectionSection(ctx)
+	collectionSection, Err := ej.GetMovieCollectionSection(ctx, config.Current.MediaServer)
 	if Err.Message != "" {
 		return collections, Err
 	}

@@ -1,6 +1,7 @@
 package silo
 
 import (
+	"aura/config"
 	"aura/database"
 	"aura/logging"
 	"context"
@@ -31,7 +32,7 @@ var (
 	itemInfoLoaded bool
 )
 
-func getItemInfo(ctx context.Context, contentID string) (itemInfo siloItemInfo, Err logging.LogErrorInfo) {
+func getItemInfo(ctx context.Context, msConfig config.Config_MediaServer, contentID string) (itemInfo siloItemInfo, Err logging.LogErrorInfo) {
 	// Load the saved item info from the database
 	loadItemInfo(ctx)
 
@@ -44,7 +45,7 @@ func getItemInfo(ctx context.Context, contentID string) (itemInfo siloItemInfo, 
 	}
 
 	// Get the Media Item details from Silo, which also saves the item info
-	siloResp, Err := getCatalogItemDetail(ctx, contentID, "")
+	siloResp, Err := getCatalogItemDetail(ctx, msConfig, contentID, "")
 	if Err.Message != "" {
 		return itemInfo, Err
 	}

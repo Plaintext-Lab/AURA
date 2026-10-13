@@ -14,7 +14,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func applyImageToMediaItem(ctx context.Context, item *models.MediaItem, itemRatingKey, imageURL, imageType string) (Err logging.LogErrorInfo) {
+func applyImageToMediaItem(ctx context.Context, msConfig config.Config_MediaServer, item *models.MediaItem, itemRatingKey, imageURL, imageType string) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Silo: Applying '%s' Image to %s",
 		cases.Title(language.English).String(imageType), utils.MediaItemInfo(*item),
@@ -38,7 +38,7 @@ func applyImageToMediaItem(ctx context.Context, item *models.MediaItem, itemRati
 	}
 
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "admin", "items", itemRatingKey, "images", "apply")
+	u, err := apiURL(msConfig.URL, "admin", "items", itemRatingKey, "images", "apply")
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return *logAction.Error
@@ -49,7 +49,7 @@ func applyImageToMediaItem(ctx context.Context, item *models.MediaItem, itemRati
 	})
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "POST", body)
+	_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "POST", body)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error

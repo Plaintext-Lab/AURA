@@ -1,7 +1,6 @@
 package silo
 
 import (
-	"aura/config"
 	"aura/logging"
 	"aura/models"
 	"aura/utils"
@@ -25,7 +24,7 @@ func (s *Silo) RateMediaItem(ctx context.Context, item *models.MediaItem, rating
 	logAction.AppendResult("silo_stars", stars)
 
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "ratings", item.RatingKey)
+	u, err := apiURL(s.Config.URL, "ratings", item.RatingKey)
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return *logAction.Error
@@ -40,7 +39,7 @@ func (s *Silo) RateMediaItem(ctx context.Context, item *models.MediaItem, rating
 	}
 
 	// Make the HTTP Request to Silo
-	_, _, Err = makeRequest(ctx, config.Current.MediaServer, u.String(), method, body)
+	_, _, Err = makeRequest(ctx, s.Config, u.String(), method, body)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error

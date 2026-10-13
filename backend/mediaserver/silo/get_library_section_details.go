@@ -1,7 +1,6 @@
 package silo
 
 import (
-	"aura/config"
 	"aura/logging"
 	"aura/models"
 	"context"
@@ -17,7 +16,7 @@ func (s *Silo) GetLibrarySectionDetails(ctx context.Context, library *models.Lib
 	found = false
 
 	// Get all Library Sections from Silo
-	sections, Err := s.GetLibrarySections(ctx, config.Current.MediaServer)
+	sections, Err := s.GetLibrarySections(ctx, s.Config)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return found, *logAction.Error

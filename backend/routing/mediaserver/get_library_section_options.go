@@ -47,8 +47,9 @@ func GetLibrarySectionOptions(w http.ResponseWriter, r *http.Request) {
 
 	msConfig := req.MediaServer
 
+	// If the Media Server Token is masked, retrieve the actual token from the config
 	if strings.HasPrefix(msConfig.ApiToken, "***") {
-		msConfig.ApiToken = config.Current.MediaServer.ApiToken
+		msConfig.ApiToken = config.SavedMediaServerToken(msConfig.ID)
 	}
 
 	// Get all available library sections from the Media Server

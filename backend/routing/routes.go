@@ -84,6 +84,8 @@ func AddRoutes(r *chi.Mux) {
 			r.Post("/", routes_config.UpdateAppConfig)
 			r.Get("/export", routes_config.ExportAppConfig)
 			r.Post("/import", routes_config.ImportAppConfig)
+			r.Post("/main-media-server/preview", routes_config.PreviewMainMediaServerSwitch)
+			r.Post("/main-media-server", routes_config.SwitchMainMediaServer)
 			r.Patch("/{section}", routes_config.UpdateAppConfigSection)
 			r.Get("/auth-methods", routes_auth.GetAuthMethods)
 			r.Post("/auth/api-key", routes_auth.GenerateAPIKey)

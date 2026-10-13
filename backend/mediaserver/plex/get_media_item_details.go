@@ -29,7 +29,7 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	Err = logging.LogErrorInfo{}
 
 	// Construct the URL for the Plex API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(p.Config.URL)
 	if err != nil {
 		logAction.SetError("Failed to parse base URL", "Ensure the URL is valid", map[string]any{"error": err.Error()})
 		return found, *logAction.Error
@@ -38,7 +38,7 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	URL := u.String()
 
 	// Make the HTTP Request to Plex
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, p.Config, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return found, Err
@@ -60,7 +60,7 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 
 	// Populate the MediaItem details
 	metadata := plexResp.MediaContainer.Metadata[0]
-	extracted, Err := extractMediaItemFromResponse(ctx, metadata)
+	extracted, Err := extractMediaItemFromResponse(ctx, p.Config, metadata)
 	if Err.Message != "" {
 		return found, *logAction.Error
 	}
@@ -99,13 +99,13 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 		item.HasMediuxSets = true
 	}
 
-	// Update the item in the cache
-	cache.LibraryStore.UpdateMediaItem(item.LibraryTitle, item)
-
-	// Update the Media Item on Server in the DB
-	updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-	if updateErr.Message != "" {
-		logAction.AppendWarning("update_on_server_error", updateErr.Message)
+	// Only the main media server's items go in the main library cache and the DB
+	if p.Config.IsMain() {
+		cache.LibraryStore.UpdateMediaItem(item.LibraryTitle, item)
+		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+		if updateErr.Message != "" {
+			logAction.AppendWarning("update_on_server_error", updateErr.Message)
+		}
 	}
 
 	// Mark as found
@@ -113,7 +113,7 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	return found, logging.LogErrorInfo{}
 }
 
-func extractMediaItemFromResponse(ctx context.Context, metadata PlexLibraryItemsMetadata) (item *models.MediaItem, Err logging.LogErrorInfo) {
+func extractMediaItemFromResponse(ctx context.Context, msConfig config.Config_MediaServer, metadata PlexLibraryItemsMetadata) (item *models.MediaItem, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Plex: Extracting Media Item '%s' [RatingKey: %s]", metadata.Title, metadata.RatingKey), logging.LevelDebug)
 	defer logAction.Complete()
 
@@ -157,7 +157,7 @@ func extractMediaItemFromResponse(ctx context.Context, metadata PlexLibraryItems
 		}
 	case "show":
 		// For shows, fetch seasons and episodes
-		Err = fetchSeasonsAndEpisodesForShow(ctx, item)
+		Err = fetchSeasonsAndEpisodesForShow(ctx, msConfig, item)
 		if Err.Message != "" {
 			return item, *logAction.Error
 		}
@@ -207,7 +207,7 @@ func extractMediaItemFromResponse(ctx context.Context, metadata PlexLibraryItems
 	return item, Err
 }
 
-func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaItem) (Err logging.LogErrorInfo) {
+func fetchSeasonsAndEpisodesForShow(ctx context.Context, msConfig config.Config_MediaServer, itemInfo *models.MediaItem) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Fetching Seasons and Episodes for Show '%s' (%s | %s | %d)",
 		itemInfo.Title, itemInfo.RatingKey, itemInfo.LibraryTitle, itemInfo.Year,
@@ -215,7 +215,7 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaI
 	defer logAction.Complete()
 
 	// Construct the URL for the Plex API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		logAction.SetError("Failed to parse base URL", "Ensure the URL is valid", map[string]any{"error": err.Error()})
 		return *logAction.Error
@@ -224,7 +224,7 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaI
 	URL := u.String()
 
 	// Make the HTTP Request to Plex
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, msConfig, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error

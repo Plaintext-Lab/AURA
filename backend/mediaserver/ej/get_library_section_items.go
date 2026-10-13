@@ -18,7 +18,7 @@ import (
 
 func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
-		"%s: Fetching Items for Library Section: %s", config.Current.MediaServer.Type, section.Title,
+		"%s: Fetching Items for Library Section: %s", e.Config.Type, section.Title,
 	), logging.LevelInfo)
 	defer logAction.Complete()
 
@@ -32,12 +32,12 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	}
 
 	// Construct the URL for the EJ server API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(e.Config.URL)
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return items, totalSize, *logAction.Error
 	}
-	u.Path = path.Join(u.Path, "Users", config.Current.MediaServer.UserID, "Items")
+	u.Path = path.Join(u.Path, "Users", e.Config.UserID, "Items")
 	query := u.Query()
 	query.Add("Recursive", "true")
 	query.Add("SortBy", "Name")
@@ -51,7 +51,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	URL := u.String()
 
 	// Make the HTTP Request to EJ
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, e.Config, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return items, totalSize, *logAction.Error
@@ -60,7 +60,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 
 	// Decode the Response
 	var ejResp EmbyJellyLibraryItemsResponse
-	Err = httpx.DecodeResponseToJSON(ctx, respBody, &ejResp, fmt.Sprintf("%s Library Section Items Response", config.Current.MediaServer.Type))
+	Err = httpx.DecodeResponseToJSON(ctx, respBody, &ejResp, fmt.Sprintf("%s Library Section Items Response", e.Config.Type))
 	if Err.Message != "" {
 		return items, totalSize, *logAction.Error
 	}
@@ -79,7 +79,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		// If Type is Boxset, then split them up
 		if ejItem.Type == "BoxSet" {
 			// Split the BoxSet into individual items
-			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, ejItem.Name, ejItem.ID, section.Title)
+			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, e.Config, ejItem.Name, ejItem.ID, section.Title)
 			if boxSetErr.Message != "" {
 				return nil, 0, boxSetErr
 			}
@@ -152,10 +152,12 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 			item.IgnoredMode = ignoredMode
 		}
 
-		// Update the Media Item on Server in the DB
-		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-		if updateErr.Message != "" {
-			logAction.AppendWarning("update_on_server_error", updateErr.Message)
+		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
+		if e.Config.IsMain() {
+			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+			if updateErr.Message != "" {
+				logAction.AppendWarning("update_on_server_error", updateErr.Message)
+			}
 		}
 
 		// Check if Media Item exists in MediUX with a set
@@ -169,7 +171,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	return items, totalSize, logging.LogErrorInfo{}
 }
 
-func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, parentID, sectionTitle string) (items []models.MediaItem, Err logging.LogErrorInfo) {
+func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Config_MediaServer, collectionName, parentID, sectionTitle string) (items []models.MediaItem, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Splitting BoxSet Collection: %s in Section: %s into Individual Items", collectionName, sectionTitle,
 	), logging.LevelInfo)
@@ -179,12 +181,12 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 	Err = logging.LogErrorInfo{}
 
 	// Construct the URL for the EJ server API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return items, *logAction.Error
 	}
-	u.Path = path.Join(u.Path, "Users", config.Current.MediaServer.UserID, "Items")
+	u.Path = path.Join(u.Path, "Users", msConfig.UserID, "Items")
 	query := u.Query()
 	query.Add("Recursive", "true")
 	query.Add("SortBy", "Name")
@@ -196,7 +198,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 	URL := u.String()
 
 	// Make the HTTP Request to EJ
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, msConfig, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return items, *logAction.Error
@@ -205,7 +207,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 
 	// Decode the Response
 	var ejResp EmbyJellyLibraryItemsResponse
-	Err = httpx.DecodeResponseToJSON(ctx, respBody, &ejResp, fmt.Sprintf("%s BoxSet Individual Items Response", config.Current.MediaServer.Type))
+	Err = httpx.DecodeResponseToJSON(ctx, respBody, &ejResp, fmt.Sprintf("%s BoxSet Individual Items Response", msConfig.Type))
 	if Err.Message != "" {
 		return items, *logAction.Error
 	}
@@ -217,7 +219,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 	}
 
 	validLibraryPaths := []string{}
-	for _, lib := range config.Current.MediaServer.Libraries {
+	for _, lib := range msConfig.Libraries {
 		if len(lib.Paths) > 0 {
 			validLibraryPaths = append(validLibraryPaths, lib.Paths...)
 		}
@@ -242,7 +244,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, collectionName, par
 		}
 		// Check to see if the path starts with one of the known library paths, if not, skip the item
 		validPath := false
-		for _, lib := range config.Current.MediaServer.Libraries {
+		for _, lib := range msConfig.Libraries {
 			for _, libPath := range lib.Paths {
 				if libPath != "" && strings.HasPrefix(itemPath, libPath) {
 					validPath = true

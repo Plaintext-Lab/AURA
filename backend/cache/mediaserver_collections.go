@@ -27,6 +27,14 @@ func init() {
 	CollectionsStore = Cache_NewCollectionsCache()
 }
 
+// ClearAllCollections removes every collection
+func (msc *MediaServerCollectionsCache) ClearAllCollections() {
+	msc.mu.Lock()
+	defer msc.mu.Unlock()
+	msc.collections = make(map[string]map[string]*models.CollectionItem)
+	msc.LastFullUpdate = 0
+}
+
 func (msc *MediaServerCollectionsCache) GetAllCollections() []models.CollectionItem {
 	msc.mu.RLock()
 	defer msc.mu.RUnlock()

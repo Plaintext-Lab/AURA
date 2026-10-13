@@ -40,7 +40,7 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	}
 
 	// Get the Catalog Items for the Library Section
-	catalogItems, totalSize, Err := getCatalogItems(ctx, section, startIndex, limitCount)
+	catalogItems, totalSize, Err := getCatalogItems(ctx, s.Config, section, startIndex, limitCount)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return items, 0, *logAction.Error
@@ -78,7 +78,7 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 
 		// Get the Provider IDs for the item
 		// If this fails, return an error instead of skipping the item so that it is not treated as removed
-		itemInfo, Err := getItemInfo(ctx, catalogItem.ContentID)
+		itemInfo, Err := getItemInfo(ctx, s.Config, catalogItem.ContentID)
 		if Err.Message != "" {
 			logAction.SetErrorFromInfo(Err)
 			return []models.MediaItem{}, 0, *logAction.Error
@@ -139,10 +139,12 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 			item.IgnoredMode = ignoredMode
 		}
 
-		// Update the Media Item on Server in the DB
-		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-		if updateErr.Message != "" {
-			logAction.AppendWarning("update_on_server_error", updateErr.Message)
+		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
+		if s.Config.IsMain() {
+			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+			if updateErr.Message != "" {
+				logAction.AppendWarning("update_on_server_error", updateErr.Message)
+			}
 		}
 
 		// Check if Media Item exists in MediUX with a set
@@ -150,14 +152,17 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 			item.HasMediuxSets = true
 		}
 
-		cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		// Only the main media server's items go in the main library cache
+		if s.Config.IsMain() {
+			cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		}
 		items = append(items, item)
 	}
 
 	return items, totalSize, logging.LogErrorInfo{}
 }
 
-func getCatalogItems(ctx context.Context, section models.LibrarySection, startIndex int, limit int) (catalogItems []SiloCatalogItem, totalSize int, Err logging.LogErrorInfo) {
+func getCatalogItems(ctx context.Context, msConfig config.Config_MediaServer, section models.LibrarySection, startIndex int, limit int) (catalogItems []SiloCatalogItem, totalSize int, Err logging.LogErrorInfo) {
 	catalogItems = []SiloCatalogItem{}
 	totalSize = 0
 
@@ -174,7 +179,7 @@ func getCatalogItems(ctx context.Context, section models.LibrarySection, startIn
 	cursor := ""
 	for len(catalogItems) < limit {
 		// Construct the URL for the Silo server API request
-		u, err := apiURL(config.Current.MediaServer.URL, "catalog")
+		u, err := apiURL(msConfig.URL, "catalog")
 		if err != nil {
 			message, help, detail := logging.Error_BaseUrlParsing(err)
 			return catalogItems, totalSize, logging.LogErrorInfo{Message: message, Help: help, Detail: detail}
@@ -194,7 +199,7 @@ func getCatalogItems(ctx context.Context, section models.LibrarySection, startIn
 		u.RawQuery = query.Encode()
 
 		// Make the HTTP Request to Silo
-		_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+		_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 		if Err.Message != "" {
 			return catalogItems, totalSize, Err
 		}

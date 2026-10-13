@@ -21,7 +21,7 @@ func (s *Silo) RefreshMediaItemMetadata(ctx context.Context, item *models.MediaI
 	defer logAction.Complete()
 
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "admin", "items", refreshRatingKey, "refresh-metadata")
+	u, err := apiURL(s.Config.URL, "admin", "items", refreshRatingKey, "refresh-metadata")
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return *logAction.Error
@@ -29,7 +29,7 @@ func (s *Silo) RefreshMediaItemMetadata(ctx context.Context, item *models.MediaI
 	body, _ := json.Marshal(SiloRefreshRequest{Mode: "quick"})
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "POST", body)
+	_, respBody, Err := makeRequest(ctx, s.Config, u.String(), "POST", body)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error
@@ -45,7 +45,7 @@ func (s *Silo) RefreshMediaItemMetadata(ctx context.Context, item *models.MediaI
 	logAction.AppendResult("job_id", jobResp.ID)
 
 	// Silo refreshes the item in a background job, so wait for it to finish
-	jobResp, Err = waitForJob(ctx, jobResp)
+	jobResp, Err = waitForJob(ctx, s.Config, jobResp)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error
@@ -77,20 +77,20 @@ func (s *Silo) RefreshMediaItemMetadata(ctx context.Context, item *models.MediaI
 	return logging.LogErrorInfo{}
 }
 
-func waitForJob(ctx context.Context, job SiloJobResponse) (SiloJobResponse, logging.LogErrorInfo) {
+func waitForJob(ctx context.Context, msConfig config.Config_MediaServer, job SiloJobResponse) (SiloJobResponse, logging.LogErrorInfo) {
 	// Check the job every second, for up to 30 seconds
 	for attempt := 0; attempt < 30 && !job.Terminal; attempt++ {
 		time.Sleep(time.Second)
 
 		// Construct the URL for the Silo server API request
-		u, err := apiURL(config.Current.MediaServer.URL, "admin", "jobs", job.ID)
+		u, err := apiURL(msConfig.URL, "admin", "jobs", job.ID)
 		if err != nil {
 			message, help, detail := logging.Error_BaseUrlParsing(err)
 			return job, logging.LogErrorInfo{Message: message, Help: help, Detail: detail}
 		}
 
 		// Make the HTTP Request to Silo
-		_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+		_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 		if Err.Message != "" {
 			return job, Err
 		}

@@ -22,7 +22,7 @@ func (p *Plex) GetMediaItemImage(ctx context.Context, item *models.MediaItem, im
 	imageData = []byte{}
 	Err = logging.LogErrorInfo{}
 
-	respBody, Err := GetImageFromPlex(ctx, imageRatingKey, imageType)
+	respBody, Err := GetImageFromPlex(ctx, p.Config, imageRatingKey, imageType)
 	if Err.Message != "" {
 		return imageData, Err
 	}
@@ -41,7 +41,7 @@ func (p *Plex) GetCollectionItemImage(ctx context.Context, collection *models.Co
 	imageData = []byte{}
 	Err = logging.LogErrorInfo{}
 
-	respBody, Err := GetImageFromPlex(ctx, collection.RatingKey, imageType)
+	respBody, Err := GetImageFromPlex(ctx, p.Config, collection.RatingKey, imageType)
 	if Err.Message != "" {
 		return imageData, Err
 	}
@@ -50,7 +50,7 @@ func (p *Plex) GetCollectionItemImage(ctx context.Context, collection *models.Co
 	return imageData, Err
 }
 
-func GetImageFromPlex(ctx context.Context, ratingKey string, imageType string) (imageData []byte, Err logging.LogErrorInfo) {
+func GetImageFromPlex(ctx context.Context, msConfig config.Config_MediaServer, ratingKey string, imageType string) (imageData []byte, Err logging.LogErrorInfo) {
 	width := "600"
 	height := "900"
 	switch imageType {
@@ -66,7 +66,7 @@ func GetImageFromPlex(ctx context.Context, ratingKey string, imageType string) (
 	// Construct the URL for the Plex Image request
 	photoPath := path.Join("/library/metadata", ratingKey, imageType, fmt.Sprintf("%d", time.Now().Unix()))
 	encodedPhotoPath := url.QueryEscape(photoPath)
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		return imageData, logging.LogErrorInfo{
 			Message: "Failed to parse base URL",
@@ -83,7 +83,7 @@ func GetImageFromPlex(ctx context.Context, ratingKey string, imageType string) (
 	URL = fmt.Sprintf("%s&url=%s", URL, encodedPhotoPath)
 
 	// Make the HTTP Request to Plex
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, msConfig, URL, "GET", nil)
 	if Err.Message != "" {
 		return imageData, Err
 	}

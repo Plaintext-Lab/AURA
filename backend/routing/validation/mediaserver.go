@@ -49,7 +49,7 @@ func ValidateMediaServerInfo(w http.ResponseWriter, r *http.Request) {
 
 	// If the Media Server Token is masked, retrieve the actual token from the config
 	if config.IsMaskedField(mediaServerInfo.ApiToken) {
-		mediaServerInfo.ApiToken = config.Current.MediaServer.ApiToken
+		mediaServerInfo.ApiToken = config.SavedMediaServerToken(mediaServerInfo.ID)
 	}
 
 	switch mediaServerInfo.Type {

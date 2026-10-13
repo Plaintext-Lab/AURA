@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func getAllImages(ctx context.Context, item *models.MediaItem, itemRatingKey string, itr string, imageType string) (images []PlexGetAllImagesMetadata, Err logging.LogErrorInfo) {
+func getAllImages(ctx context.Context, msConfig config.Config_MediaServer, item *models.MediaItem, itemRatingKey string, itr string, imageType string) (images []PlexGetAllImagesMetadata, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Plex: Getting %s Images for %s", itr, utils.MediaItemInfo(*item)),
 		logging.LevelDebug)
@@ -29,7 +29,7 @@ func getAllImages(ctx context.Context, item *models.MediaItem, itemRatingKey str
 	}
 
 	// Construct the URL for the Plex API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return images, *logAction.Error
@@ -38,7 +38,7 @@ func getAllImages(ctx context.Context, item *models.MediaItem, itemRatingKey str
 	URL := u.String()
 
 	// Make the HTTP Request to Plex
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, msConfig, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return images, *logAction.Error
@@ -47,7 +47,7 @@ func getAllImages(ctx context.Context, item *models.MediaItem, itemRatingKey str
 
 	// Decode the Response
 	var respData PlexGetAllImagesWrapper
-	Err = httpx.DecodeResponseToJSON(ctx, respBody, &respData, fmt.Sprintf("%s Media Item Images Response", config.Current.MediaServer.Type))
+	Err = httpx.DecodeResponseToJSON(ctx, respBody, &respData, fmt.Sprintf("%s Media Item Images Response", msConfig.Type))
 	if Err.Message != "" {
 		return images, *logAction.Error
 	}
@@ -74,7 +74,7 @@ func getAllImages(ctx context.Context, item *models.MediaItem, itemRatingKey str
 // findNewImage attempts to retrieve a new image for a Plex item by comparing previous and current images.
 // It tries up to 3 times, refreshing the Plex item between attempts if needed.
 // Returns the new image's ratingKey (URL or path) if found, or a StandardError if not.
-func findNewImage(ctx context.Context, item *models.MediaItem, itemRatingKey string, imageType string, previousImages []PlexGetAllImagesMetadata) (newImageRatingKey string, Err logging.LogErrorInfo) {
+func findNewImage(ctx context.Context, msConfig config.Config_MediaServer, item *models.MediaItem, itemRatingKey string, imageType string, previousImages []PlexGetAllImagesMetadata) (newImageRatingKey string, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Plex: Getting Newest '%s' Image for %s",
 		imageType,
@@ -93,7 +93,7 @@ func findNewImage(ctx context.Context, item *models.MediaItem, itemRatingKey str
 		attemptAction := logAction.AddSubAction(fmt.Sprintf("Attempt %d to fetch new image", attempt), logging.LevelDebug)
 
 		// Get all current images from Plex
-		currentImages, fetchErr := getAllImages(ctx, item, itemRatingKey, "New", imageType)
+		currentImages, fetchErr := getAllImages(ctx, msConfig, item, itemRatingKey, "New", imageType)
 
 		if fetchErr.Message != "" {
 			attemptAction.AppendWarning(fmt.Sprintf("attempt_%d", attempt), map[string]any{"error": fetchErr.Message})
@@ -129,7 +129,7 @@ func findNewImage(ctx context.Context, item *models.MediaItem, itemRatingKey str
 
 		if attempt < 3 {
 			time.Sleep(1 * time.Second)
-			refreshErr := RefreshItemMetadata(ctx, item, itemRatingKey, false)
+			refreshErr := RefreshItemMetadata(ctx, msConfig, item, itemRatingKey, false)
 			if refreshErr.Message != "" {
 				attemptAction.AppendWarning("refresh_error", map[string]any{"error": refreshErr.Message})
 				lastErrorMsg = refreshErr.Message

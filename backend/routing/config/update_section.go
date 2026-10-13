@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -34,6 +35,8 @@ type configSectionCheck struct {
 type configSection struct {
 	// The section in the config, which the changed fields are decoded into
 	field func(cfg *config.Config) any
+	// The only fields that can be changed, if the section is more than one config field
+	fields []string
 	// Compare the current and new section, and validate the new section
 	check func(ctx context.Context, current config.Config, newConfig *config.Config) configSectionCheck
 }
@@ -60,6 +63,11 @@ var configSections = map[string]configSection{
 			changed, valid, serverName := checkConfigDifferences_MediaServer(ctx, current.MediaServer, &newConfig.MediaServer)
 			return configSectionCheck{changed: changed, valid: valid, applied: configChanges{mediaServerChanged: changed, mediaServerChecked: true, mediaServerName: serverName}}
 		},
+	},
+	"media_servers": {
+		field:  func(cfg *config.Config) any { return cfg },
+		fields: []string{"media_servers", "main_media_server"},
+		check:  checkMediaServersSection,
 	},
 	"mediux": {
 		field: func(cfg *config.Config) any { return &cfg.Mediux },
@@ -125,7 +133,7 @@ var configSections = map[string]configSection{
 // @Tags         Config
 // @Accept       json
 // @Produce      json
-// @Param        section  path      string  true  "Config section"  Enums(auth, logging, media_server, mediux, jobs, images, tmdb, labels_and_tags, notifications, sonarr_radarr, user_preferences)
+// @Param        section  path      string  true  "Config section"  Enums(auth, logging, media_server, media_servers, mediux, jobs, images, tmdb, labels_and_tags, notifications, sonarr_radarr, user_preferences)
 // @Param        changes  body      object  true  "The settings to change, using the same field names as the config (e.g. {\"url\": \"http://plex:32400\"} for media_server)"
 // @Security     SessionCookie
 // @Security     ApiKeyAuth
@@ -160,7 +168,7 @@ func UpdateAppConfigSection(w http.ResponseWriter, r *http.Request) {
 	// Apply the changed fields to a copy of the current config
 	current := config.Current
 	newConfig := current.Clone()
-	Err := decodeConfigSectionChanges(ctx, r.Body, section.field(&newConfig), sectionName)
+	Err := decodeConfigSectionChanges(ctx, r.Body, section.field(&newConfig), section.fields, sectionName)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		httpx.SendResponse(w, ld, response)
@@ -222,7 +230,7 @@ func UpdateAppConfigSection(w http.ResponseWriter, r *http.Request) {
 
 // decodeConfigSectionChanges applies the changed fields from the request body to the section.
 // Unknown fields are rejected.
-func decodeConfigSectionChanges(ctx context.Context, body io.ReadCloser, target any, sectionName string) logging.LogErrorInfo {
+func decodeConfigSectionChanges(ctx context.Context, body io.ReadCloser, target any, fields []string, sectionName string) logging.LogErrorInfo {
 	_, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Decoding changes for config section: %s", sectionName), logging.LevelTrace)
 	defer logAction.Complete()
 	defer body.Close()
@@ -236,6 +244,16 @@ func decodeConfigSectionChanges(ctx context.Context, body io.ReadCloser, target 
 	if err := json.Unmarshal(data, &changes); err != nil || changes == nil {
 		logAction.SetError("Invalid request body", "The request body must be a JSON object with the settings to change", nil)
 		return *logAction.Error
+	}
+
+	if fields != nil {
+		for name := range changes {
+			if !slices.Contains(fields, name) {
+				logAction.SetError(fmt.Sprintf("Invalid changes for config section '%s'", sectionName),
+					fmt.Sprintf("Only %s can be changed in this section", strings.Join(fields, " and ")), map[string]any{"error": fmt.Sprintf("unknown field '%s'", name)})
+				return *logAction.Error
+			}
+		}
 	}
 
 	if err := mergeConfigChanges(reflect.ValueOf(target).Elem(), changes, ""); err != nil {
@@ -317,6 +335,61 @@ func withDetail(detail map[string]any, key string, value any) map[string]any {
 	return detail
 }
 
+// checkMediaServersSection checks the media_servers section: the media servers that aren't the main one.
+// The main media server is changed in the media_server section.
+func checkMediaServersSection(ctx context.Context, current config.Config, newConfig *config.Config) configSectionCheck {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Section: media_servers", logging.LevelTrace)
+	defer logAction.Complete()
+
+	// Changing the main media server moves the saved items to it, which is done with Make Main
+	if current.MainMediaServer != "" && newConfig.MainMediaServer != current.MainMediaServer {
+		logAction.SetError("The main media server is changed with Make Main", "Use Make Main on the media server in Settings, or POST /api/config/main-media-server", nil)
+		return configSectionCheck{valid: false}
+	}
+	// The main media server can't be removed
+	if current.MainMediaServer != "" && !slices.ContainsFunc(newConfig.MediaServers, func(server config.Config_MediaServer) bool {
+		return server.ID == current.MainMediaServer
+	}) {
+		logAction.SetError("The main media server can't be removed", "Keep the main media server in media_servers", nil)
+		return configSectionCheck{valid: false}
+	}
+	// The first media server becomes the main one
+	if newConfig.MainMediaServer == "" && len(newConfig.MediaServers) > 0 {
+		if newConfig.MediaServers[0].ID == "" {
+			newConfig.MediaServers[0].ID = config.NewMediaServerID()
+		}
+		newConfig.MainMediaServer = newConfig.MediaServers[0].ID
+	}
+
+	// The main media server is changed in the media_server section, so its current settings are kept
+	for i := range newConfig.MediaServers {
+		if current.MainMediaServer != "" && newConfig.MediaServers[i].ID == current.MainMediaServer {
+			newConfig.MediaServers[i] = current.MediaServer
+		}
+	}
+
+	// Check the main media server the same way as the media_server section, if it is new
+	config.RestoreMediaServerTokens(current.MediaServers, newConfig.MediaServers)
+	newConfig.LoadMainMediaServer()
+	newConfig.MediaServer.UserID = current.MediaServer.UserID
+	mainChanged, mainChecked, serverName := false, false, ""
+	if !reflect.DeepEqual(storedMediaServers([]config.Config_MediaServer{current.MediaServer}), storedMediaServers([]config.Config_MediaServer{newConfig.MediaServer})) {
+		valid := false
+		mainChanged, valid, serverName = checkConfigDifferences_MediaServer(ctx, current.MediaServer, &newConfig.MediaServer)
+		if !valid {
+			return configSectionCheck{valid: false}
+		}
+		mainChecked = true
+	}
+
+	changed, valid := checkConfigDifferences_MediaServers(ctx, current, newConfig)
+	return configSectionCheck{
+		changed: mainChanged || changed,
+		valid:   valid,
+		applied: configChanges{mediaServerChanged: mainChanged, mediaServersChanged: changed, mediaServerChecked: mainChecked, mediaServerName: serverName},
+	}
+}
+
 // checkConfigDifferences_UserPreferences compares old and new UserPreferences configurations.
 func checkConfigDifferences_UserPreferences(ctx context.Context, oldPreferences config.Config_UserPreferences, newPreferences *config.Config_UserPreferences) (changed, newValid bool) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: UserPreferences", logging.LevelTrace)
@@ -332,10 +405,11 @@ func checkConfigDifferences_UserPreferences(ctx context.Context, oldPreferences 
 
 // configChanges are the changes to apply after the config is saved
 type configChanges struct {
-	authChanged        bool
-	mediaServerChanged bool
-	mediaServerChecked bool   // Whether the media server connection was checked
-	mediaServerName    string // Name of the media server, if it was checked
-	mediuxChecked      bool   // Whether the MediUX token was checked
-	changedJobs        []jobs.JobKey
+	authChanged         bool
+	mediaServerChanged  bool
+	mediaServersChanged bool   // Whether the media servers that aren't the main one changed
+	mediaServerChecked  bool   // Whether the media server connection was checked
+	mediaServerName     string // Name of the media server, if it was checked
+	mediuxChecked       bool   // Whether the MediUX token was checked
+	changedJobs         []jobs.JobKey
 }

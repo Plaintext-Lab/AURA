@@ -399,7 +399,7 @@ func reApplySavedImages(item PlexRefreshedItem) {
 				}
 
 				matchedImages = append(matchedImages, image)
-				applyErr := mediaserver.DownloadApplyImageToMediaItem(logCtx, &item.MediaItem, image)
+				applyErr := mediaserver.DownloadApplyImageToMainMediaServer(logCtx, &item.MediaItem, image)
 				if applyErr.Message != "" {
 					logging.LOGGER.Error().Timestamp().
 						Str("error", applyErr.Message).

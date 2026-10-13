@@ -29,6 +29,47 @@ func init() {
 	LibraryStore = Cache_NewLibraryCache()
 }
 
+// Library caches of the other media servers, by media server ID. LibraryStore is the main media server's cache.
+var (
+	serverLibraryStoresMu sync.Mutex
+	serverLibraryStores   = map[string]*MediaServerLibraryCache{}
+)
+
+// ServerLibraryStore returns the library cache of a media server that isn't the main one
+func ServerLibraryStore(serverID string) *MediaServerLibraryCache {
+	serverLibraryStoresMu.Lock()
+	defer serverLibraryStoresMu.Unlock()
+	store, found := serverLibraryStores[serverID]
+	if !found {
+		store = Cache_NewLibraryCache()
+		serverLibraryStores[serverID] = store
+	}
+	return store
+}
+
+// MediaServerLibraryStore returns the library cache of any media server
+func MediaServerLibraryStore(serverID string, isMain bool) *MediaServerLibraryCache {
+	if isMain {
+		return LibraryStore
+	}
+	return ServerLibraryStore(serverID)
+}
+
+// KeepServerLibraryStores removes the library caches of media servers that are no longer used
+func KeepServerLibraryStores(serverIDs []string) {
+	serverLibraryStoresMu.Lock()
+	defer serverLibraryStoresMu.Unlock()
+	keep := map[string]bool{}
+	for _, id := range serverIDs {
+		keep[id] = true
+	}
+	for id := range serverLibraryStores {
+		if !keep[id] {
+			delete(serverLibraryStores, id)
+		}
+	}
+}
+
 // UpdateSection updates or adds a LibrarySection in the cache.
 // If the section already exists, its metadata and media items are updated.
 // New media items are appended to the section.

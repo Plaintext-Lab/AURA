@@ -32,7 +32,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	}
 
 	// Construct the URL for the Plex library sections API request
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(p.Config.URL)
 	if err != nil {
 		logAction.SetError("Failed to parse base URL", "Ensure the URL is valid", map[string]any{"error": err.Error()})
 		return items, totalSize, *logAction.Error
@@ -46,7 +46,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	URL := u.String()
 
 	// Make the HTTP Request to Plex
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, URL, "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, p.Config, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return items, totalSize, *logAction.Error
@@ -155,10 +155,12 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 			item.IgnoredMode = ignoredMode
 		}
 
-		// Update the Media Item on Server in the DB
-		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-		if updateErr.Message != "" {
-			logAction.AppendWarning("update_on_server_error", updateErr.Message)
+		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
+		if p.Config.IsMain() {
+			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+			if updateErr.Message != "" {
+				logAction.AppendWarning("update_on_server_error", updateErr.Message)
+			}
 		}
 
 		// Check if Media Item exists in MediUX with a set
@@ -167,7 +169,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		}
 
 		// If the item is a movie, update the movie collections cache
-		if item.Type == "movie" {
+		if item.Type == "movie" && p.Config.IsMain() {
 			if len(metadata.Collections) > 0 {
 				for _, coll := range metadata.Collections {
 					cache.CollectionsStore.UpdateMediaItemInCollectionByTitle(coll.Tag, &item)
@@ -175,13 +177,16 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 			}
 		}
 
-		cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		// Only the main media server's items go in the main library cache
+		if p.Config.IsMain() {
+			cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		}
 		items = append(items, item)
 	}
 
 	// For show sections, bulk-fetch all episodes to compute LatestEpisodeAddedAt per show.
-	if section.Type == "show" && config.Current.MediaServer.EnableSortByEpisodeAddedDate {
-		latestEpAdded, fetchErr := fetchLatestEpisodeAddedAtByShow(ctx, section.ID)
+	if section.Type == "show" && p.Config.EnableSortByEpisodeAddedDate {
+		latestEpAdded, fetchErr := fetchLatestEpisodeAddedAtByShow(ctx, p.Config, section.ID)
 		if fetchErr.Message != "" {
 			logAction.AppendWarning("latest_episode_added_at", "Failed to bulk-fetch latest episode addedAt for shows")
 		} else {
@@ -196,7 +201,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 
 // fetchLatestEpisodeAddedAtByShow fetches all episodes for a library section in one bulk
 // request and returns a map of show RatingKey -> latest episode addedAt timestamp.
-func fetchLatestEpisodeAddedAtByShow(ctx context.Context, sectionID string) (map[string]int64, logging.LogErrorInfo) {
+func fetchLatestEpisodeAddedAtByShow(ctx context.Context, msConfig config.Config_MediaServer, sectionID string) (map[string]int64, logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Plex: Bulk-fetching episode addedAt for section %s", sectionID,
 	), logging.LevelDebug)
@@ -204,7 +209,7 @@ func fetchLatestEpisodeAddedAtByShow(ctx context.Context, sectionID string) (map
 
 	logging.DevMsgf("Bulk-fetching latest episode addedAt for shows in section %s", sectionID)
 
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		logAction.SetError("Failed to parse base URL", "Ensure the URL is valid", map[string]any{"error": err.Error()})
 		return nil, *logAction.Error
@@ -218,7 +223,7 @@ func fetchLatestEpisodeAddedAtByShow(ctx context.Context, sectionID string) (map
 	query.Set("X-Plex-Container-Size", "0")
 	u.RawQuery = query.Encode()
 
-	resp, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	resp, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return nil, *logAction.Error
@@ -239,7 +244,7 @@ func fetchLatestEpisodeAddedAtByShow(ctx context.Context, sectionID string) (map
 	query.Set("X-Plex-Container-Size", fmt.Sprintf("%d", totalEpisodes))
 	u.RawQuery = query.Encode()
 
-	resp, respBody, Err = makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	resp, respBody, Err = makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return nil, *logAction.Error

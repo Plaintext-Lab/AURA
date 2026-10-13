@@ -28,7 +28,8 @@ func (s *Silo) DownloadApplyImageToMediaItem(ctx context.Context, item *models.M
 
 	// If SaveImageLocally is enabled, save the image next to the content as well
 	// Silo does not use the saved image, so the image is still applied using the MediUX URL
-	if config.Current.Images.SaveImagesLocally.Enabled {
+	// Only the main media server saves images locally
+	if config.Current.Images.SaveImagesLocally.Enabled && s.Config.IsMain() {
 		// Get the Image from MediUX
 		// mediux.GetImage will handle checking the temp folder and caching based on config
 		formatDate := imageFile.Modified.Format("20060102150405")
@@ -53,7 +54,7 @@ func (s *Silo) DownloadApplyImageToMediaItem(ctx context.Context, item *models.M
 	}
 
 	// Apply the Image to the Media Item
-	Err = applyImageToMediaItem(ctx, item, itemRatingKey, imageURL, imageFile.Type)
+	Err = applyImageToMediaItem(ctx, s.Config, item, itemRatingKey, imageURL, imageFile.Type)
 	if Err.Message == "" {
 		return logging.LogErrorInfo{}
 	}
@@ -76,5 +77,5 @@ func (s *Silo) DownloadApplyImageToMediaItem(ctx context.Context, item *models.M
 	}
 	logAction.AppendResult("new_image_rating_key", itemRatingKey)
 
-	return applyImageToMediaItem(ctx, item, itemRatingKey, imageURL, imageFile.Type)
+	return applyImageToMediaItem(ctx, s.Config, item, itemRatingKey, imageURL, imageFile.Type)
 }

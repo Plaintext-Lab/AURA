@@ -71,9 +71,16 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 	config.UpdateLock.Lock()
 	defer config.UpdateLock.Unlock()
 
+	// Keep the current media servers if they weren't sent, as the setup page only has the main one
+	if newConfig.MediaServers == nil {
+		current := config.Current.Clone()
+		newConfig.MediaServers, newConfig.MainMediaServer = current.MediaServers, current.MainMediaServer
+	}
+
 	authChanged, authValid := checkConfigDifferences_Auth(ctx, config.Current.Auth, &newConfig.Auth)
 	loggingChanged, loggingValid := checkConfigDifferences_Logging(ctx, config.Current.Logging, &newConfig.Logging)
 	mediaServerChanged, mediaServerValid, newMediaServerName := checkConfigDifferences_MediaServer(ctx, config.Current.MediaServer, &newConfig.MediaServer)
+	mediaServersChanged, mediaServersValid := checkConfigDifferences_MediaServers(ctx, config.Current, &newConfig)
 	mediuxChanged, mediuxValid := checkConfigDifferences_Mediux(ctx, config.Current.Mediux, &newConfig.Mediux)
 	jobsChanged, jobsChangedKeys, jobsValid := checkConfigDifferences_Jobs(ctx, config.Current.Jobs, &newConfig.Jobs)
 	imagesChanged, imagesValid := checkConfigDifferences_Images(ctx, config.Current.Images, &newConfig.Images, newConfig.MediaServer)
@@ -89,7 +96,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 		userPreferencesChanged, userPreferencesValid = checkConfigDifferences_UserPreferences(ctx, config.Current.UserPreferences, &newConfig.UserPreferences)
 	}
 
-	if !authValid || !loggingValid || !mediaServerValid || !mediuxValid || !jobsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !userPreferencesValid {
+	if !authValid || !loggingValid || !mediaServerValid || !mediaServersValid || !mediuxValid || !jobsValid || !imagesValid || !tmdbValid || !labelsAndTagsValid || !notificationsValid || !sonarrRadarrValid || !userPreferencesValid {
 		ld.Status = logging.StatusError
 		message, help := "Invalid configuration", "The provided configuration is invalid. Check the results for details."
 		// Use the first error as the message, if there is one
@@ -103,6 +110,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 			"auth_valid":             authValid,
 			"logging_valid":          loggingValid,
 			"media_server_valid":     mediaServerValid,
+			"media_servers_valid":    mediaServersValid,
 			"mediux_valid":           mediuxValid,
 			"jobs_valid":             jobsValid,
 			"images_valid":           imagesValid,
@@ -116,7 +124,7 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 		return response
 	}
 
-	if !authChanged && !loggingChanged && !mediaServerChanged && !mediuxChanged &&
+	if !authChanged && !loggingChanged && !mediaServerChanged && !mediaServersChanged && !mediuxChanged &&
 		!jobsChanged && !imagesChanged && !tmdbChanged && !labelsAndTagsChanged &&
 		!notificationsChanged && !sonarrRadarrChanged && !userPreferencesChanged {
 		// If nothing has changed AND the config is valid, log a warning
@@ -162,15 +170,22 @@ func updateFullConfig(ctx context.Context, ld *logging.LogData, logAction *loggi
 		changedJobs = jobsChangedKeys
 	}
 	applyConfigChanges(ctx, logAction, configChanges{
-		authChanged:        authChanged,
-		mediaServerChanged: mediaServerChanged,
-		changedJobs:        changedJobs,
+		authChanged:         authChanged,
+		mediaServerChanged:  mediaServerChanged,
+		mediaServersChanged: mediaServersChanged,
+		changedJobs:         changedJobs,
 	})
 
 	response.Message = "Configuration saved"
 	response.Status = currentConfigStatus(ctx)
 	return response
 }
+
+// Loads the libraries of the media servers that aren't the main one. Replaced in tests.
+var refreshOtherMediaServers = mediaserver.RefreshOtherMediaServers
+
+// Restarts the Plex event listener. Replaced in tests.
+var restartPlexEventListener = autodownload.StartOrRestartPlexWebSocketClient
 
 // applyConfigChanges applies the saved config changes to the running app
 func applyConfigChanges(ctx context.Context, logAction *logging.LogAction, changes configChanges) {
@@ -182,7 +197,12 @@ func applyConfigChanges(ctx context.Context, logAction *logging.LogAction, chang
 	}
 
 	if changes.mediaServerChanged {
-		autodownload.StartOrRestartPlexWebSocketClient()
+		restartPlexEventListener()
+	}
+
+	// Load the libraries of new or changed media servers
+	if changes.mediaServersChanged {
+		go refreshOtherMediaServers()
 	}
 
 	// Restart OIDC with the new Auth settings, so the login page shows the correct login options
@@ -429,6 +449,155 @@ func checkConfigDifferences_MediaServer(ctx context.Context, oldMediaServer conf
 }
 
 // checkConfigDifferences_Mediux compares old and new MediUX configurations.
+// checkConfigDifferences_MediaServers compares old and new MediaServers configurations.
+// The main media server is checked in checkConfigDifferences_MediaServer, which runs first.
+func checkConfigDifferences_MediaServers(ctx context.Context, oldConfig config.Config, newConfig *config.Config) (changed, newValid bool) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: MediaServers", logging.LevelTrace)
+	defer logAction.Complete()
+
+	keepMediaServerIDs(oldConfig.MediaServers, newConfig)
+
+	// API tokens are masked on the way out - keep the old value unless a new one was entered
+	config.RestoreMediaServerTokens(oldConfig.MediaServers, newConfig.MediaServers)
+
+	// Copy the checked main media server into the list
+	newConfig.SyncMediaServers()
+
+	if !config.ValidateMediaServers(ctx, newConfig.MediaServers, newConfig.MainMediaServer) {
+		return false, false
+	}
+
+	// Check the connection of the other media servers that are new or changed
+	oldServers := map[string]config.Config_MediaServer{}
+	for _, server := range oldConfig.MediaServers {
+		oldServers[server.ID] = server
+	}
+	newValid = true
+	for i := range newConfig.MediaServers {
+		server := &newConfig.MediaServers[i]
+		if server.ID == newConfig.MainMediaServer || !server.Enabled {
+			continue
+		}
+		oldServer, found := oldServers[server.ID]
+		var old *config.Config_MediaServer
+		if found {
+			old = &oldServer
+		}
+		if !checkMediaServerConnection(ctx, old, server) {
+			newValid = false
+		}
+	}
+	if !newValid {
+		return false, false
+	}
+
+	if oldConfig.MainMediaServer != newConfig.MainMediaServer {
+		logAction.AppendResult("MainMediaServer changed", fmt.Sprintf("from '%s' to '%s'", oldConfig.MainMediaServer, newConfig.MainMediaServer))
+		logging.LOGGER.Info().
+			Timestamp().
+			Str("old_main_media_server", oldConfig.MainMediaServer).
+			Str("new_main_media_server", newConfig.MainMediaServer).
+			Msg("MainMediaServer changed")
+		changed = true
+	}
+	if !reflect.DeepEqual(storedMediaServers(oldConfig.MediaServers), storedMediaServers(newConfig.MediaServers)) {
+		logAction.AppendResult("MediaServers changed", fmt.Sprintf("%d media servers", len(newConfig.MediaServers)))
+		logging.LOGGER.Info().
+			Timestamp().
+			Int("media_servers", len(newConfig.MediaServers)).
+			Msg("MediaServers changed")
+		changed = true
+	}
+	return changed, true
+}
+
+// checkMediaServerConnection checks the connection of a media server that isn't the main one, if it is new or its connection settings changed.
+// It also gets the User ID from Emby, Jellyfin and Silo servers.
+func checkMediaServerConnection(ctx context.Context, oldServer *config.Config_MediaServer, server *config.Config_MediaServer) bool {
+	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Check Media Server Connection: %s", server.Name), logging.LevelTrace)
+	defer logAction.Complete()
+
+	// The User ID comes from the media server, not the request
+	connectionChanged := oldServer == nil || oldServer.Type != server.Type || oldServer.URL != server.URL || oldServer.ApiToken != server.ApiToken
+	server.UserID = ""
+	if !connectionChanged {
+		server.UserID = oldServer.UserID
+		if server.UserID != "" || server.Type == "Plex" {
+			return true
+		}
+	}
+
+	if connectionChanged {
+		connectionOk, _, _, Err := mediaserver.TestConnection(ctx, server)
+		if Err.Message != "" || !connectionOk {
+			logAction.SetError(fmt.Sprintf("Could not connect to media server '%s'", server.Name),
+				"Check its URL and API token", map[string]any{"error": Err.Message})
+			return false
+		}
+	}
+
+	if server.Type == "Emby" || server.Type == "Jellyfin" || server.Type == "Silo" {
+		userID, Err := mediaserver.GetAdminUser(ctx, server)
+		if Err.Message != "" || userID == "" {
+			logAction.SetError(fmt.Sprintf("Failed to get the admin user from media server '%s'", server.Name),
+				"Make sure the token belongs to an admin account", map[string]any{"error": Err.Message})
+			return false
+		}
+		server.UserID = userID
+	}
+	return true
+}
+
+// keepMediaServerIDs gives a new media server the ID of the current one with the same type and URL.
+// Config files from before multiple media servers have no IDs, so importing one keeps the current IDs.
+func keepMediaServerIDs(current []config.Config_MediaServer, newConfig *config.Config) {
+	currentIDs := map[string]bool{}
+	for _, server := range current {
+		currentIDs[server.ID] = true
+	}
+	usedIDs := map[string]bool{}
+	for _, server := range newConfig.MediaServers {
+		usedIDs[server.ID] = true
+	}
+	for i := range newConfig.MediaServers {
+		server := &newConfig.MediaServers[i]
+		if currentIDs[server.ID] {
+			continue
+		}
+		for _, currentServer := range current {
+			if usedIDs[currentServer.ID] || currentServer.Type != server.Type ||
+				strings.TrimSuffix(currentServer.URL, "/") != strings.TrimSuffix(server.URL, "/") {
+				continue
+			}
+			if newConfig.MainMediaServer == server.ID {
+				newConfig.MainMediaServer = currentServer.ID
+			}
+			if newConfig.MediaServer.ID == server.ID {
+				newConfig.MediaServer.ID = currentServer.ID
+			}
+			if server.LibraryMap == nil {
+				server.LibraryMap = currentServer.LibraryMap
+			}
+			usedIDs[currentServer.ID] = true
+			server.ID = currentServer.ID
+			break
+		}
+	}
+}
+
+// storedMediaServers returns the media servers as they are saved, without the User IDs
+func storedMediaServers(servers []config.Config_MediaServer) []config.Config_MediaServer {
+	if len(servers) == 0 {
+		return nil
+	}
+	stored := make([]config.Config_MediaServer, len(servers))
+	for i, server := range servers {
+		server.UserID = ""
+		stored[i] = server
+	}
+	return stored
+}
+
 func checkConfigDifferences_Mediux(ctx context.Context, oldMediux config.Config_Mediux, newMediux *config.Config_Mediux) (changed, newValid bool) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Check Config Differences: MediUX", logging.LevelTrace)
 	defer logAction.Complete()

@@ -27,7 +27,7 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	Err = logging.LogErrorInfo{}
 
 	// Get the Media Item details from Silo
-	siloResp, Err := getCatalogItemDetail(ctx, item.RatingKey, "")
+	siloResp, Err := getCatalogItemDetail(ctx, s.Config, item.RatingKey, "")
 	if Err.Message != "" {
 		// If the item was not found, Silo may have changed its Content ID
 		// Search the library for the item using its TMDB ID
@@ -35,13 +35,13 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 			logAction.SetErrorFromInfo(Err)
 			return found, *logAction.Error
 		}
-		contentID, searchErr := findContentIDByTMDBID(ctx, item)
+		contentID, searchErr := findContentIDByTMDBID(ctx, s.Config, item)
 		if searchErr.Message != "" {
 			logAction.SetErrorFromInfo(searchErr)
 			return found, *logAction.Error
 		}
 		logAction.AppendResult("content_id_changed", map[string]any{"old": item.RatingKey, "new": contentID})
-		siloResp, Err = getCatalogItemDetail(ctx, contentID, "")
+		siloResp, Err = getCatalogItemDetail(ctx, s.Config, contentID, "")
 		if Err.Message != "" {
 			logAction.SetErrorFromInfo(Err)
 			return found, *logAction.Error
@@ -108,7 +108,7 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 			// Silo has one item for every library it is in, so use the file in this item's library
 			version := siloResp.Versions[0]
 			for _, v := range siloResp.Versions {
-				if isPathInLibrary(v.FilePath, item.LibraryTitle) {
+				if isPathInLibrary(s.Config, v.FilePath, item.LibraryTitle) {
 					version = v
 					break
 				}
@@ -126,7 +126,7 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 		}
 	case "show":
 		// For shows, fetch seasons and episodes
-		Err = fetchSeasonsAndEpisodesForShow(ctx, item)
+		Err = fetchSeasonsAndEpisodesForShow(ctx, s.Config, item)
 		if Err.Message != "" {
 			logAction.SetErrorFromInfo(Err)
 			return found, *logAction.Error
@@ -137,7 +137,7 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 			// Silo has one item for every library it is in, so use the folder in this item's library
 			item.Series.Location = siloResp.FolderPaths[0]
 			for _, folderPath := range siloResp.FolderPaths {
-				if isPathInLibrary(folderPath, item.LibraryTitle) {
+				if isPathInLibrary(s.Config, folderPath, item.LibraryTitle) {
 					item.Series.Location = folderPath
 					break
 				}
@@ -170,13 +170,13 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 		item.HasMediuxSets = true
 	}
 
-	// Update the item in the cache
-	cache.LibraryStore.UpdateMediaItem(item.LibraryTitle, item)
-
-	// Update the Media Item on Server in the DB
-	updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-	if updateErr.Message != "" {
-		logAction.AppendWarning("update_on_server_error", updateErr.Message)
+	// Only the main media server's items go in the main library cache and the DB
+	if s.Config.IsMain() {
+		cache.LibraryStore.UpdateMediaItem(item.LibraryTitle, item)
+		updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
+		if updateErr.Message != "" {
+			logAction.AppendWarning("update_on_server_error", updateErr.Message)
+		}
 	}
 
 	// Mark as found
@@ -184,9 +184,9 @@ func (s *Silo) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	return found, logging.LogErrorInfo{}
 }
 
-func getCatalogItemDetail(ctx context.Context, contentID string, imageSize string) (siloResp SiloCatalogItemDetailResponse, Err logging.LogErrorInfo) {
+func getCatalogItemDetail(ctx context.Context, msConfig config.Config_MediaServer, contentID string, imageSize string) (siloResp SiloCatalogItemDetailResponse, Err logging.LogErrorInfo) {
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "catalog", "items", contentID)
+	u, err := apiURL(msConfig.URL, "catalog", "items", contentID)
 	if err != nil {
 		message, help, detail := logging.Error_BaseUrlParsing(err)
 		return siloResp, logging.LogErrorInfo{Message: message, Help: help, Detail: detail}
@@ -198,7 +198,7 @@ func getCatalogItemDetail(ctx context.Context, contentID string, imageSize strin
 	}
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		return siloResp, Err
 	}
@@ -215,14 +215,14 @@ func getCatalogItemDetail(ctx context.Context, contentID string, imageSize strin
 	return siloResp, logging.LogErrorInfo{}
 }
 
-func findContentIDByTMDBID(ctx context.Context, item *models.MediaItem) (contentID string, Err logging.LogErrorInfo) {
+func findContentIDByTMDBID(ctx context.Context, msConfig config.Config_MediaServer, item *models.MediaItem) (contentID string, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Silo: Searching for %s by TMDB ID", utils.MediaItemInfo(*item),
 	), logging.LevelDebug)
 	defer logAction.Complete()
 
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "catalog")
+	u, err := apiURL(msConfig.URL, "catalog")
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return "", *logAction.Error
@@ -236,13 +236,13 @@ func findContentIDByTMDBID(ctx context.Context, item *models.MediaItem) (content
 	case "show":
 		query.Set("type", "series")
 	}
-	if section, found := cache.LibraryStore.GetSectionByTitle(item.LibraryTitle); found && section.ID != "" {
+	if section, found := libraryStore(msConfig).GetSectionByTitle(item.LibraryTitle); found && section.ID != "" {
 		query.Set("library_id", section.ID)
 	}
 	u.RawQuery = query.Encode()
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return "", *logAction.Error
@@ -258,7 +258,7 @@ func findContentIDByTMDBID(ctx context.Context, item *models.MediaItem) (content
 
 	// Find the search result with a matching TMDB ID
 	for _, catalogItem := range siloResp.Items {
-		itemInfo, Err := getItemInfo(ctx, catalogItem.ContentID)
+		itemInfo, Err := getItemInfo(ctx, msConfig, catalogItem.ContentID)
 		if Err.Message != "" {
 			logAction.AppendWarning(fmt.Sprintf("skipped '%s'", catalogItem.ContentID), Err.Message)
 			continue
@@ -325,28 +325,28 @@ func getGUIDsAndRatingsFromResponse(siloResp SiloCatalogItemDetailResponse) (gui
 	return guids
 }
 
-func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaItem) (Err logging.LogErrorInfo) {
+func fetchSeasonsAndEpisodesForShow(ctx context.Context, msConfig config.Config_MediaServer, itemInfo *models.MediaItem) (Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Silo: Fetching Seasons and Episodes for Show %s", utils.MediaItemInfo(*itemInfo),
 	), logging.LevelDebug)
 	defer logAction.Complete()
 
 	// Get the file paths for all episodes of the show
-	filePaths, Err := getItemFilePaths(ctx, itemInfo.RatingKey)
+	filePaths, Err := getItemFilePaths(ctx, msConfig, itemInfo.RatingKey)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error
 	}
 
 	// Construct the URL for the Silo server API request
-	u, err := apiURL(config.Current.MediaServer.URL, "catalog", "series", itemInfo.RatingKey, "seasons")
+	u, err := apiURL(msConfig.URL, "catalog", "series", itemInfo.RatingKey, "seasons")
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return *logAction.Error
 	}
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
 		return *logAction.Error
@@ -370,10 +370,10 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaI
 		}
 
 		// Construct the URL for the Silo server API request
-		u, _ = apiURL(config.Current.MediaServer.URL, "catalog", "series", itemInfo.RatingKey, "seasons", strconv.Itoa(siloSeason.SeasonNumber), "episodes")
+		u, _ = apiURL(msConfig.URL, "catalog", "series", itemInfo.RatingKey, "seasons", strconv.Itoa(siloSeason.SeasonNumber), "episodes")
 
 		// Make the HTTP Request to Silo
-		_, respBody, Err = makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+		_, respBody, Err = makeRequest(ctx, msConfig, u.String(), "GET", nil)
 		if Err.Message != "" {
 			logAction.SetErrorFromInfo(Err)
 			return *logAction.Error
@@ -396,10 +396,10 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaI
 			// Silo has one item for every library it is in, so use the file in this item's library
 			// If the library paths are known and none of the files are in the library, the episode is not in this library
 			episodeFile := siloEpisode.Files[0]
-			if libraryPathsKnown(itemInfo.LibraryTitle) {
+			if libraryPathsKnown(msConfig, itemInfo.LibraryTitle) {
 				foundInLibrary := false
 				for _, file := range siloEpisode.Files {
-					if isPathInLibrary(filePaths[file.FileID], itemInfo.LibraryTitle) {
+					if isPathInLibrary(msConfig, filePaths[file.FileID], itemInfo.LibraryTitle) {
 						episodeFile = file
 						foundInLibrary = true
 						break
@@ -438,13 +438,13 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, itemInfo *models.MediaI
 	return logging.LogErrorInfo{}
 }
 
-func getItemFilePaths(ctx context.Context, contentID string) (filePaths map[string]string, Err logging.LogErrorInfo) {
+func getItemFilePaths(ctx context.Context, msConfig config.Config_MediaServer, contentID string) (filePaths map[string]string, Err logging.LogErrorInfo) {
 	filePaths = map[string]string{} // Key: Silo File ID
 
 	cursor := ""
 	for {
 		// Construct the URL for the Silo server API request
-		u, err := apiURL(config.Current.MediaServer.URL, "admin", "items", contentID, "files")
+		u, err := apiURL(msConfig.URL, "admin", "items", contentID, "files")
 		if err != nil {
 			message, help, detail := logging.Error_BaseUrlParsing(err)
 			return filePaths, logging.LogErrorInfo{Message: message, Help: help, Detail: detail}
@@ -457,7 +457,7 @@ func getItemFilePaths(ctx context.Context, contentID string) (filePaths map[stri
 		u.RawQuery = query.Encode()
 
 		// Make the HTTP Request to Silo
-		_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+		_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 		if Err.Message != "" {
 			return filePaths, Err
 		}
@@ -482,13 +482,18 @@ func getItemFilePaths(ctx context.Context, contentID string) (filePaths map[stri
 	return filePaths, logging.LogErrorInfo{}
 }
 
-func libraryPathsKnown(libraryTitle string) bool {
-	section, found := cache.LibraryStore.GetSectionByTitle(libraryTitle)
+// libraryStore returns the library cache of the media server
+func libraryStore(msConfig config.Config_MediaServer) *cache.MediaServerLibraryCache {
+	return cache.MediaServerLibraryStore(msConfig.ID, msConfig.IsMain())
+}
+
+func libraryPathsKnown(msConfig config.Config_MediaServer, libraryTitle string) bool {
+	section, found := libraryStore(msConfig).GetSectionByTitle(libraryTitle)
 	return found && len(section.Paths) > 0
 }
 
-func isPathInLibrary(filePath string, libraryTitle string) bool {
-	section, found := cache.LibraryStore.GetSectionByTitle(libraryTitle)
+func isPathInLibrary(msConfig config.Config_MediaServer, filePath string, libraryTitle string) bool {
+	section, found := libraryStore(msConfig).GetSectionByTitle(libraryTitle)
 	if !found || filePath == "" {
 		return false
 	}

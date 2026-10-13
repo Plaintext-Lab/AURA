@@ -188,33 +188,72 @@ func RefreshMediaItemMetadata(ctx context.Context, item *models.MediaItem, refre
 	return msClient.RefreshMediaItemMetadata(ctx, item, refreshRatingKey, updateImage)
 }
 
+// AddLabelToMediaItem adds labels on every Plex media server
 func AddLabelToMediaItem(ctx context.Context, item models.MediaItem, selectedTypes models.SelectedTypes) (Err logging.LogErrorInfo) {
-	if config.Current.MediaServer.Type != "Plex" {
-		return logging.LogErrorInfo{}
-	} else if len(config.Current.LabelsAndTags.Applications) == 0 {
+	if len(config.Current.LabelsAndTags.Applications) == 0 {
 		return logging.LogErrorInfo{}
 	}
-	msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
-	if Err.Message != "" {
-		return Err
+	if config.Current.MediaServer.Type == "Plex" {
+		msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
+		if Err.Message != "" {
+			return Err
+		}
+		Err = msClient.AddLabelToMediaItem(ctx, item, selectedTypes)
+		if Err.Message != "" {
+			return Err
+		}
 	}
-	return msClient.AddLabelToMediaItem(ctx, item, selectedTypes)
+
+	applyToOtherMediaServers(item, "labels", isPlex, func(ctx context.Context, msClient MediaServerInterface, otherItem *models.MediaItem) logging.LogErrorInfo {
+		return msClient.AddLabelToMediaItem(ctx, *otherItem, selectedTypes)
+	})
+	return logging.LogErrorInfo{}
 }
 
+// RateMediaItem rates the item on every Plex and Silo media server
 func RateMediaItem(ctx context.Context, item *models.MediaItem, rating float64) (Err logging.LogErrorInfo) {
-	if config.Current.MediaServer.Type != "Plex" && config.Current.MediaServer.Type != "Silo" {
-		return logging.LogErrorInfo{}
+	if supportsRating(config.Current.MediaServer) {
+		msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
+		if Err.Message != "" {
+			return Err
+		}
+		Err = msClient.RateMediaItem(ctx, item, rating)
+		if Err.Message != "" {
+			return Err
+		}
 	}
-	msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
-	if Err.Message != "" {
-		return Err
-	}
-	return msClient.RateMediaItem(ctx, item, rating)
+
+	applyToOtherMediaServers(*item, "the rating", supportsRating, func(ctx context.Context, msClient MediaServerInterface, otherItem *models.MediaItem) logging.LogErrorInfo {
+		return msClient.RateMediaItem(ctx, otherItem, rating)
+	})
+	return logging.LogErrorInfo{}
+}
+
+func isPlex(server config.Config_MediaServer) bool {
+	return server.Type == "Plex"
+}
+
+func supportsRating(server config.Config_MediaServer) bool {
+	return server.Type == "Plex" || server.Type == "Silo"
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// DownloadApplyImageToMediaItem applies an image on the main media server, then on the other media servers
 func DownloadApplyImageToMediaItem(ctx context.Context, item *models.MediaItem, imageFile models.ImageFile) (Err logging.LogErrorInfo) {
+	Err = DownloadApplyImageToMainMediaServer(ctx, item, imageFile)
+	if Err.Message != "" {
+		return Err
+	}
+
+	applyToOtherMediaServers(*item, fmt.Sprintf("the %s image", imageFile.Type), nil, func(ctx context.Context, msClient MediaServerInterface, otherItem *models.MediaItem) logging.LogErrorInfo {
+		return msClient.DownloadApplyImageToMediaItem(ctx, otherItem, imageFile)
+	})
+	return logging.LogErrorInfo{}
+}
+
+// DownloadApplyImageToMainMediaServer applies an image on the main media server only
+func DownloadApplyImageToMainMediaServer(ctx context.Context, item *models.MediaItem, imageFile models.ImageFile) (Err logging.LogErrorInfo) {
 	msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
 	if Err.Message != "" {
 		return Err

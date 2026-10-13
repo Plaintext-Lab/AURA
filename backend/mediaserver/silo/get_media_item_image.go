@@ -22,7 +22,7 @@ func (s *Silo) GetMediaItemImage(ctx context.Context, item *models.MediaItem, im
 	imageData = []byte{}
 	Err = logging.LogErrorInfo{}
 
-	respBody, Err := GetImageFromSilo(ctx, imageRatingKey, imageType)
+	respBody, Err := GetImageFromSilo(ctx, s.Config, imageRatingKey, imageType)
 	if Err.Message != "" {
 		return imageData, Err
 	}
@@ -31,7 +31,7 @@ func (s *Silo) GetMediaItemImage(ctx context.Context, item *models.MediaItem, im
 	return imageData, logging.LogErrorInfo{}
 }
 
-func GetImageFromSilo(ctx context.Context, ratingKey string, imageType string) (imageData []byte, Err logging.LogErrorInfo) {
+func GetImageFromSilo(ctx context.Context, msConfig config.Config_MediaServer, ratingKey string, imageType string) (imageData []byte, Err logging.LogErrorInfo) {
 	var imageSize string
 	switch imageType {
 	case "poster", "backdrop":
@@ -47,7 +47,7 @@ func GetImageFromSilo(ctx context.Context, ratingKey string, imageType string) (
 	}
 
 	// Get the Media Item details from Silo
-	siloResp, Err := getCatalogItemDetail(ctx, ratingKey, imageSize)
+	siloResp, Err := getCatalogItemDetail(ctx, msConfig, ratingKey, imageSize)
 	if Err.Message != "" {
 		return imageData, Err
 	}
@@ -74,7 +74,7 @@ func GetImageFromSilo(ctx context.Context, ratingKey string, imageType string) (
 			Detail:  map[string]any{"artwork_url": artworkPath, "error": err.Error()},
 		}
 	}
-	u, err := url.Parse(config.Current.MediaServer.URL)
+	u, err := url.Parse(msConfig.URL)
 	if err != nil {
 		message, help, detail := logging.Error_BaseUrlParsing(err)
 		return imageData, logging.LogErrorInfo{Message: message, Help: help, Detail: detail}
@@ -83,7 +83,7 @@ func GetImageFromSilo(ctx context.Context, ratingKey string, imageType string) (
 	u.RawQuery = artworkURL.RawQuery
 
 	// Make the HTTP Request to Silo
-	_, respBody, Err := makeRequest(ctx, config.Current.MediaServer, u.String(), "GET", nil)
+	_, respBody, Err := makeRequest(ctx, msConfig, u.String(), "GET", nil)
 	if Err.Message != "" {
 		return imageData, Err
 	}

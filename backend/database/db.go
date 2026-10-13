@@ -102,6 +102,12 @@ type DB interface {
 	// Update Media Item on_server flag
 	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
 
+	// Move saved Media Items to the items on a new main media server, all or none of them
+	MoveMediaItems(ctx context.Context, moves []MediaItemMove) (Err logging.LogErrorInfo)
+
+	// Count the download queue jobs that are waiting or running
+	CountActiveDownloadQueueJobs(ctx context.Context) (count int, Err logging.LogErrorInfo)
+
 	// Reconcile a Media Item whose Edition changed
 	ReconcileMediaItemEdition(ctx context.Context, tmdbID, libraryTitle, oldEdition string, updatedItem models.MediaItem) (Err logging.LogErrorInfo)
 
@@ -541,4 +547,18 @@ func logSharedLibraryError(Err logging.LogErrorInfo, tmdbID, libraryTitle string
 	}
 	logging.LOGGER.Warn().Timestamp().Str("tmdb_id", tmdbID).Str("library_title", libraryTitle).Str("error", Err.Message).
 		Msg("Failed to apply the change to the same Silo item in another library")
+}
+
+func MoveMediaItems(ctx context.Context, moves []MediaItemMove) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.MoveMediaItems(ctx, moves)
+}
+
+func CountActiveDownloadQueueJobs(ctx context.Context) (count int, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return 0, logging.Error_DBClientNotInitialized()
+	}
+	return Client.CountActiveDownloadQueueJobs(ctx)
 }

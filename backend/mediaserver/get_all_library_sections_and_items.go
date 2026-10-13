@@ -5,6 +5,8 @@ import (
 	"aura/config"
 	"aura/logging"
 	"context"
+	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -39,9 +41,31 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Fetching All Library Sections and Items", logging.LevelDebug)
 	defer logAction.Complete()
 
-	success = true
+	// Main media server
+	success = loadLibrariesIntoCache(ctx, config.Current.MediaServer, cache.LibraryStore, true)
+	if !success {
+		return false
+	}
+	cache.CollectionsStore.LastFullUpdate = time.Now().Unix()
 
-	configuredSections := config.Current.MediaServer.Libraries
+	// Other media servers load in the background, so a slow or unreachable one doesn't hold up aura
+	go RefreshOtherMediaServers()
+	return true
+}
+
+// loadLibrariesIntoCache loads the libraries and items of a media server into a library cache.
+// Collections are only loaded for the main media server.
+func loadLibrariesIntoCache(ctx context.Context, server config.Config_MediaServer, store *cache.MediaServerLibraryCache, withCollections bool) (success bool) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Loading Libraries: %s", server.Name), logging.LevelDebug)
+	defer logAction.Complete()
+
+	msClient, Err := NewMediaServerClient(&server)
+	if Err.Message != "" {
+		logAction.SetErrorFromInfo(Err)
+		return false
+	}
+
+	configuredSections := slices.Clone(server.Libraries)
 
 	// Sort sections by Title to ensure consistent order
 	sort.SliceStable(configuredSections, func(i, j int) bool {
@@ -53,15 +77,15 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 	ejRanCollections := false
 
 	for _, section := range configuredSections {
-		found, Err := GetLibrarySectionDetails(ctx, &section)
+		found, Err := msClient.GetLibrarySectionDetails(ctx, &section)
 		if Err.Message != "" || !found {
 			continue
 		}
 
 		// Update the collections cache for this section
-		if (section.Type == "movie" || section.Type == "mixed") && !ejRanCollections {
+		if withCollections && (section.Type == "movie" || section.Type == "mixed") && !ejRanCollections {
 			GetMovieCollections(ctx, section)
-			if config.Current.MediaServer.Type == "Emby" || config.Current.MediaServer.Type == "Jellyfin" {
+			if server.Type == "Emby" || server.Type == "Jellyfin" {
 				ejRanCollections = true
 			}
 		}
@@ -72,11 +96,12 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 
 		for {
 
-			items, totalSize, Err := GetLibrarySectionItems(ctx, section, strconv.Itoa(start), strconv.Itoa(pageSize))
+			items, totalSize, Err := msClient.GetLibrarySectionItems(ctx, section, strconv.Itoa(start), strconv.Itoa(pageSize))
 			if Err.Message != "" {
 				return false
 			}
 			logging.LOGGER.Info().Timestamp().
+				Str("media_server", server.Name).
 				Str("section_title", section.Title).
 				Str("section_id", section.ID).
 				Int("fetched_items", len(items)).
@@ -96,7 +121,7 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 			sectionForCache.MediaItems = items
 
 			// Update Library Cache
-			cache.LibraryStore.UpdateSection(&sectionForCache)
+			store.UpdateSection(&sectionForCache)
 
 			start += len(items)
 
@@ -107,7 +132,6 @@ func getAllLibrarySectionsAndItemsImpl(ctx context.Context) (success bool) {
 		}
 
 	}
-	cache.LibraryStore.LastFullUpdate = time.Now().Unix()
-	cache.CollectionsStore.LastFullUpdate = time.Now().Unix()
+	store.LastFullUpdate = time.Now().Unix()
 	return true
 }
