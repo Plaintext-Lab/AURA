@@ -14,6 +14,7 @@
 - Added support for saving local images for Jellyfin/Emby/Silo users.
 - Added option to have "Add to Queue" checked by default in the Download Modal for better user experience.
 - Settings now save automatically as you change them. Anything that needs to be tested gives an option to "Test And Save".
+- Changes to Jobs page are saved automatically as you change them.
 - Added an Undo option after a setting is saved to quickly revert to the previous value if needed.
 - Added all settings to the Search bar, so you can quickly find and change a setting without having to navigate through the Settings page.
 - Added Export and Import Configuration in Settings > Advanced, to back up or restore your configuration.
@@ -28,8 +29,9 @@
 ### UI Tweaks
 
 - Added the media server logos to the Media Server type list, and the MediUX logo to the Settings and setup sections.
-- Redesigned the Settings page: each section has its own page, picked from a sidebar (or a dropdown on mobile).
+- Redesigned the Settings page.
 - Redesigned the Onboarding page.
+- Redesigned the Jobs page.
 - The Saved Sets page now explains how to save a set when nothing is saved yet, and hides the filters, view options and Bulk Edit until there are sets.
 - While aura is starting, and during setup, the navbar is hidden to avoid confusion.
 - Sets added to the download queue are as saved in the database on the Home Page. If they fail to be saved, a refresh is required.
