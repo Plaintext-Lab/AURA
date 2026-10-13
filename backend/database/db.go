@@ -112,6 +112,8 @@ type DB interface {
 	// Move saved Media Items to the items on a new main media server, all or none of them
 	MoveMediaItems(ctx context.Context, moves []MediaItemMove) (Err logging.LogErrorInfo)
 
+	// Put jobs another worker was processing back in the queue
+	ResetInterruptedDownloadQueueJobs(ctx context.Context, workerID string) (count int64, Err logging.LogErrorInfo)
 	// Count the download queue jobs that are waiting or running
 	CountActiveDownloadQueueJobs(ctx context.Context) (count int, Err logging.LogErrorInfo)
 
@@ -580,6 +582,13 @@ func MoveMediaItems(ctx context.Context, moves []MediaItemMove) (Err logging.Log
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.MoveMediaItems(ctx, moves)
+}
+
+func ResetInterruptedDownloadQueueJobs(ctx context.Context, workerID string) (count int64, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return 0, logging.Error_DBClientNotInitialized()
+	}
+	return Client.ResetInterruptedDownloadQueueJobs(ctx, workerID)
 }
 
 func CountActiveDownloadQueueJobs(ctx context.Context) (count int, Err logging.LogErrorInfo) {

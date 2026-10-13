@@ -236,3 +236,23 @@ func (s *SQliteDB) DeleteAllDownloadQueueJobs(ctx context.Context) (Err logging.
 
 	return logging.LogErrorInfo{}
 }
+
+// ResetInterruptedDownloadQueueJobs puts jobs another worker was processing back in the queue.
+// They were stopped part way when aura restarted, so they run again from the start.
+func (s *SQliteDB) ResetInterruptedDownloadQueueJobs(ctx context.Context, workerID string) (count int64, Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Reset Interrupted Download Queue Jobs", logging.LevelDebug)
+	defer logAction.Complete()
+
+	result, err := s.conn.ExecContext(ctx, `
+UPDATE DownloadQueueJobs
+SET status = 'pending', started_at = NULL, worker_id = ''
+WHERE status = 'processing' AND worker_id != ?;
+`, workerID)
+	if err != nil {
+		logAction.SetError("DB: reset interrupted DownloadQueueJobs failed", err.Error(), map[string]any{"error": err.Error()})
+		return 0, *logAction.Error
+	}
+	count, _ = result.RowsAffected()
+	logAction.AppendResult("reset_jobs", count)
+	return count, logging.LogErrorInfo{}
+}

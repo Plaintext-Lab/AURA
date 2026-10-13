@@ -1,6 +1,7 @@
 package downloadqueue
 
 import (
+	"aura/database"
 	"aura/logging"
 	"context"
 	"fmt"
@@ -41,6 +42,10 @@ func StartWorker(ctx context.Context) {
 		defer workerWG.Done()
 		ticker := time.NewTicker(workerSafetyTickInterval)
 		defer ticker.Stop()
+
+		// Jobs that were processing when aura last stopped run again, then the queue starts
+		resetInterruptedJobs(ctx)
+		drainQueue(ctx)
 
 		for {
 			select {
@@ -102,4 +107,19 @@ func processNextJob(ctx context.Context) (processed bool) {
 	}()
 
 	return ProcessNextQueueJob(ctx)
+}
+
+func resetInterruptedJobs(ctx context.Context) {
+	ctx, ld := logging.CreateLoggingContext(ctx, "Download Queue Worker")
+	logAction := ld.AddAction("Reset Interrupted Download Queue Jobs", logging.LevelInfo)
+	ctx = logging.WithCurrentAction(ctx, logAction)
+	count, Err := database.ResetInterruptedDownloadQueueJobs(ctx, workerID)
+	logAction.Complete()
+	if Err.Message != "" {
+		ld.Log()
+		return
+	}
+	if count > 0 {
+		logging.LOGGER.Info().Timestamp().Int64("jobs", count).Msg("Download queue jobs stopped by the last restart will run again")
+	}
 }
