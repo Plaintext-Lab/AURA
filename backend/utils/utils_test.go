@@ -4,6 +4,8 @@ import (
 	"aura/logging"
 	"aura/models"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -124,5 +126,34 @@ func TestUpdatePosterSetInDBItem(t *testing.T) {
 	}
 	if found, _ := UpdatePosterSetInDBItem(sets, models.DBPosterSetDetail{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: "2"}}}); found {
 		t.Error("a set that isn't in the list should not be found")
+	}
+}
+
+func TestFiles(t *testing.T) {
+	dir := t.TempDir()
+	folder := filepath.Join(dir, "a", "b")
+	if Err := CreateFolderIfNotExists(testContext(), folder); Err.Message != "" || !CheckFileExists(folder) {
+		t.Fatalf("the folder should be created: %s", Err.Message)
+	}
+	for _, name := range []string{"a/one.jpg", "a/b/two.jpg", "three.jpg"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cleared, Err := ClearAllFilesFromFolder(testContext(), dir)
+	if Err.Message != "" || cleared != 3 {
+		t.Errorf("cleared %d files (%s), want 3", cleared, Err.Message)
+	}
+	if CheckFileExists(filepath.Join(dir, "three.jpg")) {
+		t.Error("the files should be deleted")
+	}
+	if _, Err := ClearAllFilesFromFolder(testContext(), filepath.Join(dir, "missing")); Err.Message == "" {
+		t.Error("clearing a folder that doesn't exist should fail")
+	}
+
+	for contentType, want := range map[string]string{"image/png": ".png", "image/webp": ".webp", "image/gif": ".gif", "image/jpeg": ".jpg", "": ".jpg"} {
+		if got := GetExtensionFromContentType(contentType); got != want {
+			t.Errorf("GetExtensionFromContentType(%q) = %q, want %q", contentType, got, want)
+		}
 	}
 }
