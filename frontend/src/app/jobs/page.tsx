@@ -1,12 +1,12 @@
 "use client";
 
 import { ReturnErrorMessage } from "@/services/api-error-return";
-import { GetAppConfigStatus } from "@/services/config/status";
-import { UpdateAppConfig } from "@/services/config/update";
+import { UpdateAppConfigSection } from "@/services/config/update-section";
 import type { JobInfo } from "@/services/jobs/get";
 import { GetAllJobs } from "@/services/jobs/get";
 import { RunJob } from "@/services/jobs/run";
 import cronstrue from "cronstrue";
+import { CalendarClock, History, Loader2, Play, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { useEffect, useState } from "react";
@@ -15,16 +15,17 @@ import Link from "next/link";
 
 import { ErrorMessage } from "@/components/shared/error-message";
 import Loader from "@/components/shared/loader";
-import { PopoverHelp } from "@/components/shared/popover-help";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 import { cn } from "@/lib/cn";
 
 import type { APIResponse } from "@/types/api/api-response";
-import type { AppConfig, AppConfigJobSetting, AppConfigJobs } from "@/types/config/config";
+import type { AppConfigJobSetting } from "@/types/config/config";
 
 type JobEdits = Record<string, AppConfigJobSetting>;
 
@@ -35,7 +36,7 @@ const validateCron = (expr: string): string | null => {
     cronstrue.toString(trimmed);
     return null;
   } catch {
-    return "Invalid cron expression. Use a site like crontab.guru to help you create and test your cron expressions.";
+    return "Not a valid cron expression.";
   }
 };
 
@@ -80,10 +81,10 @@ export default function JobsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<APIResponse<JobInfo[]> | null>(null);
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
+  const [runningJobId, setRunningJobId] = useState<string | null>(null);
 
   // States - Data
   const [jobs, setJobs] = useState<JobInfo[]>([]);
-  const [config, setConfig] = useState<AppConfig | null>(null);
   const [edits, setEdits] = useState<JobEdits>({});
 
   // Ticks once a second so "Next Run" labels (and the under-a-minute countdown)
@@ -98,15 +99,10 @@ export default function JobsPage() {
     try {
       setLoading(true);
 
-      const [jobsResponse, configResponse] = await Promise.all([GetAllJobs(), GetAppConfigStatus()]);
-
+      const jobsResponse = await GetAllJobs();
       if (jobsResponse.status === "error") {
         setError(ReturnErrorMessage<JobInfo[]>(jobsResponse.error?.message || "Failed to fetch jobs"));
         setJobs([]);
-        return;
-      }
-      if (configResponse.status === "error") {
-        setError(ReturnErrorMessage<JobInfo[]>(configResponse.error?.message || "Failed to fetch configuration"));
         return;
       }
 
@@ -119,10 +115,7 @@ export default function JobsPage() {
         return dateA - dateB;
       });
 
-      const newConfig = configResponse.data?.status.current_setup ?? null;
-
       setJobs(items);
-      setConfig(newConfig);
       setEdits(Object.fromEntries(items.map((job) => [job.id, { enabled: job.enabled, cron: job.spec }])) as JobEdits);
       setError(null);
     } catch (e) {
@@ -134,11 +127,13 @@ export default function JobsPage() {
   };
 
   const handleRunJobNowClick = async (job: JobInfo) => {
+    setRunningJobId(job.id);
     const response = await RunJob(job.id);
+    setRunningJobId(null);
     if (response.status === "error") {
-      setError(ReturnErrorMessage<JobInfo[]>(response.error?.message || "Failed to trigger job"));
+      toast.error(response.error?.message || `Failed to run "${job.job_name}"`);
     } else {
-      toast.success(`Job "${job.job_name}" triggered successfully`);
+      toast.success(`"${job.job_name}" started`);
       void fetchJobs();
     }
   };
@@ -154,8 +149,11 @@ export default function JobsPage() {
     }));
   };
 
+  const handleDiscardClick = (job: JobInfo) => {
+    setEdits((prev) => ({ ...prev, [job.id]: { enabled: job.enabled, cron: job.spec } }));
+  };
+
   const handleSaveJobClick = async (job: JobInfo) => {
-    if (!config) return;
     const edited = edits[job.id];
     if (!edited) return;
 
@@ -169,21 +167,13 @@ export default function JobsPage() {
 
     setSavingJobId(job.id);
     try {
-      const newConfig: AppConfig = {
-        ...config,
-        jobs: {
-          ...config.jobs,
-          [job.id as keyof AppConfigJobs]: edited,
-        },
-      };
-
-      const response = await UpdateAppConfig(newConfig);
+      const response = await UpdateAppConfigSection("jobs", { [job.id]: { ...edited, cron: edited.cron.trim() } });
       if (response.status === "error") {
-        toast.error(response.error?.message || `Failed to update "${job.job_name}"`);
-      } else if (response.status === "warn") {
-        toast.warning("No changes detected.");
+        toast.error(response.error?.message || `Failed to save "${job.job_name}"`);
+      } else if (!response.data?.changed) {
+        toast.warning("No changes to save");
       } else {
-        toast.success(`"${job.job_name}" updated successfully`);
+        toast.success(`"${job.job_name}" saved`);
         await fetchJobs();
       }
     } finally {
@@ -202,130 +192,156 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="container mx-auto px-2 py-4 min-h-screen flex flex-col items-center">
-      <Card className="w-full">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full space-y-2 md:space-y-0">
-            <h2 className="text-lg font-medium text-center md:text-left whitespace-nowrap">Scheduled Jobs</h2>
+    <div className="container mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold">Jobs</h1>
+          <p className="text-sm text-muted-foreground">
+            Background jobs that keep aura up to date. Each job runs on its own schedule, written as a cron expression.
+            You can use{" "}
+            <Link
+              className="text-primary hover:underline"
+              href="https://crontab.guru/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              crontab.guru
+            </Link>{" "}
+            to create and test them.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchJobs}
+          disabled={loading}
+          className="shrink-0 self-start cursor-pointer"
+        >
+          <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+          Refresh
+        </Button>
+      </div>
 
-            <div className="flex flex-row flex-wrap justify-center md:justify-end gap-2 px-2 w-full max-w-full">
-              <Button variant="outline" onClick={fetchJobs} disabled={loading}>
-                Refresh
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
+      {loading && jobs.length === 0 ? (
+        <Loader />
+      ) : error ? (
+        <ErrorMessage error={error} />
+      ) : jobs.length === 0 ? (
+        <ErrorMessage error={ReturnErrorMessage<string>("No jobs found")} />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {jobs.map((job) => {
+            const edited = edits[job.id] ?? { enabled: job.enabled, cron: job.spec };
+            const dirty = isJobDirty(job);
+            const cronErr = edited.enabled ? validateCron(edited.cron) : null;
+            const schedule = !cronErr && edited.cron.trim() ? cronstrue.toString(edited.cron.trim()) : null;
 
-        <CardContent>
-          {loading ? (
-            <Loader />
-          ) : error ? (
-            <ErrorMessage error={error} />
-          ) : (!jobs || jobs.length === 0) && !error && !loading ? (
-            <div className="w-full">
-              <ErrorMessage error={ReturnErrorMessage<string>("No jobs found")} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {jobs.map((job) => {
-                const edited = edits[job.id] ?? { enabled: job.enabled, cron: job.spec };
-                const dirty = isJobDirty(job);
-                const cronErr = edited.enabled ? validateCron(edited.cron) : null;
-                const cronTitle = !cronErr && edited.cron.trim() ? cronstrue.toString(edited.cron) : undefined;
+            const nextRunLabel = job.enabled
+              ? job.next_run
+                ? formatNextRun(parseServerTimestamp(job.next_run), now)
+                : "—"
+              : "Off";
+            const prevRunLabel = job.prev_run ? formatPrevRun(parseServerTimestamp(job.prev_run), now) : null;
 
-                const nextRunLabel = job.enabled
-                  ? job.next_run
-                    ? formatNextRun(parseServerTimestamp(job.next_run), now)
-                    : "—"
-                  : "Disabled";
-                const prevRunLabel = job.prev_run ? formatPrevRun(parseServerTimestamp(job.prev_run), now) : null;
-
-                return (
-                  <div key={job.id} className="rounded-lg border border-muted p-3 flex flex-col gap-2">
-                    {/* Row 1: enabled toggle, name, description tooltip, next/prev run, run now */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Switch
-                        checked={edited.enabled}
-                        onCheckedChange={(v) => handleEditChange(job.id, "enabled", v)}
-                        aria-label={`Toggle ${job.job_name}`}
-                      />
-
-                      <span className="text-sm font-medium truncate">{job.job_name || "Unknown Job"}</span>
-
-                      {job.description && (
-                        <PopoverHelp ariaLabel={`help-job-description-${job.id}`}>
-                          <p>{job.description}</p>
-                        </PopoverHelp>
-                      )}
-
-                      <div className="ml-auto flex items-center gap-3">
-                        <span
-                          className="text-xs text-muted-foreground font-mono whitespace-nowrap"
-                          title={[job.next_run, job.prev_run].filter(Boolean).join(" · ") || undefined}
-                        >
-                          {nextRunLabel}
-                          {prevRunLabel && <span className="hidden sm:inline"> · last {prevRunLabel}</span>}
-                        </span>
-
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleRunJobNowClick(job)}
-                          disabled={loading}
-                          className="shrink-0"
-                        >
-                          Run Now
-                        </Button>
-                      </div>
+            return (
+              <Card key={job.id} className={cn("gap-4 p-4", dirty && "border-amber-500")}>
+                {/* Name, description and on/off */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-semibold leading-tight">{job.job_name || "Unknown Job"}</h2>
+                      {!job.enabled && <Badge variant="secondary">Off</Badge>}
                     </div>
+                    {job.description && <p className="text-sm text-muted-foreground">{job.description}</p>}
+                  </div>
+                  <Switch
+                    checked={edited.enabled}
+                    onCheckedChange={(v) => handleEditChange(job.id, "enabled", v)}
+                    aria-label={`Turn ${job.job_name} on or off`}
+                    className="mt-0.5 cursor-pointer"
+                  />
+                </div>
 
-                    {/* Row 2: cron schedule + save */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Input
-                        disabled={!edited.enabled}
-                        placeholder="e.g. 0 3 * * *"
-                        value={edited.cron}
-                        onChange={(e) => handleEditChange(job.id, "cron", e.target.value)}
-                        title={cronTitle}
-                        className={cn("h-8 flex-1 min-w-[140px] font-mono text-sm", cronErr && "border-red-500")}
-                      />
+                {/* Schedule */}
+                <div className="space-y-1">
+                  <Label htmlFor={`job-cron-${job.id}`} className="text-xs text-muted-foreground">
+                    Schedule
+                  </Label>
+                  <Input
+                    id={`job-cron-${job.id}`}
+                    disabled={!edited.enabled}
+                    placeholder="0 3 * * *"
+                    value={edited.cron}
+                    onChange={(e) => handleEditChange(job.id, "cron", e.target.value)}
+                    className={cn("font-mono", cronErr && "border-red-500", dirty && !cronErr && "border-amber-500")}
+                  />
+                  {cronErr ? (
+                    <p className="text-xs text-red-500">{cronErr}</p>
+                  ) : (
+                    schedule && edited.enabled && <p className="text-xs text-muted-foreground">{schedule}</p>
+                  )}
+                </div>
 
-                      <PopoverHelp ariaLabel={`help-job-cron-${job.id}`}>
-                        <p>
-                          Cron expression format. Use the standard cron syntax to specify when the job should run. You
-                          can use a site like{" "}
-                          <Link
-                            className="text-primary hover:underline"
-                            href="https://crontab.guru/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            crontab.guru
-                          </Link>{" "}
-                          to help you create and test your cron expressions.
-                        </p>
-                      </PopoverHelp>
+                {/* Next and last run, and actions */}
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1" title={job.next_run || undefined}>
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Next: {nextRunLabel}
+                    </span>
+                    {prevRunLabel && (
+                      <span className="flex items-center gap-1" title={job.prev_run || undefined}>
+                        <History className="h-3.5 w-3.5" />
+                        Last: {prevRunLabel}
+                      </span>
+                    )}
+                  </div>
 
-                      {dirty && (
+                  <div className="ml-auto flex items-center gap-2">
+                    {dirty ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDiscardClick(job)}
+                          disabled={savingJobId === job.id}
+                          className="cursor-pointer"
+                        >
+                          Discard
+                        </Button>
                         <Button
                           size="sm"
                           onClick={() => handleSaveJobClick(job)}
                           disabled={savingJobId === job.id || !!cronErr}
-                          className="shrink-0"
+                          className="cursor-pointer"
                         >
+                          {savingJobId === job.id && <Loader2 className="h-4 w-4 animate-spin" />}
                           {savingJobId === job.id ? "Saving..." : "Save"}
                         </Button>
-                      )}
-                    </div>
-
-                    {cronErr && <p className="text-xs text-red-500">{cronErr}</p>}
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRunJobNowClick(job)}
+                        disabled={runningJobId === job.id}
+                        className="cursor-pointer"
+                      >
+                        {runningJobId === job.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                        Run Now
+                      </Button>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
