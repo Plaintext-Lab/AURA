@@ -115,3 +115,14 @@ func TestRenderTemplate(t *testing.T) {
 		t.Error("the base variables should include the timestamp")
 	}
 }
+
+func TestUpdatePosterSetInDBItem(t *testing.T) {
+	sets := []models.DBPosterSetDetail{{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: "1", Title: "Old"}}}}
+	found, updated := UpdatePosterSetInDBItem(sets, models.DBPosterSetDetail{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: "1", Title: "New"}}})
+	if !found || updated[0].Title != "New" {
+		t.Errorf("the set should be replaced, got found %v and %+v", found, updated)
+	}
+	if found, _ := UpdatePosterSetInDBItem(sets, models.DBPosterSetDetail{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: "2"}}}); found {
+		t.Error("a set that isn't in the list should not be found")
+	}
+}
