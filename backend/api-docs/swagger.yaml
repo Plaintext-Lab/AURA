@@ -2326,6 +2326,17 @@ paths:
       summary: Preview Main Media Server Switch
       tags:
       - Config
+  /api/config/stream:
+    get:
+      description: Server-Sent Events stream of the app status while aura starts or
+        is in setup mode. Without the setup code, only the app status is sent, not
+        the config.
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Stream Config Status (Setup Mode)
+      tags:
+      - Config
   /api/config/template-variables:
     get:
       description: Get all available notification template variables grouped by category

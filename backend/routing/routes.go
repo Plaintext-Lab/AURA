@@ -80,6 +80,7 @@ func AddRoutes(r *chi.Mux) {
 		// Config Routes
 		r.Route("/config", func(r chi.Router) {
 			r.Get("/", routes_config.GetAppConfigStatus)
+			r.Get("/stream", routes_config.StreamAppConfigStatus)
 			r.Get("/template-variables", routes_config.GetNotificationTemplateVariables)
 			r.Post("/", routes_config.UpdateAppConfig)
 			r.Get("/export", routes_config.ExportAppConfig)
@@ -213,6 +214,7 @@ func addOnboardingRoutes(r *chi.Mux) {
 		// Config Routes
 		r.Route("/config", func(r chi.Router) {
 			r.Get("/", routes_config.GetSetupConfigStatus)
+			r.Get("/stream", routes_config.StreamSetupConfigStatus)
 			r.Get("/auth-methods", routes_auth.GetAuthMethods)
 			r.Get("/template-variables", routes_config.GetNotificationTemplateVariables)
 			r.Post("/", routes_config.UpdateAppConfig)

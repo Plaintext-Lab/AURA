@@ -4,6 +4,7 @@ import (
 	"aura/database"
 	downloadqueue "aura/download/queue"
 	"aura/logging"
+	"aura/utils/httpx"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,6 +51,8 @@ func StreamDownloadQueueEvents(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-httpx.StreamsClosed():
 			return
 		case evt, ok := <-ch:
 			if !ok {

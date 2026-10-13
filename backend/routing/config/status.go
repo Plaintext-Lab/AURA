@@ -83,7 +83,12 @@ func GetSetupConfigStatus(w http.ResponseWriter, r *http.Request) {
 	logAction := ld.AddAction("Get Config Status (Setup Mode)", logging.LevelTrace)
 	ctx = logging.WithCurrentAction(ctx, logAction)
 
-	// Without a login, only return the config once the setup code is entered
+	httpx.SendResponse(w, ld, configStatusResponse{Status: setupConfigStatus(ctx)})
+}
+
+// setupConfigStatus returns the config status in setup mode.
+// Without a login, the config is only returned once the setup code is entered.
+func setupConfigStatus(ctx context.Context) AppConfigStatus {
 	if !config.AuthEnabled() && !httpx.SetupCodeVerified(ctx) {
 		defaults := config.DefaultConfig()
 		status := currentConfigStatus(ctx)
@@ -91,11 +96,9 @@ func GetSetupConfigStatus(w http.ResponseWriter, r *http.Request) {
 		status.MediaServerName = ""
 		status.APIKeyConfigured = false
 		status.SetupCodeRequired = config.Loaded
-		httpx.SendResponse(w, ld, configStatusResponse{Status: status})
-		return
+		return status
 	}
-
-	httpx.SendResponse(w, ld, configStatusResponse{Status: currentConfigStatus(ctx)})
+	return currentConfigStatus(ctx)
 }
 
 type verifySetupCodeRequest struct {

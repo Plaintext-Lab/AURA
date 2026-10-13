@@ -42,7 +42,8 @@ func SetupGuard(next http.Handler) http.Handler {
 			return
 		}
 
-		if r.Method == http.MethodGet && r.URL.Path == "/api/config" {
+		// Both only return the app status without the setup code
+		if r.Method == http.MethodGet && (r.URL.Path == "/api/config" || r.URL.Path == "/api/config/stream") {
 			next.ServeHTTP(w, r)
 			return
 		}

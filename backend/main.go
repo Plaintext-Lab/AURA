@@ -50,7 +50,7 @@ func main() {
 	// Serve immediately with onboarding/public routes first.
 	config.AppFullyLoaded = false
 	config.AppVersion = APP_VERSION
-	config.AppLoadingStep = "Initializing Application"
+	config.SetAppLoadingStep("Initializing Application")
 	activeHandler.Store(routing.NewRouter())
 
 	// Start API now (non-blocking for init pipeline).
@@ -77,6 +77,7 @@ func main() {
 			}
 			config.AppFullyLoaded = true
 			activeHandler.Store(routing.NewRouter())
+			config.NotifyStatusChanged()
 			logging.LOGGER.Info().Timestamp().Msg("Onboarding complete. Main routes active.")
 		}
 
@@ -85,6 +86,7 @@ func main() {
 			if !preflightSuccess {
 				config.Valid = false
 				activeHandler.Store(routing.NewRouter()) // stays onboarding
+				config.NotifyStatusChanged()
 				return
 			}
 
@@ -95,7 +97,6 @@ func main() {
 			}
 
 			config.AppFullyLoaded = true
-			config.AppLoadingStep = "App Fully Loaded"
 			// Send App Start Notification
 			// Send notification (only if not dev & notifications enabled)
 			if !strings.Contains(APP_VERSION, "dev") &&
@@ -105,11 +106,14 @@ func main() {
 				logging.LOGGER.Warn().Timestamp().Bool("notifications_enabled", config.Current.Notifications.Enabled).Bool("dev_version", strings.Contains(APP_VERSION, "dev")).Msg("App start notification not sent")
 			}
 			activeHandler.Store(routing.NewRouter()) // swap to full routes
+			// Only once the full routes are active, so the loading page doesn't open Home too early
+			config.SetAppLoadingStep("App Fully Loaded")
 			return
 		}
 
 		// Config not loaded/valid: onboarding mode remains active.
 		activeHandler.Store(routing.NewRouter())
+		config.NotifyStatusChanged()
 	}()
 
 	// Keep running until aura is stopped

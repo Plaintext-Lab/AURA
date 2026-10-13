@@ -480,6 +480,19 @@
                 }
             }
         },
+        "/api/config/stream": {
+            "get": {
+                "description": "Server-Sent Events stream of the app status while aura starts or is in setup mode. Without the setup code, only the app status is sent, not the config.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "Config"
+                ],
+                "summary": "Stream Config Status (Setup Mode)",
+                "responses": {}
+            }
+        },
         "/api/config/template-variables": {
             "get": {
                 "security": [
