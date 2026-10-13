@@ -88,3 +88,16 @@ func TestGetFileDownloadName(t *testing.T) {
 		}
 	}
 }
+
+func TestMediaItemInfo(t *testing.T) {
+	got := MediaItemInfo(models.MediaItem{Title: "Movie (2020)", LibraryTitle: "Movies", TMDB_ID: "1", RatingKey: "10"})
+	if want := "'Movie' (2020) | Movies [TMDB: 1 | Key: 10]"; got != want {
+		t.Errorf("MediaItemInfo = %q, want %q", got, want)
+	}
+	if got := MediaItemInfo(models.MediaItem{}); got != "'<no title>' (-1) | <no library> [TMDB: <no tmdb> | Key: <no key>]" {
+		t.Errorf("MediaItemInfo of an empty item = %q", got)
+	}
+	if got := CollectionItemInfo(models.CollectionItem{Title: "Saga", LibraryTitle: "Movies", RatingKey: "5"}); got != "'Saga' | Movies [Key: 5]" {
+		t.Errorf("CollectionItemInfo = %q", got)
+	}
+}
