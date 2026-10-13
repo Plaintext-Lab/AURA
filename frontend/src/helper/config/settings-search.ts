@@ -401,6 +401,7 @@ const CONFIG_SECTIONS: Record<string, { sectionId: string; label: string }> = {
   notifications: { sectionId: "notifications", label: "Notifications" },
   logging: { sectionId: "logging", label: "Logging" },
   user_preferences: { sectionId: "user-preferences", label: "User Preferences" },
+  jobs: { sectionId: "jobs", label: "Jobs" },
 };
 
 // configSectionLabel returns the name of a config section

@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { ErrorMessage } from "@/components/shared/error-message";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,6 +82,7 @@ const itemVariants = {
 
 export function DynamicSearch({ placeholder = "Search", className }: DynamicSearchProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   // --- States and Refs ---
 
@@ -191,6 +192,23 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
     setSearchResultMediuxUserLastUpdate(0);
     setSearchResultsSavedSets([]);
   };
+
+  // A search on the Settings page is for a setting, so clear it when leaving the page.
+  // Opening a saved set from the results keeps it, as the Saved Sets page uses it
+  const previousPath = useRef(pathname);
+  const keepSearch = useRef(false);
+  useEffect(() => {
+    const leftSettings = previousPath.current.startsWith("/settings") && !pathname.startsWith("/settings");
+    previousPath.current = pathname;
+    if (!leftSettings) return;
+    if (keepSearch.current) {
+      keepSearch.current = false;
+      return;
+    }
+    setSearchInput("");
+    setSearchQuery("");
+    setIsExpanded(false);
+  }, [pathname, setSearchQuery]);
 
   // If the search query is changed externally, update the local input state
   useEffect(() => {
@@ -338,6 +356,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
 
   // Handle Saved Sets Click
   const handleSavedSetsClick = (set: DBSavedItem) => {
+    keepSearch.current = pathname.startsWith("/settings");
     setSearchQuery(
       `${set.media_item.title} Y:${set.media_item.year}: ID:${set.media_item.tmdb_id}: L:${set.media_item.library_title}:`
     );
