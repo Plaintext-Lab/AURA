@@ -223,7 +223,7 @@ func applySavedItem(ctx, logCtx context.Context, server config.Config_MediaServe
 	}
 
 	for _, posterSet := range saved.PosterSets {
-		for _, image := range posterSet.Images {
+		for _, image := range models.SortImagesForApply(posterSet.Images) {
 			if !models.IsKnownImageType(image.Type) || !models.ImageIsSelected(item, posterSet.SelectedTypes, image) {
 				continue
 			}

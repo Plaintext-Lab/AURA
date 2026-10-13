@@ -1,5 +1,11 @@
 package models
 
+import (
+	"cmp"
+	"math"
+	"slices"
+)
+
 // IsKnownImageType reports whether aura knows how to apply an image of this type
 func IsKnownImageType(imageType string) bool {
 	switch imageType {
@@ -60,4 +66,58 @@ func itemHasEpisode(item MediaItem, seasonNumber, episodeNumber *int) bool {
 		}
 	}
 	return false
+}
+
+// SortImagesForApply returns the images in the order they are applied: the poster, the backdrop,
+// then each season's poster followed by its titlecards by episode. Specials come after the other seasons.
+func SortImagesForApply(images []ImageFile) []ImageFile {
+	sorted := slices.Clone(images)
+	slices.SortStableFunc(sorted, func(a, b ImageFile) int {
+		return cmp.Or(
+			cmp.Compare(imageTypeRank(a), imageTypeRank(b)),
+			cmp.Compare(seasonRank(a), seasonRank(b)),
+			cmp.Compare(seasonImageRank(a), seasonImageRank(b)),
+			cmp.Compare(numberOrZero(a.EpisodeNumber), numberOrZero(b.EpisodeNumber)),
+		)
+	})
+	return sorted
+}
+
+// imageTypeRank puts the poster first, then the backdrop, then the season images
+func imageTypeRank(image ImageFile) int {
+	switch image.Type {
+	case "poster":
+		return 0
+	case "backdrop":
+		return 1
+	case "season_poster", "titlecard":
+		return 2
+	}
+	return 3
+}
+
+// seasonRank orders the seasons, with specials after the other seasons
+func seasonRank(image ImageFile) int {
+	if image.SeasonNumber == nil {
+		return 0
+	}
+	if *image.SeasonNumber == 0 {
+		return math.MaxInt
+	}
+	return *image.SeasonNumber
+}
+
+// seasonImageRank puts a season's poster before its titlecards
+func seasonImageRank(image ImageFile) int {
+	if image.Type == "season_poster" {
+		return 0
+	}
+	return 1
+}
+
+func numberOrZero(n *int) int {
+	if n == nil {
+		return 0
+	}
+	return *n
 }

@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestImageIsSelected(t *testing.T) {
 	num := func(n int) *int { return &n }
@@ -39,5 +42,33 @@ func TestImageIsSelected(t *testing.T) {
 				t.Errorf("ImageIsSelected = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSortImagesForApply(t *testing.T) {
+	num := func(n int) *int { return &n }
+	images := []ImageFile{
+		{ID: "s2e1", Type: "titlecard", SeasonNumber: num(2), EpisodeNumber: num(1)},
+		{ID: "s0", Type: "season_poster", SeasonNumber: num(0)},
+		{ID: "s1e2", Type: "titlecard", SeasonNumber: num(1), EpisodeNumber: num(2)},
+		{ID: "backdrop", Type: "backdrop"},
+		{ID: "s2", Type: "season_poster", SeasonNumber: num(2)},
+		{ID: "s1e1", Type: "titlecard", SeasonNumber: num(1), EpisodeNumber: num(1)},
+		{ID: "s0e1", Type: "titlecard", SeasonNumber: num(0), EpisodeNumber: num(1)},
+		{ID: "s1", Type: "season_poster", SeasonNumber: num(1)},
+		{ID: "poster", Type: "poster"},
+	}
+	want := []string{"poster", "backdrop", "s1", "s1e1", "s1e2", "s2", "s2e1", "s0", "s0e1"}
+
+	sorted := SortImagesForApply(images)
+	var got []string
+	for _, image := range sorted {
+		got = append(got, image.ID)
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("order = %v, want %v", got, want)
+	}
+	if images[0].ID != "s2e1" {
+		t.Error("the images passed in should not be reordered")
 	}
 }

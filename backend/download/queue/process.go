@@ -149,7 +149,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 			continue
 		}
 
-		for idx, image := range posterSet.Images {
+		for idx, image := range models.SortImagesForApply(posterSet.Images) {
 			if !models.IsKnownImageType(image.Type) {
 				subAction.AppendWarning(fmt.Sprintf("job_%d_image_%d", job.ID, idx), fmt.Sprintf("Image has unrecognized type '%s'", image.Type))
 				fileWarnings = append(fileWarnings, fmt.Sprintf("Image '%s' has unrecognized type '%s'", image.Src, image.Type))
