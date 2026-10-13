@@ -166,6 +166,9 @@ func AddRoutes(r *chi.Mux) {
 			r.Get("/collections/item", routes_ms.GetAllCollectionChildrenItems)
 			r.Patch("/rate", routes_ms.RateMediaItem)
 			r.Post("/refresh", routes_ms.RefreshMediaItemMetadata)
+			r.Post("/sync", routes_ms.StartMediaServerSync)
+			r.Get("/sync", routes_ms.GetMediaServerSync)
+			r.Delete("/sync", routes_ms.StopMediaServerSync)
 		})
 
 		// MediUX Routes

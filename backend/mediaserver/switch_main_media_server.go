@@ -72,6 +72,9 @@ func PlanMainMediaServerSwitch(ctx context.Context, serverID string) (plan Switc
 	if activeJobs > 0 {
 		plan.Blocked = fmt.Sprintf("%d downloads are in the queue. Wait for them to finish, then switch.", activeJobs)
 	}
+	if name, running := MediaServerSyncRunning(); running {
+		plan.Blocked = fmt.Sprintf("Saved sets are being applied to %s. Wait for it to finish or stop it, then switch.", name)
+	}
 
 	// Load the media server's libraries again
 	connected, serverName := connectMediaServer(ctx, &plan.server)

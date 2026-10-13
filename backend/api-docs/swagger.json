@@ -3116,6 +3116,160 @@
                 }
             }
         },
+        "/api/mediaserver/sync": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "The progress of the latest time the saved sets were applied to a media server.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Get Media Server Sync Progress",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_ms.mediaServerSyncResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Apply every saved set to a media server that isn't the main one. It runs in the background, use GET /api/mediaserver/sync for its progress.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Apply Saved Sets to a Media Server",
+                "parameters": [
+                    {
+                        "description": "The media server",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_ms.startMediaServerSyncRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_ms.mediaServerSyncResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Stop applying the saved sets to a media server. The image being applied is finished first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Stop Media Server Sync",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_ms.mediaServerSyncResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/mediux/set": {
             "get": {
                 "security": [
@@ -5110,6 +5264,65 @@
                 }
             }
         },
+        "mediaserver.MediaServerSync": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "description": "Images applied",
+                    "type": "integer"
+                },
+                "current": {
+                    "description": "The item being applied",
+                    "type": "string"
+                },
+                "done": {
+                    "description": "Saved items checked",
+                    "type": "integer"
+                },
+                "error": {
+                    "description": "Why the sync stopped before the end",
+                    "type": "string"
+                },
+                "failed": {
+                    "description": "Images or items that couldn't be applied",
+                    "type": "integer"
+                },
+                "failures": {
+                    "description": "The first few things that couldn't be applied",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "not_found": {
+                    "description": "Saved items that aren't on the media server",
+                    "type": "integer"
+                },
+                "running": {
+                    "type": "boolean"
+                },
+                "server_id": {
+                    "type": "string"
+                },
+                "server_name": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "stopped": {
+                    "description": "Whether it was stopped from Settings",
+                    "type": "boolean"
+                },
+                "total": {
+                    "description": "Saved items",
+                    "type": "integer"
+                }
+            }
+        },
         "mediaserver.SwitchMainItem": {
             "type": "object",
             "properties": {
@@ -6713,6 +6926,28 @@
                     "items": {
                         "$ref": "#/definitions/models.LibrarySection"
                     }
+                }
+            }
+        },
+        "routes_ms.mediaServerSyncResponse": {
+            "type": "object",
+            "properties": {
+                "sync": {
+                    "description": "The latest sync, null if there hasn't been one",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/mediaserver.MediaServerSync"
+                        }
+                    ]
+                }
+            }
+        },
+        "routes_ms.startMediaServerSyncRequest": {
+            "type": "object",
+            "properties": {
+                "server_id": {
+                    "description": "The media server to apply the saved sets to",
+                    "type": "string"
                 }
             }
         },

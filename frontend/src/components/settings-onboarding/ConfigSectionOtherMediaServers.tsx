@@ -1,12 +1,19 @@
 "use client";
 
 import { UpdateAppConfigSection } from "@/services/config/update-section";
+import {
+  GetMediaServerSync,
+  type MediaServerSync,
+  StartMediaServerSync,
+  StopMediaServerSync,
+} from "@/services/mediaserver/sync";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MakeMainMediaServerDialog } from "@/components/settings-onboarding/MakeMainMediaServerDialog";
+import { MediaServerSyncPanel } from "@/components/settings-onboarding/MediaServerSyncPanel";
 import {
   NEW_SERVER_PREFIX,
   OtherMediaServerFields,
@@ -17,6 +24,9 @@ import { Button } from "@/components/ui/button";
 
 import type { AppConfigMediaServer, AppConfigMediaServerLibrary } from "@/types/config/config";
 import type { AppStatusResponse } from "@/types/config/response-status";
+
+// How often the progress is checked while the saved sets are being applied
+const SYNC_CHECK_INTERVAL = 2000; // milliseconds
 
 interface ConfigSectionOtherMediaServersProps {
   servers: AppConfigMediaServer[]; // Every saved media server, including the main one
@@ -34,6 +44,41 @@ export const ConfigSectionOtherMediaServers: React.FC<ConfigSectionOtherMediaSer
   const [newServerKeys, setNewServerKeys] = useState<string[]>([]);
   const [makeMain, setMakeMain] = useState<AppConfigMediaServer | null>(null);
   const nextNewServer = useRef(1);
+
+  // Applying the saved sets runs in the background. Its progress is checked while it runs
+  const [sync, setSync] = useState<MediaServerSync | null>(null);
+  const syncRunning = !!sync?.running;
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const response = await GetMediaServerSync();
+      if (!cancelled && response.status !== "error") setSync(response.data?.sync ?? null);
+    };
+    void check();
+    const interval = syncRunning ? setInterval(check, SYNC_CHECK_INTERVAL) : undefined;
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [syncRunning]);
+
+  const startSync = async (serverId: string) => {
+    const response = await StartMediaServerSync(serverId);
+    if (response.status === "error" || !response.data?.sync) {
+      toast.error(response.error?.message || "Could not apply the saved sets");
+      return;
+    }
+    setSync(response.data.sync);
+  };
+
+  const stopSync = async () => {
+    const response = await StopMediaServerSync();
+    if (response.status === "error") {
+      toast.error(response.error?.message || "Could not stop applying the saved sets");
+      return;
+    }
+    setSync(response.data?.sync ?? null);
+  };
 
   const otherServers = useMemo(
     () => servers.filter((server) => server.id !== mainMediaServer),
@@ -83,6 +128,10 @@ export const ConfigSectionOtherMediaServers: React.FC<ConfigSectionOtherMediaSer
           saved={server}
           onMakeMain={() => setMakeMain(server)}
           mainLibraries={mainLibraries}
+          sync={sync?.server_id === server.id ? sync : null}
+          otherSyncRunning={syncRunning && sync?.server_id !== server.id ? sync?.server_name : undefined}
+          onStartSync={() => startSync(server.id ?? "")}
+          onStopSync={stopSync}
           onSave={(draft) =>
             saveMediaServers(
               servers.map((s) => (s.id === server.id ? draft : s)),
@@ -135,6 +184,10 @@ interface OtherMediaServerProps {
   onSave: (draft: AppConfigMediaServer) => Promise<boolean>;
   onRemove: () => Promise<boolean>;
   onMakeMain?: () => void; // Not set for a media server that hasn't been saved yet
+  sync?: MediaServerSync | null; // The latest time the saved sets were applied to this media server
+  otherSyncRunning?: string; // Name of another media server the saved sets are being applied to
+  onStartSync?: () => Promise<void>; // Not set for a media server that hasn't been saved yet
+  onStopSync?: () => Promise<void>;
 }
 
 const OtherMediaServer: React.FC<OtherMediaServerProps> = ({
@@ -144,6 +197,10 @@ const OtherMediaServer: React.FC<OtherMediaServerProps> = ({
   onSave,
   onRemove,
   onMakeMain,
+  sync = null,
+  otherSyncRunning,
+  onStartSync,
+  onStopSync,
 }) => {
   const [draft, setDraft] = useState<AppConfigMediaServer>(() => saved ?? newMediaServer());
   const [hasErrors, setHasErrors] = useState(false);
@@ -228,28 +285,47 @@ const OtherMediaServer: React.FC<OtherMediaServerProps> = ({
         </>
       }
       footer={
-        isDirty && (
-          <div className="flex justify-end gap-2">
-            {!isNew && (
+        <>
+          {onStartSync && onStopSync && (
+            <MediaServerSyncPanel
+              serverName={saved?.name || saved?.type || "this media server"}
+              sync={sync}
+              disabledReason={
+                isDirty
+                  ? "Save or discard your changes first"
+                  : !(saved?.enabled ?? true)
+                    ? "Turn the media server on first"
+                    : otherSyncRunning
+                      ? `Saved sets are being applied to ${otherSyncRunning}`
+                      : undefined
+              }
+              onStart={onStartSync}
+              onStop={onStopSync}
+            />
+          )}
+          {isDirty && (
+            <div className="flex justify-end gap-2">
+              {!isNew && (
+                <Button
+                  variant="ghost"
+                  onClick={() => saved && setDraft(saved)}
+                  disabled={saving}
+                  className="cursor-pointer"
+                >
+                  Discard
+                </Button>
+              )}
               <Button
-                variant="ghost"
-                onClick={() => saved && setDraft(saved)}
-                disabled={saving}
+                onClick={handleSave}
+                disabled={saving || hasErrors || !draft.url.trim() || !draft.api_token.trim()}
                 className="cursor-pointer"
               >
-                Discard
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? "Testing..." : "Test & Save"}
               </Button>
-            )}
-            <Button
-              onClick={handleSave}
-              disabled={saving || hasErrors || !draft.url.trim() || !draft.api_token.trim()}
-              className="cursor-pointer"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {saving ? "Testing..." : "Test & Save"}
-            </Button>
-          </div>
-        )
+            </div>
+          )}
+        </>
       }
     />
   );

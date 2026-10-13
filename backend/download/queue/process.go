@@ -146,70 +146,13 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 		}
 
 		for idx, image := range posterSet.Images {
-			switch image.Type {
-			case "poster":
-				if !posterSet.SelectedTypes.Poster {
-					continue
-				}
-			case "backdrop":
-				if !posterSet.SelectedTypes.Backdrop {
-					continue
-				}
-			case "season_poster":
-				if image.SeasonNumber == nil {
-					continue
-				}
-				// Check if the Media Item contains the season number for this image, if not skip it
-				mediaItemHasSeason := false
-				if queueItem.MediaItem.Series != nil {
-					for _, season := range queueItem.MediaItem.Series.Seasons {
-						if *image.SeasonNumber == season.SeasonNumber {
-							mediaItemHasSeason = true
-							break
-						}
-					}
-				}
-				if !mediaItemHasSeason {
-					continue
-				}
-				if *image.SeasonNumber == 0 {
-					if !posterSet.SelectedTypes.SpecialSeasonPoster {
-						continue
-					}
-				} else {
-					if !posterSet.SelectedTypes.SeasonPoster {
-						continue
-					}
-				}
-			case "titlecard":
-				// Check if the Media Item contains the Season and Episode numbers for this image, if not skip it
-				mediaItemHasEpisode := false
-				if queueItem.MediaItem.Series != nil {
-					for _, season := range queueItem.MediaItem.Series.Seasons {
-						for _, episode := range season.Episodes {
-							if image.SeasonNumber != nil && *image.SeasonNumber != season.SeasonNumber {
-								continue
-							}
-							if image.EpisodeNumber != nil && *image.EpisodeNumber != episode.EpisodeNumber {
-								continue
-							}
-							mediaItemHasEpisode = true
-							break
-						}
-						if mediaItemHasEpisode {
-							break
-						}
-					}
-				}
-				if !mediaItemHasEpisode {
-					continue
-				}
-				if !posterSet.SelectedTypes.Titlecard {
-					continue
-				}
-			default:
+			if !models.IsKnownImageType(image.Type) {
 				subAction.AppendWarning(fmt.Sprintf("job_%d_image_%d", job.ID, idx), fmt.Sprintf("Image has unrecognized type '%s'", image.Type))
 				fileWarnings = append(fileWarnings, fmt.Sprintf("Image '%s' has unrecognized type '%s'", image.Src, image.Type))
+				continue
+			}
+			// Only the selected types, for seasons and episodes the item has
+			if !models.ImageIsSelected(queueItem.MediaItem, posterSet.SelectedTypes, image) {
 				continue
 			}
 

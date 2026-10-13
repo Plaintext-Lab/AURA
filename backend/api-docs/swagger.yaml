@@ -736,6 +736,48 @@ definitions:
         description: Number of bytes written in the response (middleware can capture)
         type: integer
     type: object
+  mediaserver.MediaServerSync:
+    properties:
+      applied:
+        description: Images applied
+        type: integer
+      current:
+        description: The item being applied
+        type: string
+      done:
+        description: Saved items checked
+        type: integer
+      error:
+        description: Why the sync stopped before the end
+        type: string
+      failed:
+        description: Images or items that couldn't be applied
+        type: integer
+      failures:
+        description: The first few things that couldn't be applied
+        items:
+          type: string
+        type: array
+      finished_at:
+        type: string
+      not_found:
+        description: Saved items that aren't on the media server
+        type: integer
+      running:
+        type: boolean
+      server_id:
+        type: string
+      server_name:
+        type: string
+      started_at:
+        type: string
+      stopped:
+        description: Whether it was stopped from Settings
+        type: boolean
+      total:
+        description: Saved items
+        type: integer
+    type: object
   mediaserver.SwitchMainItem:
     properties:
       edition:
@@ -1816,6 +1858,19 @@ definitions:
         items:
           $ref: '#/definitions/models.LibrarySection'
         type: array
+    type: object
+  routes_ms.mediaServerSyncResponse:
+    properties:
+      sync:
+        allOf:
+        - $ref: '#/definitions/mediaserver.MediaServerSync'
+        description: The latest sync, null if there hasn't been one
+    type: object
+  routes_ms.startMediaServerSyncRequest:
+    properties:
+      server_id:
+        description: The media server to apply the saved sets to
+        type: string
     type: object
   routes_plex.CheckAuthStatusWithPlex_Response:
     properties:
@@ -3854,6 +3909,95 @@ paths:
       - SessionCookie: []
       - ApiKeyAuth: []
       summary: Refresh Media Item Metadata
+      tags:
+      - MediaServer
+  /api/mediaserver/sync:
+    delete:
+      description: Stop applying the saved sets to a media server. The image being
+        applied is finished first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_ms.mediaServerSyncResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Stop Media Server Sync
+      tags:
+      - MediaServer
+    get:
+      description: The progress of the latest time the saved sets were applied to
+        a media server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_ms.mediaServerSyncResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Get Media Server Sync Progress
+      tags:
+      - MediaServer
+    post:
+      consumes:
+      - application/json
+      description: Apply every saved set to a media server that isn't the main one.
+        It runs in the background, use GET /api/mediaserver/sync for its progress.
+      parameters:
+      - description: The media server
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/routes_ms.startMediaServerSyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_ms.mediaServerSyncResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Apply Saved Sets to a Media Server
       tags:
       - MediaServer
   /api/mediux/set:

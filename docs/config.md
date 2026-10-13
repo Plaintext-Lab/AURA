@@ -174,6 +174,7 @@ aura applies images to one **main** media server, and can also apply them to any
 - Ratings are applied on every Plex and Silo media server, and labels on every Plex media server.
 - Collection images are only applied on the main media server.
 - A media server that can't be reached is skipped and logged as a warning. It doesn't stop aura or the main media server.
+- Images are only applied to the other media servers as they are applied from then on. To apply the sets you saved before adding a media server, use **Apply Saved Sets** on it in **Settings > Media Servers**. It runs in the background, shows its progress, and can be stopped. The main media server can't be changed while it runs.
 
 - **Example with a main Plex server and a Silo server**:
 
