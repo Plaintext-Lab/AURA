@@ -58,3 +58,6 @@ To get started with aura:
 - 💬 [Join our Discord](https://discord.gg/YAKzwKPwyw)
 
 ---
+
+AI Disclaimer:
+While most of the code in this repository was written by hand, some of the PR's have been generated with the help of AI tools.
