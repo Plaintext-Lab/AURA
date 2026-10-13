@@ -162,3 +162,19 @@ func TestGetDBConnectionReusesTheOpenConnection(t *testing.T) {
 		t.Error("GetDBConnection opened a new connection instead of using the open one")
 	}
 }
+
+func TestCheckFailsOnceTheDatabaseIsClosed(t *testing.T) {
+	db := &SQliteDB{conn: openTestDB(t)}
+	if err := db.Check(testContext()); err != nil {
+		t.Fatalf("Check on an open database: %v", err)
+	}
+	if Err := db.Close(testContext()); Err.Message != "" {
+		t.Fatalf("Close: %s", Err.Message)
+	}
+	if err := db.Check(testContext()); err == nil {
+		t.Error("Check should fail once the database is closed")
+	}
+	if err := (&SQliteDB{}).Check(testContext()); err == nil {
+		t.Error("Check should fail when the database was never opened")
+	}
+}

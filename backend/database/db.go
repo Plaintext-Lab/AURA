@@ -7,6 +7,7 @@ import (
 	"aura/models"
 	"context"
 	"database/sql"
+	"errors"
 )
 
 const LATEST_DB_VERSION = 8
@@ -23,6 +24,9 @@ type DB interface {
 
 	// Close Database Connection
 	Close(ctx context.Context) (Err logging.LogErrorInfo)
+
+	// Check the database can be read
+	Check(ctx context.Context) error
 
 	// Initialize the database connection
 	Init(ctx context.Context) (newDB bool, Err logging.LogErrorInfo)
@@ -173,6 +177,18 @@ func Close(ctx context.Context) (Err logging.LogErrorInfo) {
 		return logging.LogErrorInfo{}
 	}
 	return Client.Close(ctx)
+}
+
+// IsOpen reports whether the database has been opened yet
+func IsOpen() bool {
+	return Client != nil
+}
+
+func Check(ctx context.Context) error {
+	if Client == nil {
+		return errors.New("the database is not open")
+	}
+	return Client.Check(ctx)
 }
 
 func GetAllConfigValues(ctx context.Context) (values map[string]string, Err logging.LogErrorInfo) {

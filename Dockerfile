@@ -92,6 +92,10 @@ ENV GOMODCACHE=/tmp/.cache/go-mod
 EXPOSE 3000
 EXPOSE 8888
 
+# Check that the backend is running and can read its database
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+	CMD wget -q -O /dev/null http://127.0.0.1:8888/api/health || exit 1
+
 # Command to run both the backend and frontend
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 CMD ["/app/docker-entrypoint.sh"]

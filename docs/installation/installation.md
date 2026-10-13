@@ -32,3 +32,11 @@ aura stores its database (`AURA.db`, which also holds the configuration) and log
 - The `/config` folder must be on a local filesystem. A local Docker volume or bind mount is fine (including on a NAS), but a network share (NFS/SMB) is not supported, as the database relies on file locking and shared memory that network shares do not reliably provide.
 - While aura is running, `AURA.db-wal` and `AURA.db-shm` files appear next to `AURA.db`. These are part of the database, and aura removes them when it stops. To back up the database manually, stop aura first, or copy all three files together.
 - aura also creates a backup of the database (e.g. `AURA_backup_v7_to_v8_<timestamp>.db`) before each database migration.
+
+## Health Check
+
+The aura Docker image has a built-in health check, so Docker, Unraid and Portainer show whether aura is healthy. It calls `http://127.0.0.1:8888/api/health` inside the container every 30 seconds.
+
+- `/api/health` doesn't need a login. It answers with aura's status (`ok`, `starting` or `setup`), its version, and whether the database can be read.
+- If the database can't be read, it answers with an error and the container is marked unhealthy after 3 failed checks.
+- A media server that can't be reached doesn't make aura unhealthy, as restarting aura wouldn't fix it.

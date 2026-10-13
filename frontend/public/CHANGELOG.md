@@ -25,6 +25,7 @@
 - During setup, the Media Server libraries are loaded automatically once the connection works.
 - Added Keep Old Logs (days) and Keep Old Logs (files) to Settings > Logging, to choose how long and how many old log files are kept.
 - Added the previously hidden settings to the Settings page.
+- Added a Docker health check, so Docker, Unraid and Portainer show whether aura is healthy. `/api/health` now also reports whether aura is starting or in setup, and whether its database can be read.
 
 ### UI Tweaks
 

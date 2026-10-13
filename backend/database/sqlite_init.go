@@ -5,6 +5,7 @@ import (
 	"aura/logging"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
@@ -117,4 +118,13 @@ func (s *SQliteDB) Close(ctx context.Context) (Err logging.LogErrorInfo) {
 		return *logAction.Error
 	}
 	return logging.LogErrorInfo{}
+}
+
+// Check runs a query to make sure the database can be read
+func (s *SQliteDB) Check(ctx context.Context) error {
+	if s.conn == nil {
+		return errors.New("the database is not open")
+	}
+	var one int
+	return s.conn.QueryRowContext(ctx, "SELECT 1;").Scan(&one)
 }

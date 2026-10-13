@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/": {
             "get": {
-                "description": "Check the health status of the application",
+                "description": "Check that aura is running and its database can be read. Returns 500 if the database can't be read. Used by the Docker health check.",
                 "produces": [
                     "application/json"
                 ],
@@ -30,6 +30,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/routes_base.healthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
                         }
                     }
                 }
@@ -1810,7 +1816,7 @@ const docTemplate = `{
         },
         "/api/health": {
             "get": {
-                "description": "Check the health status of the application",
+                "description": "Check that aura is running and its database can be read. Returns 500 if the database can't be read. Used by the Docker health check.",
                 "produces": [
                     "application/json"
                 ],
@@ -1823,6 +1829,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/routes_base.healthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
                         }
                     }
                 }
@@ -5828,9 +5840,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "app_version": {
+                    "description": "The version of aura",
+                    "type": "string"
+                },
+                "database": {
+                    "description": "ok, not_open or error",
+                    "type": "string"
+                },
+                "loading_step": {
+                    "description": "What aura is doing while it starts",
                     "type": "string"
                 },
                 "status": {
+                    "description": "ok, starting, setup or error",
                     "type": "string"
                 }
             }
