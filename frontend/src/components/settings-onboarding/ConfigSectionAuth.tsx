@@ -233,9 +233,16 @@ export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
                 immediately. If you lose it, you can regenerate a new key which will invalidate the old one.
               </p>
               <p className="mt-2">
-                aura comes with built-in API docs at <code>/swagger/index.html</code> on the address you open aura on
-                (e.g. <code className="break-all">192.168.1.50:3000/swagger/index.html</code>), which you can use to
-                test the API with your key.
+                aura comes with built-in{" "}
+                <a
+                  href="/swagger/index.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  API docs
+                </a>
+                , which you can use to test the API with your key.
               </p>
             </PopoverHelp>
           </div>
