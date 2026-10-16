@@ -51,6 +51,7 @@
 - Fixed the Emby/Jellyfin User ID not updating when the media server token changed.
 - Fixed the Silo Profile ID not updating when the media server token changed.
 - Fixed aura not shutting down cleanly when its Docker container is stopped.
+- Fixed issue where Jellyfin/Emby servers were not updating the cache. (Thanks to [mattsigal](https://github.com/mattsigal) for the PR!)
 
 ### Updated
 

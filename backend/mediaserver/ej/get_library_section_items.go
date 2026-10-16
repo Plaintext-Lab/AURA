@@ -165,7 +165,10 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 			item.HasMediuxSets = true
 		}
 
-		cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		// Only the main media server's items go in the main library cache
+		if e.Config.IsMain() {
+			cache.LibraryStore.UpdateMediaItem(section.Title, &item)
+		}
 		items = append(items, item)
 	}
 
@@ -317,7 +320,10 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 			itemInfo.HasMediuxSets = true
 		}
 
-		cache.LibraryStore.UpdateMediaItem(sectionTitle, &itemInfo)
+		// Only the main media server's items go in the main library cache
+		if msConfig.IsMain() {
+			cache.LibraryStore.UpdateMediaItem(sectionTitle, &itemInfo)
+		}
 		items = append(items, itemInfo)
 	}
 	return items, logging.LogErrorInfo{}

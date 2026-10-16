@@ -1,6 +1,7 @@
 package ej
 
 import (
+	"aura/cache"
 	"aura/config"
 	"aura/logging"
 	"aura/mediux"
@@ -156,5 +157,43 @@ func TestEJHelpers(t *testing.T) {
 	movie := models.MediaItem{Type: "movie", RatingKey: "1"}
 	if got := getItemRatingKeyFromImageFile(movie, models.ImageFile{Type: "poster"}); got != "1" {
 		t.Errorf("movie poster key = %q", got)
+	}
+}
+
+func TestEJRefreshAddsNewItemsToTheMainCache(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/Users/user/Items" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(`{"TotalRecordCount":1,"Items":[{"Id":"300","Name":"New Movie","Type":"Movie","ProductionYear":2025,"ProviderIds":{"Tmdb":"603"}}]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	previous := config.Current
+	t.Cleanup(func() {
+		config.Current = previous
+		cache.LibraryStore.ClearAllSections()
+	})
+	config.Current.MainMediaServer = "main"
+	cache.LibraryStore.UpdateSection(&models.LibrarySection{LibrarySectionBase: models.LibrarySectionBase{ID: "1", Title: "Movies", Type: "movie"}})
+	section := models.LibrarySection{LibrarySectionBase: models.LibrarySectionBase{ID: "1", Title: "Movies", Type: "movie"}}
+
+	// Another media server's items stay out of the main cache
+	other := &EJ{Config: config.Config_MediaServer{ID: "other", Type: "Jellyfin", URL: server.URL, UserID: "user"}}
+	if items, _, Err := other.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" || len(items) != 1 {
+		t.Fatalf("GetLibrarySectionItems on another media server = %d items, %s", len(items), Err.Message)
+	}
+	if _, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); found {
+		t.Error("another media server's item should not be added to the main cache")
+	}
+
+	// The main media server adds items found by a refresh, so their images and pages load
+	main := &EJ{Config: config.Config_MediaServer{ID: "main", Type: "Jellyfin", URL: server.URL, UserID: "user"}}
+	if _, _, Err := main.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" {
+		t.Fatalf("GetLibrarySectionItems on the main media server: %s", Err.Message)
+	}
+	if item, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); !found || item.TMDB_ID != "603" {
+		t.Errorf("the refreshed item should be in the main cache, got %+v, %v", item, found)
 	}
 }
