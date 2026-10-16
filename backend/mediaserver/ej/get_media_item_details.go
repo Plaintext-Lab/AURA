@@ -71,8 +71,8 @@ func (e *EJ) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) (f
 	item.Title = ejResp.Name
 	item.Year = ejResp.ProductionYear
 	item.ContentRating = ejResp.OfficialRating
-	item.UpdatedAt = ejResp.DateCreated.UnixMilli()
-	item.ReleasedAt = ejResp.PremiereDate.UnixMilli()
+	item.AddedAt = unixSeconds(ejResp.DateCreated)
+	item.ReleasedAt = unixSeconds(ejResp.PremiereDate)
 	item.Summary = ejResp.Overview
 	if ejResp.ProviderIds.Imdb != "" {
 		item.Guids = append(item.Guids, models.MediaItemGuid{Provider: "imdb", ID: ejResp.ProviderIds.Imdb})
@@ -281,7 +281,7 @@ func fetchEpisodesForSeason(ctx context.Context, msConfig config.Config_MediaSer
 			Title:         episode.Name,
 			SeasonNumber:  episode.ParentIndexNumber,
 			EpisodeNumber: episode.IndexNumber,
-			AddedAt:       episode.DateCreated.Unix(),
+			AddedAt:       unixSeconds(episode.DateCreated),
 			File: models.MediaItemFile{
 				Path:     episode.Path,
 				Size:     episode.MediaSources[0].Size,

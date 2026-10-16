@@ -15,6 +15,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 )
 
 func testContext() context.Context {
@@ -166,7 +167,7 @@ func TestEJRefreshAddsNewItemsToTheMainCache(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, _ = w.Write([]byte(`{"TotalRecordCount":1,"Items":[{"Id":"300","Name":"New Movie","Type":"Movie","ProductionYear":2025,"ProviderIds":{"Tmdb":"603"}}]}`))
+		_, _ = w.Write([]byte(`{"TotalRecordCount":1,"Items":[{"Id":"300","Name":"New Movie","Type":"Movie","ProductionYear":2025,"ProviderIds":{"Tmdb":"603"},"DateCreated":"2025-03-04T05:06:07Z"}]}`))
 	}))
 	t.Cleanup(server.Close)
 
@@ -193,7 +194,18 @@ func TestEJRefreshAddsNewItemsToTheMainCache(t *testing.T) {
 	if _, _, Err := main.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" {
 		t.Fatalf("GetLibrarySectionItems on the main media server: %s", Err.Message)
 	}
-	if item, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); !found || item.TMDB_ID != "603" {
+	if item, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); !found || item.TMDB_ID != "603" || item.AddedAt != 1741064767 {
 		t.Errorf("the refreshed item should be in the main cache, got %+v, %v", item, found)
+	}
+}
+
+func TestEJDatesAreInSeconds(t *testing.T) {
+	// The same as Plex and Silo, so sorting by date works
+	created := time.Date(2025, 3, 4, 5, 6, 7, 0, time.UTC)
+	if got := unixSeconds(created); got != created.Unix() {
+		t.Errorf("unixSeconds = %d, want %d", got, created.Unix())
+	}
+	if got := unixSeconds(time.Time{}); got != 0 {
+		t.Errorf("a date that isn't set should be 0, got %d", got)
 	}
 }

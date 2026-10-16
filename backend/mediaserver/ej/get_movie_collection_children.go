@@ -68,8 +68,8 @@ func (e *EJ) GetMovieCollectionChildrenItems(ctx context.Context, collection *mo
 		itemInfo.Year = item.ProductionYear
 		itemInfo.LibraryTitle = collection.LibraryTitle
 
-		itemInfo.AddedAt = item.DateCreated.UnixMilli()
-		itemInfo.ReleasedAt = item.PremiereDate.UnixMilli()
+		itemInfo.AddedAt = unixSeconds(item.DateCreated)
+		itemInfo.ReleasedAt = unixSeconds(item.PremiereDate)
 
 		items = append(items, itemInfo)
 

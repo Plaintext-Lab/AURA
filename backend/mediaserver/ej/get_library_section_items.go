@@ -111,10 +111,10 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 			item.Guids = append(item.Guids, models.MediaItemGuid{Provider: "tvdb", ID: ejItem.ProviderIds.Tvdb})
 			item.TMDB_ID = ejItem.ProviderIds.Tmdb
 		}
-		item.AddedAt = ejItem.DateCreated.UnixMilli()
-		item.ReleasedAt = ejItem.PremiereDate.UnixMilli()
+		item.AddedAt = unixSeconds(ejItem.DateCreated)
+		item.ReleasedAt = unixSeconds(ejItem.PremiereDate)
 		if item.Type == "show" && !ejItem.DateLastContentAdded.IsZero() {
-			item.LatestEpisodeAddedAt = ejItem.DateLastContentAdded.Unix()
+			item.LatestEpisodeAddedAt = unixSeconds(ejItem.DateLastContentAdded)
 		}
 
 		// If no TMDB ID found, get the value from MediUX using the GUID[tvdb]
@@ -278,8 +278,8 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 			itemInfo.Guids = append(itemInfo.Guids, models.MediaItemGuid{Provider: "tvdb", ID: item.ProviderIds.Tvdb})
 			itemInfo.TMDB_ID = item.ProviderIds.Tmdb
 		}
-		itemInfo.AddedAt = item.DateCreated.UnixMilli()
-		itemInfo.ReleasedAt = item.PremiereDate.UnixMilli()
+		itemInfo.AddedAt = unixSeconds(item.DateCreated)
+		itemInfo.ReleasedAt = unixSeconds(item.PremiereDate)
 
 		// If no TMDB ID found, get the value from MediUX using the GUID[tvdb]
 		if itemInfo.TMDB_ID == "" {
@@ -313,6 +313,14 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 			itemInfo.DBSavedSets = []models.DBSavedSet{}
 			itemInfo.IgnoredInDB = true
 			itemInfo.IgnoredMode = ignoredMode
+		}
+
+		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
+		if msConfig.IsMain() {
+			updateErr := database.UpdateMediaItemOnServer(ctx, itemInfo.TMDB_ID, itemInfo.LibraryTitle, itemInfo.Edition, true)
+			if updateErr.Message != "" {
+				logAction.AppendWarning("update_on_server_error", updateErr.Message)
+			}
 		}
 
 		// Check if Media Item exists in MediUX with a set
