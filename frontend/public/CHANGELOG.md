@@ -20,6 +20,7 @@
 - Added all settings to the Search bar, so you can quickly find and change a setting without having to navigate through the Settings page.
 - Added Export and Import Configuration in Settings > Advanced, to back up or restore your configuration.
 - User Preferences are now saved in aura, so they are the same in every browser and on every device.
+- Added option to "Add to Database Only" as a saved user preference.
 - Added the `AURA_DISABLE_AUTH` environment variable to turn off authentication if you get locked out due to forgotten password or misconfigured OIDC settings.
 - Added the `DATABASE_PATH` environment variable to set a custom path for the database file.
 - Added the `AURA_IMPORT_CONFIG` environment variable to import an existing `config.yaml` on startup, even if a database already exists.

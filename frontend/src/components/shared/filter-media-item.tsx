@@ -59,6 +59,8 @@ function MediaItemFilterContent({
   const setShowDateModified = useUserPreferencesStore((state) => state.setShowDateModified);
   const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
   const setDefaultAddToQueue = useUserPreferencesStore((state) => state.setDefaultAddToQueue);
+  const defaultAddToDBOnly = useUserPreferencesStore((state) => state.defaultAddToDBOnly);
+  const setDefaultAddToDBOnly = useUserPreferencesStore((state) => state.setDefaultAddToDBOnly);
 
   return (
     <div className="flex-grow space-y-4 overflow-y-auto px-4 py-2">
@@ -150,12 +152,34 @@ function MediaItemFilterContent({
           </div>
 
           <PopoverHelp ariaLabel="help-default-add-to-queue">
-            <p className="mb-2">
-              If checked, &quot;Add to Queue&quot; will be selected when opening the download modal.
-            </p>
+            <p className="mb-2">If checked, 'Add to Queue' will be selected when opening the download modal.</p>
             <p className="text-muted-foreground">
               This is global setting that will be applied to all downloads. You can always change this setting in this
               filter, or in the Settings Page{" "}
+              <Link href="/settings#preferences-section" className="underline">
+                User Preferences
+              </Link>{" "}
+              Section.
+            </p>
+          </PopoverHelp>
+        </div>
+        <div className="flex items-center space-x-2 justify-between mt-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              className="ml-0"
+              checked={defaultAddToDBOnly}
+              onCheckedChange={() => setDefaultAddToDBOnly(!defaultAddToDBOnly)}
+            />{" "}
+            <Label>Add to Database Only by default</Label>
+          </div>
+
+          <PopoverHelp ariaLabel="help-default-add-to-db-only">
+            <p className="mb-2">
+              If checked, 'Add to Database Only' will be selected for each item when opening the download modal, so the
+              sets are saved without downloading any images.
+            </p>
+            <p className="text-muted-foreground">
+              You can always change this setting in this filter, or in the Settings Page{" "}
               <Link href="/settings#preferences-section" className="underline">
                 User Preferences
               </Link>{" "}

@@ -89,6 +89,7 @@ func DefaultUserPreferences() Config_UserPreferences {
 		ShowOnlyDownloadDefaults: false,
 		ShowDateModified:         false,
 		DefaultAddToQueue:        false,
+		DefaultAddToDBOnly:       false,
 	}
 }
 

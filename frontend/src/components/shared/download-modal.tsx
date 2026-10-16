@@ -303,6 +303,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
   // State - Add to Queue Only (defaults to the user preference)
   const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
   const [addToQueueOnly, setAddToQueueOnly] = useState(defaultAddToQueue);
+  const defaultAddToDBOnly = useUserPreferencesStore((state) => state.defaultAddToDBOnly);
 
   // State - Add New Collection Items
   const [autoAddNewCollectionItems, setAutoAddNewCollectionItems] = useState(false);
@@ -393,7 +394,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           acc[getItemFormKey(item.MediaItem)] = {
             types: computeAssetTypes(item).filter((type) => downloadDefaults.includes(type)),
             autodownload: autoDownloadDefault,
-            addToDBOnly: false,
+            addToDBOnly: defaultAddToDBOnly,
             source: item.Set.type === "movie" || item.Set.type === "collection" ? item.Set.type : undefined,
           };
           return acc;
@@ -416,7 +417,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           acc[getItemFormKey(item.MediaItem)] = {
             types: computeAssetTypes(item).filter((type) => downloadDefaults.includes(type)),
             autodownload: autoDownloadDefault,
-            addToDBOnly: false,
+            addToDBOnly: defaultAddToDBOnly,
             source: item.Set.type === "movie" || item.Set.type === "collection" ? item.Set.type : undefined,
           };
           return acc;
@@ -424,7 +425,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
         {} as z.infer<typeof formSchema>["selectedOptionsByItem"]
       ),
     });
-  }, [formItems, form, autoDownloadDefault, downloadDefaults]);
+  }, [formItems, form, autoDownloadDefault, downloadDefaults, defaultAddToDBOnly]);
 
   useEffect(() => {
     // If all the form items are set to "Add to Database Only", change button text

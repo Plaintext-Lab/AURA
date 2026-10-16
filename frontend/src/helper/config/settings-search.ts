@@ -331,6 +331,14 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   {
     sectionId: "user-preferences",
     sectionLabel: "User Preferences",
+    label: "Add to Database Only by Default",
+    description: 'Check "Add to Database Only" when downloading',
+    keywords: ["database", "save", "download"],
+    configPath: "default_add_to_db_only",
+  },
+  {
+    sectionId: "user-preferences",
+    sectionLabel: "User Preferences",
     label: "Show Date Modified",
     description: "Show when poster sets were last modified",
     keywords: ["date", "modified", "updated"],

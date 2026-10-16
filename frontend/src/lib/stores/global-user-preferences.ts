@@ -17,6 +17,7 @@ interface UserPreferences {
   showOnlyDownloadDefaults: boolean;
   showDateModified: boolean;
   defaultAddToQueue: boolean;
+  defaultAddToDBOnly: boolean;
 }
 
 export type UserPreferencesSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -31,6 +32,7 @@ interface UserPreferencesStore extends UserPreferences {
   setShowOnlyDownloadDefaults: (showOnlyDownloadDefaults: boolean) => void;
   setShowDateModified: (showDateModified: boolean) => void;
   setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
+  setDefaultAddToDBOnly: (defaultAddToDBOnly: boolean) => void;
   // Apply the preferences from the aura config, without saving them again
   applyServerPreferences: (preferences: UserPreferences) => void;
   hasHydrated: boolean;
@@ -43,6 +45,7 @@ const defaultPreferences = (): UserPreferences => ({
   showOnlyDownloadDefaults: false,
   showDateModified: false,
   defaultAddToQueue: false,
+  defaultAddToDBOnly: false,
 });
 
 const toServerPreferences = (preferences: UserPreferences): AppConfigUserPreferences => ({
@@ -50,6 +53,7 @@ const toServerPreferences = (preferences: UserPreferences): AppConfigUserPrefere
   show_only_download_defaults: preferences.showOnlyDownloadDefaults,
   show_date_modified: preferences.showDateModified,
   default_add_to_queue: preferences.defaultAddToQueue,
+  default_add_to_db_only: preferences.defaultAddToDBOnly,
 });
 
 const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPreferences => ({
@@ -57,6 +61,7 @@ const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPrefe
   showOnlyDownloadDefaults: preferences.show_only_download_defaults ?? false,
   showDateModified: preferences.show_date_modified ?? false,
   defaultAddToQueue: preferences.default_add_to_queue ?? false,
+  defaultAddToDBOnly: preferences.default_add_to_db_only ?? false,
 });
 
 const preferencesEqual = (a: UserPreferences, b: UserPreferences) =>
@@ -124,6 +129,10 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         set({ defaultAddToQueue });
         queueServerSave();
       },
+      setDefaultAddToDBOnly: (defaultAddToDBOnly: boolean) => {
+        set({ defaultAddToDBOnly });
+        queueServerSave();
+      },
       applyServerPreferences: (preferences: UserPreferences) => set(preferences),
       saveStatus: "idle",
       saveError: undefined,
@@ -141,6 +150,7 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         showOnlyDownloadDefaults: state.showOnlyDownloadDefaults,
         showDateModified: state.showDateModified,
         defaultAddToQueue: state.defaultAddToQueue,
+        defaultAddToDBOnly: state.defaultAddToDBOnly,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
@@ -168,6 +178,7 @@ const syncFromServer = () => {
     showOnlyDownloadDefaults: store.showOnlyDownloadDefaults,
     showDateModified: store.showDateModified,
     defaultAddToQueue: store.defaultAddToQueue,
+    defaultAddToDBOnly: store.defaultAddToDBOnly,
   };
 
   let synced = false;

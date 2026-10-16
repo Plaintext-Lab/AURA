@@ -20,6 +20,8 @@ export function UserPreferencesCard() {
   const setShowDateModified = useUserPreferencesStore((state) => state.setShowDateModified);
   const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
   const setDefaultAddToQueue = useUserPreferencesStore((state) => state.setDefaultAddToQueue);
+  const defaultAddToDBOnly = useUserPreferencesStore((state) => state.defaultAddToDBOnly);
+  const setDefaultAddToDBOnly = useUserPreferencesStore((state) => state.setDefaultAddToDBOnly);
 
   // View Density
   const { densityStep, setDensityStep } = useViewDensity();
@@ -147,11 +149,24 @@ export function UserPreferencesCard() {
             <Switch checked={defaultAddToQueue} onCheckedChange={() => setDefaultAddToQueue(!defaultAddToQueue)} />
           </div>
           <PopoverHelp ariaLabel="help-default-add-to-queue">
-            <p className="mb-2">
-              If checked, &quot;Add to Queue&quot; will be selected when opening the download modal.
-            </p>
+            <p className="mb-2">If checked, 'Add to Queue' will be selected when opening the download modal.</p>
             <p className="text-muted-foreground">
               You can still uncheck it in the download modal to download straight away.
+            </p>
+          </PopoverHelp>
+        </div>
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-5">
+            <Label>Add to Database Only by Default</Label>
+            <Switch checked={defaultAddToDBOnly} onCheckedChange={() => setDefaultAddToDBOnly(!defaultAddToDBOnly)} />
+          </div>
+          <PopoverHelp ariaLabel="help-default-add-to-db-only">
+            <p className="mb-2">
+              If checked, 'Add to Database Only' will be selected for each item when opening the download modal, so the
+              sets are saved without downloading any images.
+            </p>
+            <p className="text-muted-foreground">
+              You can still uncheck it in the download modal to download the images.
             </p>
           </PopoverHelp>
         </div>

@@ -4920,6 +4920,10 @@ const docTemplate = `{
         "config.Config_UserPreferences": {
             "type": "object",
             "properties": {
+                "default_add_to_db_only": {
+                    "description": "Whether \"Add to Database Only\" is checked by default in the Download Modal.",
+                    "type": "boolean"
+                },
                 "default_add_to_queue": {
                     "description": "Whether \"Add to Queue\" is checked by default in the Download Modal.",
                     "type": "boolean"

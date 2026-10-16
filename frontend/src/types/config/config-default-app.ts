@@ -125,5 +125,6 @@ export const defaultAppConfig = (): AppConfig =>
       show_only_download_defaults: false,
       show_date_modified: false,
       default_add_to_queue: false,
+      default_add_to_db_only: false,
     },
   }) satisfies AppConfig;

@@ -105,6 +105,7 @@ SonarrRadarr.Applications[].Library: string
 SonarrRadarr.Applications[].Type: string
 SonarrRadarr.Applications[].URL: string
 TMDB.ApiToken: string
+UserPreferences.DefaultAddToDBOnly: bool
 UserPreferences.DefaultAddToQueue: bool
 UserPreferences.DownloadDefaults: []string
 UserPreferences.ShowDateModified: bool
