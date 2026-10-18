@@ -173,6 +173,7 @@ export interface AppConfigNotificationTemplate {
 
 export interface NotificationTemplateVariablesCatalog {
   template_variables: Record<string, string[]>;
+  default_templates?: AppConfigNotificationTemplate;
 }
 
 export interface AppConfigNotificationCustomNotification {

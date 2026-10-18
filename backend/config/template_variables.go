@@ -52,7 +52,8 @@ var DownloadReasonVariables = []string{
 }
 
 type NotificationTemplateVariableCatalog struct {
-	TemplateVariables map[string][]string `json:"template_variables"`
+	TemplateVariables map[string][]string         `json:"template_variables"`
+	DefaultTemplates  Config_NotificationTemplate `json:"default_templates"` // The built-in templates, for Restore Default
 }
 
 func AllowedTemplateVariables(templateType string) []string {
@@ -123,6 +124,7 @@ func GetNotificationTemplateVariableCatalog() NotificationTemplateVariableCatalo
 			TemplateTypeSonarrNotification:              AllowedTemplateVariables(TemplateTypeSonarrNotification),
 			TemplateTypeSiloPlugin:                      AllowedTemplateVariables(TemplateTypeSiloPlugin),
 		},
+		DefaultTemplates: DefaultNotificationTemplates(),
 	}
 }
 

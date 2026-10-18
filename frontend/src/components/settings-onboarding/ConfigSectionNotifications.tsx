@@ -2,7 +2,7 @@
 
 import { ValidateURL } from "@/helper/validation/validate-url";
 import { SendTestNotification } from "@/services/validation/notification";
-import { Plus, TestTube, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, TestTube, Trash2 } from "lucide-react";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -916,6 +916,12 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
                 : [];
               const supportsImage = TEMPLATE_SUPPORTS_IMAGE[key] ?? true;
               const insertTarget = insertTargetByTemplate[key] || "message";
+              const defaultTpl = templateVariables?.default_templates?.[key];
+              const isDefault =
+                !defaultTpl ||
+                ((tpl.title || "") === defaultTpl.title &&
+                  (tpl.message || "") === defaultTpl.message &&
+                  (!supportsImage || !!tpl.include_image === !!defaultTpl.include_image));
 
               return (
                 <AccordionItem key={String(key)} value={String(key)} className="rounded-md border px-3 mb-1">
@@ -934,7 +940,26 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
                     <div className="flex items-center justify-between">
                       <Label>Enabled</Label>
 
-                      <div>
+                      <div className="flex items-center">
+                        {/* Restore Default Button */}
+                        {editing && !isDefault && defaultTpl && (
+                          <Button
+                            className="mr-2"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              updateTemplate(key, {
+                                title: defaultTpl.title,
+                                message: defaultTpl.message,
+                                include_image: defaultTpl.include_image,
+                              })
+                            }
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Restore Default
+                          </Button>
+                        )}
+
                         {/* Test Button */}
                         {value.enabled &&
                           tpl.enabled &&

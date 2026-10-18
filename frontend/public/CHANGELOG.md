@@ -36,6 +36,7 @@
 - Added support for Silo collections on the Collections page.
 - Added refresh progress to the Home, User, Collections and Saved Sets pages, similar to the Download Queue progress. It only shows when a refresh takes longer than a moment.
 - Added a load time badge to the Home and User pages in Debug Mode, showing how long the page took to load and how much data it downloaded.
+- Added option to restore notifications to their default templates in Settings > Notifications.
 
 ### UI Tweaks
 
