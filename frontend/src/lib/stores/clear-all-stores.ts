@@ -1,3 +1,4 @@
+import { useCollectionStore } from "@/lib/stores/global-store-collection-store";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { usePosterSetsStore } from "@/lib/stores/global-store-poster-sets";
@@ -5,7 +6,10 @@ import { usePosterSetsStore } from "@/lib/stores/global-store-poster-sets";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 // Page Stores
+import { useCollectionItemPageStore } from "@/lib/stores/page-store-collection-item";
+import { useCollectionsPageStore } from "@/lib/stores/page-store-collections";
 import { useHomePageStore } from "@/lib/stores/page-store-home";
+import { useLogsPageStore } from "@/lib/stores/page-store-logs";
 import { useMediaPageStore } from "@/lib/stores/page-store-media";
 import { useSavedSetsPageStore } from "@/lib/stores/page-store-saved-sets";
 import { useUserPageStore } from "@/lib/stores/page-store-user";
@@ -23,12 +27,16 @@ export const ClearAllStores = async (options?: { deep?: boolean }) => {
   useMediaPageStore.getState().clear();
   useSavedSetsPageStore.getState().clear();
   useUserPageStore.getState().clear();
+  useCollectionsPageStore.getState().clear();
+  useCollectionItemPageStore.getState().clear();
+  useLogsPageStore.getState().clear();
 
   // Global stores
   useSearchQueryStore.getState().clear();
   usePosterSetsStore.getState().clear();
   useOnboardingStore.getState().clear();
   useMediaStore.getState().clear();
+  useCollectionStore.getState().clear();
   useUserPreferencesStore.getState().clear();
 
   // 2. Optional deep clear: remove every persisted entry (including any future stores).

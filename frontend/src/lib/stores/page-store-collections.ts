@@ -100,11 +100,7 @@ export const useCollectionsPageStore = create<CollectionsHome_PageStore>()(
         sortOrder: state.sortOrder,
         currentPage: state.currentPage,
         itemsPerPage: state.itemsPerPage,
-        filteredAndSortedCollectionItems: state.filteredAndSortedCollectionItems,
         filteredLibraries: state.filteredLibraries,
-        previousCollectionItem: state.previousCollectionItem,
-        nextCollectionItem: state.nextCollectionItem,
-        hasHydrated: state.hasHydrated,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
