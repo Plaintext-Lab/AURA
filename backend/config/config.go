@@ -137,6 +137,7 @@ type Config_Jobs struct {
 	AutoDownload                    Config_JobSetting `json:"auto_download" yaml:"AutoDownload,omitempty"`                                          // Schedule for auto-downloads.
 	RefreshMediaItemsAndCollections Config_JobSetting `json:"refresh_media_items_and_collections" yaml:"RefreshMediaItemsAndCollections,omitempty"` // Schedule for refreshing media items and collections from media server.
 	CheckForMediaItemChanges        Config_JobSetting `json:"check_for_media_item_changes" yaml:"CheckForMediaItemChanges,omitempty"`               // Schedule for checking rating keys and metadata changes.
+	CheckForNewMediaItems           Config_JobSetting `json:"check_for_new_media_items" yaml:"CheckForNewMediaItems,omitempty"`                     // Schedule for adding the media server's newest items.
 	HandleTempIgnoredItems          Config_JobSetting `json:"handle_temp_ignored_items" yaml:"HandleTempIgnoredItems,omitempty"`                    // Schedule for checking if temporarily ignored items now have sets on MediUX.
 	RefreshMediuxUsers              Config_JobSetting `json:"refresh_mediux_users" yaml:"RefreshMediuxUsers,omitempty"`                             // Schedule for refreshing tracked MediUX users/creators.
 	CheckMediuxSiteLink             Config_JobSetting `json:"check_mediux_site_link" yaml:"CheckMediuxSiteLink,omitempty"`                          // Schedule for checking MediUX site link availability.
@@ -254,6 +255,7 @@ type Config_NotificationTemplate struct {
 	TestNotification                Config_CustomNotification `json:"test_notification" yaml:"TestNotification,omitempty"`                                   // Custom notification settings for test notifications.
 	Autodownload                    Config_CustomNotification `json:"autodownload" yaml:"AutoDownload,omitempty"`                                            // Custom notification settings for auto-download events.
 	DownloadQueue                   Config_CustomNotification `json:"download_queue" yaml:"DownloadQueue,omitempty"`                                         // Custom notification settings for download queue events.
+	NewItemAutoDownload             Config_CustomNotification `json:"new_item_auto_download" yaml:"NewItemAutoDownload,omitempty"`                           // Custom notification settings for sets downloaded automatically from the favorite creators.
 	NewSetsAvailableForIgnoredItems Config_CustomNotification `json:"new_sets_available_for_ignored_items" yaml:"NewSetsAvailableForIgnoredItems,omitempty"` // Custom notification settings for when new sets become available for ignored items.
 	CheckForMediaItemChangesJob     Config_CustomNotification `json:"check_for_media_item_changes_job" yaml:"CheckForMediaItemChangesJob,omitempty"`         // Custom notification settings for the media item changes job.
 	SonarrNotification              Config_CustomNotification `json:"sonarr_notification" yaml:"SonarrNotification,omitempty"`                               // Custom notification settings for Sonarr events.
@@ -283,4 +285,6 @@ type Config_UserPreferences struct {
 	ShowDateModified         bool     `json:"show_date_modified" yaml:"ShowDateModified"`                  // Whether to show the date modified on poster sets.
 	DefaultAddToQueue        bool     `json:"default_add_to_queue" yaml:"DefaultAddToQueue"`               // Whether "Add to Queue" is checked by default in the Download Modal.
 	DefaultAddToDBOnly       bool     `json:"default_add_to_db_only" yaml:"DefaultAddToDBOnly"`            // Whether "Add to Database Only" is checked by default in the Download Modal.
+	AutoDownloadNewItems     bool     `json:"auto_download_new_items" yaml:"AutoDownloadNewItems"`         // Whether images are downloaded automatically for new items, from the favorite creators.
+	FavoriteCreators         []string `json:"favorite_creators" yaml:"FavoriteCreators"`                   // MediUX usernames ranked best first, the first is rank 1.
 }

@@ -18,6 +18,7 @@ const (
 	JobKeyAutoDownload                    JobKey = "auto_download"
 	JobKeyRefreshMediaItemsAndCollections JobKey = "refresh_media_items_and_collections"
 	JobKeyCheckForMediaItemChanges        JobKey = "check_for_media_item_changes"
+	JobKeyCheckForNewMediaItems           JobKey = "check_for_new_media_items"
 	JobKeyHandleTempIgnoredItems          JobKey = "handle_temp_ignored_items"
 	JobKeyRefreshMediuxUsers              JobKey = "refresh_mediux_users"
 	JobKeyCheckMediuxSiteLink             JobKey = "check_mediux_site_link"
@@ -43,6 +44,15 @@ var jobDefinitions = []jobDefinition{
 		Default:     config.JobDefaults.RefreshMediaItemsAndCollections,
 		Start:       StartRefreshMediaItemsAndCollectionsJob,
 		RunNow:      RunRefreshMediaItemsAndCollectionsJobNow,
+	},
+	{
+		Key:         JobKeyCheckForNewMediaItems,
+		Name:        "Check for New Media Items Job",
+		Description: "Asks your Media Server libraries for their newest movies and shows, and adds the ones aura doesn't have yet. It only looks at the newest items, so it can run often.",
+		Setting:     func() config.Config_JobSetting { return config.Current.Jobs.CheckForNewMediaItems },
+		Default:     config.JobDefaults.CheckForNewMediaItems,
+		Start:       StartCheckForNewMediaItemsJob,
+		RunNow:      RunCheckForNewMediaItemsJobNow,
 	},
 	{
 		Key:         JobKeyCheckForMediaItemChanges,

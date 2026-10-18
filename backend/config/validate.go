@@ -273,6 +273,9 @@ func ValidateJobs(ctx context.Context, Jobs *Config_Jobs) bool {
 	if !ValidateJobSetting(ctx, &Jobs.CheckForMediaItemChanges, JobDefaults.CheckForMediaItemChanges) {
 		isValid = false
 	}
+	if !ValidateJobSetting(ctx, &Jobs.CheckForNewMediaItems, JobDefaults.CheckForNewMediaItems) {
+		isValid = false
+	}
 	if !ValidateJobSetting(ctx, &Jobs.HandleTempIgnoredItems, JobDefaults.HandleTempIgnoredItems) {
 		isValid = false
 	}
@@ -369,134 +372,49 @@ func ValidateNotifications(ctx context.Context, Notifications *Config_Notificati
 		Notifications.Providers[i] = provider
 	}
 
-	// If notifications are enabled, valiate the templates
-	if Notifications.NotificationTemplate.AppStartup == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.AppStartup = defaults.AppStartup
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.AppStartup not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.AppStartup not set, defaulting to built-in template")
-	} else {
-		validAppStartupVariables := AllowedTemplateVariables(TemplateTypeAppStartup)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.AppStartup.Title, validAppStartupVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.AppStartup.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.AppStartup.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.AppStartup.Title = defaults.AppStartup.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.AppStartup.Message, validAppStartupVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.AppStartup.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.AppStartup.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.AppStartup.Message = defaults.AppStartup.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.TestNotification == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.TestNotification = defaults.TestNotification
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.TestNotification not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.TestNotification not set, defaulting to built-in template")
-	} else {
-		validTestNotificationVariables := AllowedTemplateVariables(TemplateTypeTestNotification)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.TestNotification.Title, validTestNotificationVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.TestNotification.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.TestNotification.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.TestNotification.Title = defaults.TestNotification.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.TestNotification.Message, validTestNotificationVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.TestNotification.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.TestNotification.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.TestNotification.Message = defaults.TestNotification.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.Autodownload == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.Autodownload = defaults.Autodownload
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.Autodownload not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.Autodownload not set, defaulting to built-in template")
-	} else {
-		validAutodownloadVariables := AllowedTemplateVariables(TemplateTypeAutodownload)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.Autodownload.Title, validAutodownloadVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.Autodownload.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.Autodownload.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.Autodownload.Title = defaults.Autodownload.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.Autodownload.Message, validAutodownloadVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.Autodownload.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.Autodownload.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.Autodownload.Message = defaults.Autodownload.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.DownloadQueue == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.DownloadQueue = defaults.DownloadQueue
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.DownloadQueue not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.DownloadQueue not set, defaulting to built-in template")
-	} else {
-		validDownloadQueueVariables := AllowedTemplateVariables(TemplateTypeDownloadQueue)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.DownloadQueue.Title, validDownloadQueueVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.DownloadQueue.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.DownloadQueue.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.DownloadQueue.Title = defaults.DownloadQueue.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.DownloadQueue.Message, validDownloadQueueVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.DownloadQueue.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.DownloadQueue.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.DownloadQueue.Message = defaults.DownloadQueue.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems = defaults.NewSetsAvailableForIgnoredItems
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems not set, defaulting to built-in template")
-	} else {
-		validNewSetsAvailableForIgnoredItemsVariables := AllowedTemplateVariables(TemplateTypeNewSetsAvailableForIgnoredItems)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Title, validNewSetsAvailableForIgnoredItemsVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Title = defaults.NewSetsAvailableForIgnoredItems.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message, validNewSetsAvailableForIgnoredItemsVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message = defaults.NewSetsAvailableForIgnoredItems.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.CheckForMediaItemChangesJob == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.CheckForMediaItemChangesJob = defaults.CheckForMediaItemChangesJob
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.CheckForMediaItemChangesJob not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.CheckForMediaItemChangesJob not set, defaulting to built-in template")
-	} else {
-		validCheckForMediaItemChangesJobVariables := AllowedTemplateVariables(TemplateTypeCheckForMediaItemChangesJob)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Title, validCheckForMediaItemChangesJobVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Title = defaults.CheckForMediaItemChangesJob.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Message, validCheckForMediaItemChangesJobVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.CheckForMediaItemChangesJob.Message = defaults.CheckForMediaItemChangesJob.Message
-		}
-	}
-
-	if Notifications.NotificationTemplate.SonarrNotification == (Config_CustomNotification{}) {
-		Notifications.NotificationTemplate.SonarrNotification = defaults.SonarrNotification
-		logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.SonarrNotification not set, defaulting to built-in template")
-		logAction.AppendWarning("message", "Notifications.NotificationTemplate.SonarrNotification not set, defaulting to built-in template")
-	} else {
-		validSonarrNotificationVariables := AllowedTemplateVariables(TemplateTypeSonarrNotification)
-		if !validateTemplateVariables(Notifications.NotificationTemplate.SonarrNotification.Title, validSonarrNotificationVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.SonarrNotification.Title contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.SonarrNotification.Title contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.SonarrNotification.Title = defaults.SonarrNotification.Title
-		}
-		if !validateTemplateVariables(Notifications.NotificationTemplate.SonarrNotification.Message, validSonarrNotificationVariables) {
-			logging.LOGGER.Warn().Timestamp().Msg("Notifications.NotificationTemplate.SonarrNotification.Message contains invalid variables, please check the config documentation for valid variables")
-			logAction.AppendWarning("message", "Notifications.NotificationTemplate.SonarrNotification.Message contains invalid variables, please check the config documentation for valid variables")
-			Notifications.NotificationTemplate.SonarrNotification.Message = defaults.SonarrNotification.Message
-		}
+	// If notifications are enabled, validate the templates
+	templates := &Notifications.NotificationTemplate
+	for _, t := range []struct {
+		name         string
+		templateType string
+		template     *Config_CustomNotification
+		fallback     Config_CustomNotification
+	}{
+		{"AppStartup", TemplateTypeAppStartup, &templates.AppStartup, defaults.AppStartup},
+		{"TestNotification", TemplateTypeTestNotification, &templates.TestNotification, defaults.TestNotification},
+		{"Autodownload", TemplateTypeAutodownload, &templates.Autodownload, defaults.Autodownload},
+		{"DownloadQueue", TemplateTypeDownloadQueue, &templates.DownloadQueue, defaults.DownloadQueue},
+		{"NewItemAutoDownload", TemplateTypeNewItemAutoDownload, &templates.NewItemAutoDownload, defaults.NewItemAutoDownload},
+		{"NewSetsAvailableForIgnoredItems", TemplateTypeNewSetsAvailableForIgnoredItems, &templates.NewSetsAvailableForIgnoredItems, defaults.NewSetsAvailableForIgnoredItems},
+		{"CheckForMediaItemChangesJob", TemplateTypeCheckForMediaItemChangesJob, &templates.CheckForMediaItemChangesJob, defaults.CheckForMediaItemChangesJob},
+		{"SonarrNotification", TemplateTypeSonarrNotification, &templates.SonarrNotification, defaults.SonarrNotification},
+	} {
+		validateNotificationTemplate(logAction, t.name, t.templateType, t.template, t.fallback)
 	}
 
 	return isValid
+}
+
+// validateNotificationTemplate uses the built-in parts of a template that are missing or have unknown variables
+func validateNotificationTemplate(logAction *logging.LogAction, name, templateType string, template *Config_CustomNotification, fallback Config_CustomNotification) {
+	warn := func(message string) {
+		logging.LOGGER.Warn().Timestamp().Msg(message)
+		logAction.AppendWarning("message", message)
+	}
+	if *template == (Config_CustomNotification{}) {
+		*template = fallback
+		warn(fmt.Sprintf("Notifications.NotificationTemplate.%s not set, defaulting to built-in template", name))
+		return
+	}
+	validVariables := AllowedTemplateVariables(templateType)
+	if !validateTemplateVariables(template.Title, validVariables) {
+		warn(fmt.Sprintf("Notifications.NotificationTemplate.%s.Title contains invalid variables, please check the config documentation for valid variables", name))
+		template.Title = fallback.Title
+	}
+	if !validateTemplateVariables(template.Message, validVariables) {
+		warn(fmt.Sprintf("Notifications.NotificationTemplate.%s.Message contains invalid variables, please check the config documentation for valid variables", name))
+		template.Message = fallback.Message
+	}
 }
 
 func validateTemplateVariables(userStr string, validVariables []string) bool {
@@ -655,6 +573,19 @@ func ValidateUserPreferences(ctx context.Context, UserPreferences *Config_UserPr
 		}
 	}
 	UserPreferences.DownloadDefaults = downloadDefaults
+
+	// Remove blank and repeated favorite creators, keeping the best rank of each
+	favoriteCreators := []string{}
+	seen := map[string]bool{}
+	for _, username := range UserPreferences.FavoriteCreators {
+		username = strings.TrimSpace(username)
+		if username == "" || seen[strings.ToLower(username)] {
+			continue
+		}
+		seen[strings.ToLower(username)] = true
+		favoriteCreators = append(favoriteCreators, username)
+	}
+	UserPreferences.FavoriteCreators = favoriteCreators
 
 	return isValid
 }

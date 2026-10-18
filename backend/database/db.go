@@ -116,6 +116,7 @@ type DB interface {
 	SaveLibraryItems(ctx context.Context, items []models.MediaItem, seenAt int64) logging.LogErrorInfo
 
 	// Get the creators of the saved sets and how many of their sets are saved
+	GetSavedSetCreators(ctx context.Context) ([]CreatorSetCount, logging.LogErrorInfo)
 
 	// Get the main media server's items that are on the server
 	GetLibraryItemsOnServer(ctx context.Context) ([]models.MediaItem, logging.LogErrorInfo)
@@ -480,6 +481,14 @@ func SaveLibraryItems(ctx context.Context, items []models.MediaItem, seenAt int6
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.SaveLibraryItems(ctx, items, seenAt)
+}
+
+// GetSavedSetCreators returns the creators of the saved sets, the most saved sets first
+func GetSavedSetCreators(ctx context.Context) ([]CreatorSetCount, logging.LogErrorInfo) {
+	if Client == nil {
+		return []CreatorSetCount{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetSavedSetCreators(ctx)
 }
 
 // GetLibraryItemsOnServer returns the main media server's items that are on the server

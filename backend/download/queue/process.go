@@ -126,6 +126,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 				posterSet,
 				mediuxItemInfo.TMDB_PosterPath,
 				mediuxItemInfo.TMDB_BackdropPath,
+				queueItem.Source,
 			)
 			continue
 		}
@@ -144,6 +145,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 				posterSet,
 				mediuxItemInfo.TMDB_PosterPath,
 				mediuxItemInfo.TMDB_BackdropPath,
+				queueItem.Source,
 			)
 			continue
 		}
@@ -194,6 +196,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 			posterSet,
 			mediuxItemInfo.TMDB_PosterPath,
 			mediuxItemInfo.TMDB_BackdropPath,
+			queueItem.Source,
 		)
 
 		recordDownloadHistory(ctx, queueItem.MediaItem, posterSet.ID, posterSet.Title, imageResults)

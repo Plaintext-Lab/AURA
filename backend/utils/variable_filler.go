@@ -184,3 +184,24 @@ func TemplateVars_SonarrNotification(mediaItem models.MediaItem, setItem models.
 		},
 	)
 }
+
+// TemplateVars_NewItemAutoDownload is TemplateVars_DownloadQueue for a set downloaded automatically from a favorite creator
+func TemplateVars_NewItemAutoDownload(mediaItem models.MediaItem, setItem models.DBPosterSetDetail, Errors []string, Warnings []string, newItem bool) map[string]string {
+	vars := TemplateVars_DownloadQueue(mediaItem, setItem, Errors, Warnings)
+	found := fmt.Sprintf("This item had no saved set and %s found a set by one of your favorite creators \"%s\".", config.AppName, setItem.UserCreated)
+	if newItem {
+		found = fmt.Sprintf("A new media item was detected and %s found a set by one of your favorite creators \"%s\".", config.AppName, setItem.UserCreated)
+	}
+	switch vars["ReasonTitle"] {
+	case "Success":
+		vars["Reason"] = found + " This set was automatically downloaded with no issues."
+	case "Warning":
+		vars["Reason"] = fmt.Sprintf("%s This set was automatically downloaded with warnings:\n%s", found, strings.Join(Warnings, "\n"))
+	default:
+		vars["Reason"] = fmt.Sprintf("%s This set was automatically downloaded with errors:\n%s", found, strings.Join(Errors, "\n"))
+		if len(Warnings) > 0 {
+			vars["Reason"] += fmt.Sprintf("\n\n and the following Warnings:\n%s", strings.Join(Warnings, "\n"))
+		}
+	}
+	return vars
+}

@@ -11,12 +11,14 @@ import (
 	"fmt"
 )
 
+// SendNotification sends the result of a Download Queue set, favorite creator sets use their own notification
 func SendNotification(
 	fileIssues FileIssues,
 	mediaItem models.MediaItem,
 	posterSet models.DBPosterSetDetail,
 	tmdbPoster string,
 	tmdbBackdrop string,
+	source string,
 ) {
 	// If notifications are disabled, skip
 	if !config.Current.Notifications.Enabled {
@@ -30,9 +32,15 @@ func SendNotification(
 		return
 	}
 
-	// If download queue notification is disabled, skip
-	if !config.Current.Notifications.NotificationTemplate.DownloadQueue.Enabled {
-		logging.LOGGER.Debug().Timestamp().Msg("Download queue notification is disabled, skipping app start notification")
+	fromFavoriteCreator := source == models.SourceFavoriteCreatorsNewItem || source == models.SourceFavoriteCreatorsAllItems
+	template := config.Current.Notifications.NotificationTemplate.DownloadQueue
+	if fromFavoriteCreator {
+		template = config.Current.Notifications.NotificationTemplate.NewItemAutoDownload
+	}
+
+	// If this notification is disabled, skip
+	if !template.Enabled {
+		logging.LOGGER.Debug().Timestamp().Msg("Download queue notification is disabled, skipping the notification")
 		return
 	}
 
@@ -56,10 +64,13 @@ func SendNotification(
 	}
 
 	vars := utils.TemplateVars_DownloadQueue(mediaItem, posterSet, fileIssues.Errors, fileIssues.Warnings)
-	title := utils.RenderTemplate(config.Current.Notifications.NotificationTemplate.DownloadQueue.Title, vars)
-	message := utils.RenderTemplate(config.Current.Notifications.NotificationTemplate.DownloadQueue.Message, vars)
+	if fromFavoriteCreator {
+		vars = utils.TemplateVars_NewItemAutoDownload(mediaItem, posterSet, fileIssues.Errors, fileIssues.Warnings, source == models.SourceFavoriteCreatorsNewItem)
+	}
+	title := utils.RenderTemplate(template.Title, vars)
+	message := utils.RenderTemplate(template.Message, vars)
 	imageURL := ""
-	if config.Current.Notifications.NotificationTemplate.DownloadQueue.IncludeImage {
+	if template.IncludeImage {
 		imageURL = getImageURLFromPosterSet(posterSet, tmdbPoster, tmdbBackdrop)
 	}
 

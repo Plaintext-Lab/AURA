@@ -23,6 +23,8 @@ Jobs.BackupDatabase.Cron: string
 Jobs.BackupDatabase.Enabled: *bool
 Jobs.CheckForMediaItemChanges.Cron: string
 Jobs.CheckForMediaItemChanges.Enabled: *bool
+Jobs.CheckForNewMediaItems.Cron: string
+Jobs.CheckForNewMediaItems.Enabled: *bool
 Jobs.CheckMediuxSiteLink.Cron: string
 Jobs.CheckMediuxSiteLink.Enabled: *bool
 Jobs.HandleTempIgnoredItems.Cron: string
@@ -73,6 +75,10 @@ Notifications.NotificationTemplate.DownloadQueue.Enabled: bool
 Notifications.NotificationTemplate.DownloadQueue.IncludeImage: bool
 Notifications.NotificationTemplate.DownloadQueue.Message: string
 Notifications.NotificationTemplate.DownloadQueue.Title: string
+Notifications.NotificationTemplate.NewItemAutoDownload.Enabled: bool
+Notifications.NotificationTemplate.NewItemAutoDownload.IncludeImage: bool
+Notifications.NotificationTemplate.NewItemAutoDownload.Message: string
+Notifications.NotificationTemplate.NewItemAutoDownload.Title: string
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Enabled: bool
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.IncludeImage: bool
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message: string
@@ -105,8 +111,10 @@ SonarrRadarr.Applications[].Library: string
 SonarrRadarr.Applications[].Type: string
 SonarrRadarr.Applications[].URL: string
 TMDB.ApiToken: string
+UserPreferences.AutoDownloadNewItems: bool
 UserPreferences.DefaultAddToDBOnly: bool
 UserPreferences.DefaultAddToQueue: bool
 UserPreferences.DownloadDefaults: []string
+UserPreferences.FavoriteCreators: []string
 UserPreferences.ShowDateModified: bool
 UserPreferences.ShowOnlyDownloadDefaults: bool

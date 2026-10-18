@@ -94,6 +94,12 @@ export const defaultAppConfig = (): AppConfig =>
             "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}Reason:{{NewLine}}{{Reason}}",
           include_image: true,
         },
+        new_item_auto_download: {
+          enabled: true,
+          title: "Download Queue | {{ReasonTitle}}",
+          message: "{{MediaItemTitle}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
+          include_image: true,
+        },
         new_sets_available_for_ignored_items: {
           enabled: true,
           title: "New Sets Available for Ignored Item",
@@ -126,5 +132,7 @@ export const defaultAppConfig = (): AppConfig =>
       show_date_modified: false,
       default_add_to_queue: false,
       default_add_to_db_only: false,
+      auto_download_new_items: false,
+      favorite_creators: [],
     },
   }) satisfies AppConfig;

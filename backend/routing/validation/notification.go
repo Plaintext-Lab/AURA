@@ -141,6 +141,27 @@ func SendTestNotification(w http.ResponseWriter, r *http.Request) {
 		title = utils.RenderTemplate(req.Template.Title, vars)
 		message = utils.RenderTemplate(req.Template.Message, vars)
 		imageURL = ""
+	case config.TemplateTypeNewItemAutoDownload:
+		vars = utils.MergeTemplateVars(
+			utils.BaseTemplateVars(),
+			map[string]string{
+				"MediaItemTitle":        sampleMediaItem.Title,
+				"MediaItemYear":         fmt.Sprintf("%d", sampleMediaItem.Year),
+				"MediaItemTMDBID":       sampleMediaItem.TMDB_ID,
+				"MediaItemLibraryTitle": sampleMediaItem.LibraryTitle,
+				"MediaItemRatingKey":    sampleMediaItem.RatingKey,
+				"MediaItemType":         sampleMediaItem.Type,
+				"SetID":                 sampleSet.ID,
+				"SetTitle":              sampleSet.Title,
+				"SetType":               sampleSet.Type,
+				"SetCreator":            sampleSet.UserCreated,
+				"ReasonTitle":           "Success",
+				"Reason":                fmt.Sprintf("A new media item was detected and %s found a set by one of your favorite creators \"%s\". This set was automatically downloaded with no issues.", config.AppName, sampleSet.UserCreated),
+			},
+		)
+		title = utils.RenderTemplate(req.Template.Title, vars)
+		message = utils.RenderTemplate(req.Template.Message, vars)
+		imageURL = ""
 	case config.TemplateTypeNewSetsAvailableForIgnoredItems:
 		vars = utils.MergeTemplateVars(
 			utils.BaseTemplateVars(),

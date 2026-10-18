@@ -5,6 +5,7 @@ const (
 	TemplateTypeTestNotification                = "test_notification"
 	TemplateTypeAutodownload                    = "autodownload"
 	TemplateTypeDownloadQueue                   = "download_queue"
+	TemplateTypeNewItemAutoDownload             = "new_item_auto_download"
 	TemplateTypeNewSetsAvailableForIgnoredItems = "new_sets_available_for_ignored_items"
 	TemplateTypeCheckForMediaItemChangesJob     = "check_for_media_item_changes_job"
 	TemplateTypeSonarrNotification              = "sonarr_notification"
@@ -67,7 +68,7 @@ func AllowedTemplateVariables(templateType string) []string {
 			ImageVariables,
 			DownloadReasonVariables,
 		)
-	case TemplateTypeDownloadQueue:
+	case TemplateTypeDownloadQueue, TemplateTypeNewItemAutoDownload:
 		return mergeTemplateVariableGroups(
 			BaseTemplateVariables,
 			MediaItemVariables,
@@ -115,6 +116,7 @@ func GetNotificationTemplateVariableCatalog() NotificationTemplateVariableCatalo
 			TemplateTypeTestNotification:                AllowedTemplateVariables(TemplateTypeTestNotification),
 			TemplateTypeAutodownload:                    AllowedTemplateVariables(TemplateTypeAutodownload),
 			TemplateTypeDownloadQueue:                   AllowedTemplateVariables(TemplateTypeDownloadQueue),
+			TemplateTypeNewItemAutoDownload:             AllowedTemplateVariables(TemplateTypeNewItemAutoDownload),
 			TemplateTypeNewSetsAvailableForIgnoredItems: AllowedTemplateVariables(TemplateTypeNewSetsAvailableForIgnoredItems),
 			TemplateTypeCheckForMediaItemChangesJob:     AllowedTemplateVariables(TemplateTypeCheckForMediaItemChangesJob),
 			TemplateTypeSonarrNotification:              AllowedTemplateVariables(TemplateTypeSonarrNotification),
@@ -137,10 +139,4 @@ func mergeTemplateVariableGroups(groups ...[]string) []string {
 	}
 
 	return merged
-}
-
-func cloneStringSlice(in []string) []string {
-	out := make([]string, len(in))
-	copy(out, in)
-	return out
 }

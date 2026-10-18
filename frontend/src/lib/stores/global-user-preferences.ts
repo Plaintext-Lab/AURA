@@ -18,6 +18,8 @@ interface UserPreferences {
   showDateModified: boolean;
   defaultAddToQueue: boolean;
   defaultAddToDBOnly: boolean;
+  autoDownloadNewItems: boolean;
+  favoriteCreators: string[]; // MediUX usernames ranked best first
 }
 
 export type UserPreferencesSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -33,6 +35,8 @@ interface UserPreferencesStore extends UserPreferences {
   setShowDateModified: (showDateModified: boolean) => void;
   setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
   setDefaultAddToDBOnly: (defaultAddToDBOnly: boolean) => void;
+  setAutoDownloadNewItems: (autoDownloadNewItems: boolean) => void;
+  setFavoriteCreators: (favoriteCreators: string[]) => void;
   // Apply the preferences from the aura config, without saving them again
   applyServerPreferences: (preferences: UserPreferences) => void;
   hasHydrated: boolean;
@@ -46,6 +50,8 @@ const defaultPreferences = (): UserPreferences => ({
   showDateModified: false,
   defaultAddToQueue: false,
   defaultAddToDBOnly: false,
+  autoDownloadNewItems: false,
+  favoriteCreators: [],
 });
 
 const toServerPreferences = (preferences: UserPreferences): AppConfigUserPreferences => ({
@@ -54,6 +60,8 @@ const toServerPreferences = (preferences: UserPreferences): AppConfigUserPrefere
   show_date_modified: preferences.showDateModified,
   default_add_to_queue: preferences.defaultAddToQueue,
   default_add_to_db_only: preferences.defaultAddToDBOnly,
+  auto_download_new_items: preferences.autoDownloadNewItems,
+  favorite_creators: preferences.favoriteCreators,
 });
 
 const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPreferences => ({
@@ -62,6 +70,8 @@ const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPrefe
   showDateModified: preferences.show_date_modified ?? false,
   defaultAddToQueue: preferences.default_add_to_queue ?? false,
   defaultAddToDBOnly: preferences.default_add_to_db_only ?? false,
+  autoDownloadNewItems: preferences.auto_download_new_items ?? false,
+  favoriteCreators: preferences.favorite_creators ?? [],
 });
 
 const preferencesEqual = (a: UserPreferences, b: UserPreferences) =>
@@ -133,6 +143,14 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         set({ defaultAddToDBOnly });
         queueServerSave();
       },
+      setAutoDownloadNewItems: (autoDownloadNewItems: boolean) => {
+        set({ autoDownloadNewItems });
+        queueServerSave();
+      },
+      setFavoriteCreators: (favoriteCreators: string[]) => {
+        set({ favoriteCreators });
+        queueServerSave();
+      },
       applyServerPreferences: (preferences: UserPreferences) => set(preferences),
       saveStatus: "idle",
       saveError: undefined,
@@ -151,6 +169,8 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         showDateModified: state.showDateModified,
         defaultAddToQueue: state.defaultAddToQueue,
         defaultAddToDBOnly: state.defaultAddToDBOnly,
+        autoDownloadNewItems: state.autoDownloadNewItems,
+        favoriteCreators: state.favoriteCreators,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
@@ -179,6 +199,8 @@ const syncFromServer = () => {
     showDateModified: store.showDateModified,
     defaultAddToQueue: store.defaultAddToQueue,
     defaultAddToDBOnly: store.defaultAddToDBOnly,
+    autoDownloadNewItems: store.autoDownloadNewItems ?? false,
+    favoriteCreators: store.favoriteCreators ?? [],
   };
 
   let synced = false;

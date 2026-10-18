@@ -7,7 +7,14 @@ import "time"
 type DBSavedItem struct {
 	MediaItem  MediaItem           `json:"media_item"`
 	PosterSets []DBPosterSetDetail `json:"poster_sets,omitempty"`
+	Source     string              `json:"source,omitempty"` // What added it to the Download Queue, empty when it was the user
 }
+
+// The sources of Download Queue items that the user didn't add
+const (
+	SourceFavoriteCreatorsNewItem  = "favorite_creators_new_item"  // A new item, from a favorite creator
+	SourceFavoriteCreatorsAllItems = "favorite_creators_all_items" // Run for All Items, from a favorite creator
+)
 
 // PosterSetDetail groups poster set details per media item.
 type DBPosterSetDetail struct {

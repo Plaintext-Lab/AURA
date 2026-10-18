@@ -101,6 +101,7 @@ func AddRoutes(r *chi.Mux) {
 			r.Patch("/ignore", routes_db.IgnoreItemInDB)
 			r.Patch("/ignore/stop", routes_db.StopIgnoringItemInDB)
 			r.Post("/force-check", routes_db.AutoDownloadForceCheck)
+			r.Get("/creators", routes_db.GetSavedSetCreators)
 			r.Get("/backups", routes_db.GetDatabaseBackups)
 			r.Post("/backups", routes_db.CreateDatabaseBackup)
 		})
@@ -110,6 +111,7 @@ func AddRoutes(r *chi.Mux) {
 			// Download
 			r.Post("/image/item", routes_download.DownloadImageFileForMediaItem)
 			r.Post("/image/collection", routes_download.DownloadImageFileForCollectionItem)
+			r.Post("/favorite-creators", routes_download.DownloadFromFavoriteCreators)
 
 			// Download Queue Routes
 			r.Route("/queue", func(r chi.Router) {

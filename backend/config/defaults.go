@@ -24,6 +24,12 @@ func DefaultNotificationTemplates() Config_NotificationTemplate {
 			Message:      "{{MediaItemTitle}} ({{MediaItemLibraryTitle}}){{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
 			IncludeImage: true,
 		},
+		NewItemAutoDownload: Config_CustomNotification{
+			Enabled:      true,
+			Title:        "Download Queue | {{ReasonTitle}}",
+			Message:      "{{MediaItemTitle}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
+			IncludeImage: true,
+		},
 		NewSetsAvailableForIgnoredItems: Config_CustomNotification{
 			Enabled:      true,
 			Title:        "New Sets Available for Ignored Item",
@@ -90,6 +96,8 @@ func DefaultUserPreferences() Config_UserPreferences {
 		ShowDateModified:         false,
 		DefaultAddToQueue:        false,
 		DefaultAddToDBOnly:       false,
+		AutoDownloadNewItems:     false,
+		FavoriteCreators:         []string{},
 	}
 }
 
@@ -97,6 +105,7 @@ var JobDefaults = struct {
 	AutoDownload                    JobSettingDefault
 	RefreshMediaItemsAndCollections JobSettingDefault
 	CheckForMediaItemChanges        JobSettingDefault
+	CheckForNewMediaItems           JobSettingDefault
 	HandleTempIgnoredItems          JobSettingDefault
 	RefreshMediuxUsers              JobSettingDefault
 	CheckMediuxSiteLink             JobSettingDefault
@@ -105,6 +114,7 @@ var JobDefaults = struct {
 	AutoDownload:                    JobSettingDefault{Enabled: true, Cron: "0 0 * * *"},
 	RefreshMediaItemsAndCollections: JobSettingDefault{Enabled: true, Cron: "0 4 * * *"},
 	CheckForMediaItemChanges:        JobSettingDefault{Enabled: true, Cron: "0 */6 * * *"},
+	CheckForNewMediaItems:           JobSettingDefault{Enabled: true, Cron: "*/10 * * * *"},
 	HandleTempIgnoredItems:          JobSettingDefault{Enabled: true, Cron: "0 */6 * * *"},
 	RefreshMediuxUsers:              JobSettingDefault{Enabled: true, Cron: "0 */12 * * *"},
 	CheckMediuxSiteLink:             JobSettingDefault{Enabled: true, Cron: "0 */1 * * *"},
@@ -126,6 +136,10 @@ func DefaultJobsConfig() Config_Jobs {
 		CheckForMediaItemChanges: Config_JobSetting{
 			Enabled: boolPtr(JobDefaults.CheckForMediaItemChanges.Enabled),
 			Cron:    JobDefaults.CheckForMediaItemChanges.Cron,
+		},
+		CheckForNewMediaItems: Config_JobSetting{
+			Enabled: boolPtr(JobDefaults.CheckForNewMediaItems.Enabled),
+			Cron:    JobDefaults.CheckForNewMediaItems.Cron,
 		},
 		HandleTempIgnoredItems: Config_JobSetting{
 			Enabled: boolPtr(JobDefaults.HandleTempIgnoredItems.Enabled),

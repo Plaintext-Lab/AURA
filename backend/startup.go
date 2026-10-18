@@ -10,6 +10,7 @@ import (
 	"aura/logging"
 	"aura/mediaserver"
 	"aura/mediux"
+	"aura/models"
 	"aura/utils"
 	"aura/utils/httpx"
 	"context"
@@ -164,6 +165,11 @@ func runWarmup() (success bool) {
 		logging.LOGGER.Info().Timestamp().Msgf("%d database migrations performed", migrationsCompleted)
 	}
 
+	// New items get a set from a favorite creator, if that is turned on
+	mediaserver.OnNewItems = func(ctx context.Context, items []models.MediaItem) {
+		_, _ = autodownload.DownloadFromFavoriteCreators(ctx, items, models.SourceFavoriteCreatorsNewItem)
+	}
+
 	// Cache: Load the library saved by the last load
 	config.SetAppLoadingStep("Loading Media Server Data from the Database")
 	loadedFromDatabase := mediaserver.LoadLibraryCacheFromDatabase(ctx)
@@ -227,6 +233,12 @@ func runWarmup() (success bool) {
 	err = jobs.StartCheckForMediaItemChangesJob()
 	if err != nil {
 		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Check for Media Item Changes cron job")
+	}
+
+	// Cronjob: Start Check for New Media Items Job
+	err = jobs.StartCheckForNewMediaItemsJob()
+	if err != nil {
+		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Check for New Media Items cron job")
 	}
 
 	// Cronjob: Start Handle Temp Ignored Items Job

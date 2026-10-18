@@ -1,3 +1,4 @@
+import { FavoriteCreatorsCard } from "@/components/settings-onboarding/FavoriteCreators";
 import { PopoverHelp } from "@/components/shared/popover-help";
 import { useViewDensity } from "@/components/shared/view-density-context";
 import { Badge } from "@/components/ui/badge";
@@ -190,6 +191,9 @@ export function UserPreferencesCard() {
           <Switch checked={showDateModified} onCheckedChange={() => setShowDateModified(!showDateModified)} />
         </div>
       </Card>
+
+      {/* Favorite Creators */}
+      <FavoriteCreatorsCard />
     </>
   );
 }
