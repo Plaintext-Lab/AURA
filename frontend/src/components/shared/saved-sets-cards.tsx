@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateAndTime } from "@/helper/format-date-last-updates";
 import { AlertTriangle, Delete, DownloadCloudIcon, Edit, MoreHorizontal, RefreshCcw, RefreshCwOff } from "lucide-react";
 import { toast } from "sonner";
 
@@ -116,14 +117,7 @@ const SavedSetsCard: React.FC<{
       const t = ps.last_downloaded ? new Date(ps.last_downloaded).getTime() : 0;
       return Math.max(max, Number.isFinite(t) ? t : 0);
     }, 0);
-    if (!latest) return "Never";
-    const latestDate = new Date(latest);
-    return `${latestDate.toLocaleDateString("en-US")} at ${latestDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: true,
-    })}`;
+    return formatDateAndTime(latest) || "Never";
   }, [posterSets]);
 
   return (
