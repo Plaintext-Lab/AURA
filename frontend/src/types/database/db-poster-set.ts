@@ -23,20 +23,3 @@ export interface PosterSet extends Omit<BaseSetInfo, "type"> {
   type: TYPE_DB_SET_TYPE_OPTIONS;
   images: ImageFile[];
 }
-
-export interface DBFilter {
-  item_tmdb_id: string;
-  item_library_title: string;
-  item_year: number;
-  item_title: string;
-  set_id: number;
-  library_titles: string[];
-  image_types: string[];
-  autodownload: string;
-  multiset_only: boolean;
-  usernames: string[];
-  page_items: number;
-  page_number: number;
-  sort_option: string;
-  sort_order: string;
-}

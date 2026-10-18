@@ -48,41 +48,6 @@ func (msc *MediaServerCollectionsCache) GetAllCollections() []models.CollectionI
 	return out
 }
 
-func (msc *MediaServerCollectionsCache) GetCollectionLibraryTitles() []string {
-	msc.mu.RLock()
-	defer msc.mu.RUnlock()
-
-	titles := []string{}
-	for title := range msc.collections {
-		titles = append(titles, title)
-	}
-	return titles
-}
-
-func (msc *MediaServerCollectionsCache) GetTotalCollectionsCount() int {
-	msc.mu.RLock()
-	defer msc.mu.RUnlock()
-
-	total := 0
-	for _, lib := range msc.collections {
-		total += len(lib)
-	}
-	return total
-}
-
-func (msc *MediaServerCollectionsCache) GetCollection(libraryTitle string, index string) (*models.CollectionItem, bool) {
-	msc.mu.RLock()
-	defer msc.mu.RUnlock()
-
-	lib := msc.collections[libraryTitle]
-	if lib == nil {
-		return nil, false
-	}
-
-	coll, ok := lib[index]
-	return coll, ok
-}
-
 func (msc *MediaServerCollectionsCache) GetCollectionByRatingKey(ratingKey string) (*models.CollectionItem, bool) {
 	msc.mu.RLock()
 	defer msc.mu.RUnlock()
@@ -95,18 +60,6 @@ func (msc *MediaServerCollectionsCache) GetCollectionByRatingKey(ratingKey strin
 		}
 	}
 	return nil, false
-}
-
-func (msc *MediaServerCollectionsCache) GetCollectionsByLibrary(libraryTitle string) []models.CollectionItem {
-	msc.mu.RLock()
-	defer msc.mu.RUnlock()
-
-	out := []models.CollectionItem{}
-	lib := msc.collections[libraryTitle]
-	for _, coll := range lib {
-		out = append(out, *coll)
-	}
-	return out
 }
 
 func (msc *MediaServerCollectionsCache) UpsertCollection(collection *models.CollectionItem) {

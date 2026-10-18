@@ -92,7 +92,7 @@ func StartOrRestartPlexWebSocketClient() {
 	}(stopChan)
 }
 
-// connectAndListenPlexWithStop is like connectAndListenPlex but returns early if stop is closed.
+// connectAndListenPlexWithStop listens to the Plex websocket, and returns early if stop is closed.
 func connectAndListenPlexWithStop(stop <-chan struct{}) (err error) {
 	wsURL, wsURLForLog, err := buildPlexWebSocketURL()
 	if err != nil {
@@ -124,35 +124,6 @@ func connectAndListenPlexWithStop(stop <-chan struct{}) (err error) {
 			}
 			handleMessage(message)
 		}
-	}
-}
-
-func connectAndListenPlex() (err error) {
-	wsURL, wsURLForLog, err := buildPlexWebSocketURL()
-	if err != nil {
-		return err
-	}
-
-	logging.LOGGER.Info().Timestamp().Str("url", wsURLForLog).
-		Msg("Plex Event Listener: Connecting to Plex WebSocket")
-
-	// Connect to WebSocket
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to connect to Plex WebSocket at %s: %w", wsURLForLog, err)
-	}
-	defer conn.Close()
-
-	logging.LOGGER.Info().Timestamp().
-		Msg("Plex Event Listener: Connected — watching for metadata refresh events")
-
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			return fmt.Errorf("error reading from Plex WebSocket: %w", err)
-		}
-
-		handleMessage(message)
 	}
 }
 
@@ -702,83 +673,6 @@ func normalizeTitle(title string) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
-type plexRefreshEvent struct {
-	Subtitle         string
-	EpisodeRatingKey string
-	SeriesRatingKey  string
-	SectionID        int
-	MetadataState    string
-}
-
-func extractCompletedPlexRefreshes(message []byte) ([]plexRefreshEvent, error) {
-	var root map[string]any
-	if err := json.Unmarshal(message, &root); err != nil {
-		return nil, fmt.Errorf("invalid JSON payload: %w", err)
-	}
-
-	entries := getTimelineEntries(root)
-	if len(entries) == 0 {
-		// Non-timeline notifications are common; skip silently.
-		return nil, nil
-	}
-
-	refreshes := make([]plexRefreshEvent, 0)
-	for _, entryAny := range entries {
-		entry, ok := asMap(entryAny)
-		if !ok {
-			continue
-		}
-
-		metadataState := strings.ToLower(asString(entry["metadataState"]))
-		timelineState := asInt(firstNonNil(entry["state"], entry["timelineState"]))
-		if !isCompletedMetadataState(metadataState, timelineState) {
-			continue
-		}
-
-		sectionID := asInt(firstNonNil(entry["sectionID"], entry["librarySectionID"]))
-		if sectionID == 0 {
-			continue
-		}
-
-		seriesRatingKey := asString(entry["grandparentRatingKey"])
-		episodeRatingKey := asString(entry["ratingKey"])
-		if episodeRatingKey == "" {
-			episodeRatingKey = asString(entry["itemID"])
-		}
-		if episodeRatingKey == "" {
-			episodeRatingKey = parseRatingKeyFromPath(asString(entry["key"]))
-		}
-
-		if seriesRatingKey == "" {
-			seriesRatingKey = asString(entry["parentRatingKey"])
-		}
-		if seriesRatingKey == "" {
-			seriesRatingKey = episodeRatingKey
-		}
-		if seriesRatingKey == "" {
-			seriesRatingKey = asString(entry["itemID"])
-		}
-		if seriesRatingKey == "" {
-			seriesRatingKey = parseRatingKeyFromPath(asString(entry["key"]))
-		}
-		if seriesRatingKey == "" {
-			continue
-		}
-
-		subtitle := buildEpisodeSubtitle(entry)
-
-		refreshes = append(refreshes, plexRefreshEvent{
-			Subtitle:         subtitle,
-			EpisodeRatingKey: episodeRatingKey,
-			SeriesRatingKey:  seriesRatingKey,
-			SectionID:        sectionID,
-			MetadataState:    metadataState,
-		})
-	}
-
-	return refreshes, nil
-}
-
 func isCompletedMetadataState(metadataState string, timelineState int) bool {
 	switch metadataState {
 	case "processed", "finished", "complete", "completed", "loaded":
@@ -820,18 +714,6 @@ func parseRatingKeyFromPath(keyPath string) string {
 		}
 	}
 	return ""
-}
-
-func buildEpisodeSubtitle(entry map[string]any) string {
-	showTitle := asString(firstNonNil(entry["grandparentTitle"], entry["parentTitle"], entry["title"]))
-	seasonNum := asInt(firstNonNil(entry["parentIndex"], entry["seasonIndex"]))
-	episodeNum := asInt(firstNonNil(entry["index"], entry["episodeIndex"]))
-
-	if showTitle != "" && seasonNum > 0 && episodeNum > 0 {
-		return fmt.Sprintf("%s S%02d E%02d", showTitle, seasonNum, episodeNum)
-	}
-
-	return showTitle
 }
 
 func firstNonNil(values ...any) any {

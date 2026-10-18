@@ -63,39 +63,4 @@ func (p *Plex) DownloadApplyImageToMediaItem(ctx context.Context, item *models.M
 		return Err
 	}
 	return Err
-	// }
-	// else {
-	// 	// Refresh the Plex item
-	// 	RefreshItemMetadata(ctx, p.Config, item, itemRatingKey, false)
-
-	// 	// Get the Plex Poster Key
-	// 	failedToGetPosterKey := false
-	// 	imageKey, Err := findNewImage(ctx, p.Config, item, itemRatingKey, imageFile.Type, currentImages)
-	// 	if Err.Message != "" {
-	// 		failedToGetPosterKey = true
-	// 		logAction.AppendWarning("message", "Failed to find new image in Plex after local save")
-	// 		logAction.AppendWarning("warning", map[string]any{
-	// 			"error": Err,
-	// 		})
-	// 	} else {
-	// 		logAction.AppendResult("new_image_key", imageKey)
-	// 	}
-
-	// 	// If failedOnGetPosters is true, use the MediUX URL to set the poster
-	// 	if failedToGetPosterKey {
-	// 		applyImageToMediaItemViaMediuxURL(ctx, p.Config, item, itemRatingKey, imageFile)
-	// 		if Err.Message != "" {
-	// 			return Err
-	// 		}
-	// 		return Err
-	// 	}
-
-	// 	// Set the Poster using the Plex Image Key
-	// 	Err = applyImageToMediaItem(ctx, p.Config, item, itemRatingKey, imageKey, imageFile.Type)
-	// 	if Err.Message != "" {
-	// 		return Err
-	// 	}
-	// }
-
-	// return Err
 }

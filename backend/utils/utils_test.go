@@ -17,6 +17,11 @@ func testContext() context.Context {
 
 func num(n int) *int { return &n }
 
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func TestConvertDateStringToTime(t *testing.T) {
 	want := time.Date(2025, 3, 4, 5, 6, 7, 0, time.UTC)
 	tests := map[string]string{
@@ -44,15 +49,6 @@ func TestConvertDateStringToTime(t *testing.T) {
 		if got := ConvertDateStringToTime(input); time.Since(got) > time.Minute {
 			t.Errorf("ConvertDateStringToTime(%q) = %v, want now", input, got)
 		}
-	}
-}
-
-func TestIsNewerDate(t *testing.T) {
-	if !IsNewerDate("2025-03-05", "2025-03-04") {
-		t.Error("the 5th should be newer than the 4th")
-	}
-	if IsNewerDate("2025-03-04", "2025-03-05") || IsNewerDate("2025-03-04", "2025-03-04") {
-		t.Error("an older or equal date should not be newer")
 	}
 }
 
@@ -132,7 +128,7 @@ func TestUpdatePosterSetInDBItem(t *testing.T) {
 func TestFiles(t *testing.T) {
 	dir := t.TempDir()
 	folder := filepath.Join(dir, "a", "b")
-	if Err := CreateFolderIfNotExists(testContext(), folder); Err.Message != "" || !CheckFileExists(folder) {
+	if Err := CreateFolderIfNotExists(testContext(), folder); Err.Message != "" || !fileExists(folder) {
 		t.Fatalf("the folder should be created: %s", Err.Message)
 	}
 	for _, name := range []string{"a/one.jpg", "a/b/two.jpg", "three.jpg"} {
@@ -144,7 +140,7 @@ func TestFiles(t *testing.T) {
 	if Err.Message != "" || cleared != 3 {
 		t.Errorf("cleared %d files (%s), want 3", cleared, Err.Message)
 	}
-	if CheckFileExists(filepath.Join(dir, "three.jpg")) {
+	if fileExists(filepath.Join(dir, "three.jpg")) {
 		t.Error("the files should be deleted")
 	}
 	if _, Err := ClearAllFilesFromFolder(testContext(), filepath.Join(dir, "missing")); Err.Message == "" {

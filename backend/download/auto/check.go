@@ -154,34 +154,6 @@ func CheckItem(ctx context.Context, dbItem models.DBSavedItem) (result AutoDownl
 	return result
 }
 
-func seasonExists(mediaItem models.MediaItem, seasonNumber int) bool {
-	if mediaItem.Series == nil {
-		return false
-	}
-	for _, season := range mediaItem.Series.Seasons {
-		if season.SeasonNumber == seasonNumber {
-			return true
-		}
-	}
-	return false
-}
-
-func episodeExists(mediaItem models.MediaItem, seasonNumber int, episodeNumber int) bool {
-	if mediaItem.Series == nil {
-		return false
-	}
-	for _, season := range mediaItem.Series.Seasons {
-		if season.SeasonNumber == seasonNumber {
-			for _, episode := range season.Episodes {
-				if episode.EpisodeNumber == episodeNumber {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 // Only mark size as changed if the size differs by at least 256KB to avoid minor Media Server metadata/container drift.
 // If Old and New sizes are both under 256KB, consider that no change
 // If one of the sizes is under 256KB and the other is over, consider that a change regardless of the difference, since that could indicate a change from a stub/small file to a real file or vice versa.

@@ -27,11 +27,6 @@ func CreateFolderIfNotExists(ctx context.Context, folderPath string) (Err loggin
 	return logging.LogErrorInfo{}
 }
 
-func CheckFileExists(filePath string) (exists bool) {
-	_, err := os.Stat(filePath)
-	return !os.IsNotExist(err)
-}
-
 // GetExtensionFromContentType maps an image Content-Type/MIME type to a file
 // extension (including the leading dot). Defaults to ".jpg" for unknown or
 // empty content types, since JPEG is the most common MediUX image format.

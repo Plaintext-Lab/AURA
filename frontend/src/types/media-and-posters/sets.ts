@@ -74,11 +74,3 @@ export interface PosterSetsResponse {
   sets: SetRef[];
   included_items: { [tmdb_id: string]: IncludedItem };
 }
-
-export interface CreatorSetsResponse {
-  show_sets: SetRef[];
-  movie_sets: SetRef[];
-  collection_sets: SetRef[];
-  boxsets: BoxsetRef[];
-  included_items: { [tmdb_id: string]: IncludedItem };
-}
