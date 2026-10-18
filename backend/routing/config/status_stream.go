@@ -5,13 +5,8 @@ import (
 	"aura/logging"
 	"aura/utils/httpx"
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 )
-
-const statusKeepAliveInterval = 25 * time.Second
 
 // StreamAppConfigStatus godoc
 // @Summary      Stream Config Status
@@ -40,43 +35,15 @@ func streamConfigStatus(w http.ResponseWriter, r *http.Request, status func(ctx 
 	logAction := ld.AddAction("Stream Config Status", logging.LevelTrace)
 	ctx = logging.WithCurrentAction(ctx, logAction)
 
-	flusher, ok := w.(http.Flusher)
+	stream, ok := httpx.StartSSE(w)
 	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.WriteHeader(http.StatusOK)
 
 	changes := config.SubscribeStatus()
 	defer config.UnsubscribeStatus(changes)
 
-	send := func() {
-		data, err := json.Marshal(configStatusResponse{Status: status(ctx)})
-		if err != nil {
-			logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to marshal the config status event")
-			return
-		}
-		fmt.Fprintf(w, "data: %s\n\n", data)
-		flusher.Flush()
-	}
+	send := func() { stream.Send(configStatusResponse{Status: status(ctx)}) }
 	send()
-
-	keepAlive := time.NewTicker(statusKeepAliveInterval)
-	defer keepAlive.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-httpx.StreamsClosed():
-			return
-		case <-changes:
-			send()
-		case <-keepAlive.C:
-			fmt.Fprint(w, ": keep-alive\n\n")
-			flusher.Flush()
-		}
-	}
+	httpx.StreamEvents(ctx, stream, changes, func(struct{}) { send() })
 }

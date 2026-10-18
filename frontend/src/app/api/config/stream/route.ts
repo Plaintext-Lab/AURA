@@ -1,24 +1,7 @@
+import { proxySSE } from "@/lib/proxy-sse";
+
 export const dynamic = "force-dynamic";
 
-// next.config.ts rewrites don't stream SSE properly - only the first chunk
-// gets through. This is a workaround to proxy the request to the backend.
-const BACKEND_ORIGIN = "http://localhost:8888";
-
 export async function GET(request: Request) {
-  const upstream = await fetch(`${BACKEND_ORIGIN}/api/config/stream`, {
-    headers: {
-      cookie: request.headers.get("cookie") ?? "",
-      "x-api-key": request.headers.get("x-api-key") ?? "",
-    },
-    signal: request.signal,
-  });
-
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("Content-Type") ?? "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return proxySSE(request, "/api/config/stream");
 }
