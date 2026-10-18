@@ -59,6 +59,12 @@ func setupCreator(t *testing.T) (*cache.MediaServerLibraryCache, *int) {
 		item.MediuxInfo.TMDB_ID = id
 		sets.IncludedItems[id] = item
 	}
+	// MediUX gives each set its type
+	for setType, list := range map[string][]models.SetRef{"show": sets.ShowSets, "movie": sets.MovieSets, "collection": sets.CollectionSets} {
+		for i := range list {
+			list[i].Type = setType
+		}
+	}
 
 	calls := new(int)
 	previous := getAllUserSets
@@ -154,5 +160,47 @@ func TestFindCountsAndIncludedItems(t *testing.T) {
 	_, _ = Find(testContext(), store, Query{Username: "creator", Refresh: true})
 	if *calls != 2 {
 		t.Errorf("a refresh should ask MediUX again, asked %d times", *calls)
+	}
+}
+
+func TestFindMixedLibrary(t *testing.T) {
+	_, _ = setupCreator(t)
+	// A mixed library has shows and movies, movie 2 shares its TMDB ID with the show Better Call Saul, which isn't in the library
+	store := cache.Cache_NewLibraryCache()
+	store.UpdateSection(&models.LibrarySection{
+		LibrarySectionBase: models.LibrarySectionBase{Title: "Everything", Type: "mixed"},
+		MediaItems: []models.MediaItem{
+			{TMDB_ID: "1", Type: "show", Title: "Breaking Bad", RatingKey: "s1", LibraryTitle: "Everything", DBSavedSets: []models.DBSavedSet{{ID: "showA"}}},
+			{TMDB_ID: "2", Type: "movie", Title: "Ariel", RatingKey: "m2", LibraryTitle: "Everything"},
+			{TMDB_ID: "10", Type: "movie", Title: "The Matrix", RatingKey: "m10", LibraryTitle: "Everything"},
+		},
+	})
+
+	tests := []struct {
+		tab  string
+		want []string
+	}{
+		{TabShowSets, []string{"showA"}},
+		{TabMovieSets, []string{"movieM"}},
+		{TabCollectionSets, []string{"collectionC"}},
+		{TabBoxSets, []string{"box", "  showA", "  movieM"}},
+	}
+	for _, tt := range tests {
+		result, Err := Find(testContext(), store, Query{Username: "creator", Library: "Everything", Tab: tt.tab})
+		if Err.Message != "" {
+			t.Fatalf("Find: %s", Err.Message)
+		}
+		if got := setIDs(result); !slices.Equal(got, tt.want) {
+			t.Errorf("%s = %v, want %v", tt.tab, got, tt.want)
+		}
+		if tt.tab == TabShowSets && result.IncludedItems["1"].MediaItem.RatingKey != "s1" {
+			t.Errorf("included items = %+v, want the show", result.IncludedItems)
+		}
+	}
+
+	result, _ := Find(testContext(), store, Query{Username: "creator"})
+	want := []LibrarySummary{{Title: "Everything", Type: "mixed", Sets: 3}}
+	if !slices.Equal(result.Libraries, want) {
+		t.Errorf("libraries = %+v, want %+v", result.Libraries, want)
 	}
 }

@@ -142,7 +142,7 @@ func Find(ctx context.Context, store *cache.MediaServerLibraryCache, q Query) (R
 	library := libraries[selected]
 	m := match(sets, library)
 
-	f := filter{query: q, items: library.items}
+	f := filter{query: q, lib: library}
 	showSets := f.sets(m.showSets)
 	movieSets := f.sets(m.movieSets)
 	collectionSets := f.sets(m.collectionSets)
@@ -156,7 +156,7 @@ func Find(ctx context.Context, store *cache.MediaServerLibraryCache, q Query) (R
 		start, end := page(&result, len(tabSets), q)
 		result.Sets = tabSets[start:end]
 		for _, set := range result.Sets {
-			addIncludedItems(&result, set, sets.IncludedItems, library.items)
+			addIncludedItems(&result, set, sets.IncludedItems, library.itemsFor(set.Type))
 		}
 	default:
 		result.Tab = TabBoxSets
@@ -165,36 +165,58 @@ func Find(ctx context.Context, store *cache.MediaServerLibraryCache, q Query) (R
 		result.Boxsets = boxsets[start:end]
 		for _, boxset := range result.Boxsets {
 			for _, set := range boxset.Sets {
-				addIncludedItems(&result, set, sets.IncludedItems, library.items)
+				addIncludedItems(&result, set, sets.IncludedItems, library.itemsFor(set.Type))
 			}
 		}
 	}
 	return result, logging.LogErrorInfo{}
 }
 
-// library is a library's items by TMDB ID
+// library is a library's movies and shows by TMDB ID, kept apart as a movie and a show can share an ID
 type library struct {
-	title string
-	kind  string
-	items map[string]models.MediaItem
+	title  string
+	kind   string // movie, show or mixed
+	movies map[string]models.MediaItem
+	shows  map[string]models.MediaItem
 }
 
-// libraryItems returns the movie and show libraries, with the first item of each TMDB ID
+// itemsFor returns the library's items a set of this type can have
+func (lib library) itemsFor(setType string) map[string]models.MediaItem {
+	if setType == "show" {
+		return lib.shows
+	}
+	return lib.movies
+}
+
+// libraryItems returns the movie, show and mixed libraries, with the first item of each TMDB ID
 func libraryItems(store *cache.MediaServerLibraryCache) []library {
 	var libraries []library
 	index := map[string]int{}
 	store.ForEachMediaItem(func(section models.LibrarySectionBase, item *models.MediaItem) {
-		if section.Type != "movie" && section.Type != "show" {
+		if section.Type != "movie" && section.Type != "show" && section.Type != "mixed" {
 			return
 		}
 		i, ok := index[section.Title]
 		if !ok {
 			i = len(libraries)
 			index[section.Title] = i
-			libraries = append(libraries, library{title: section.Title, kind: section.Type, items: map[string]models.MediaItem{}})
+			libraries = append(libraries, library{title: section.Title, kind: section.Type, movies: map[string]models.MediaItem{}, shows: map[string]models.MediaItem{}})
 		}
-		if _, exists := libraries[i].items[item.TMDB_ID]; item.TMDB_ID != "" && !exists {
-			libraries[i].items[item.TMDB_ID] = *item
+		// A mixed library has both, its items say which they are
+		itemType := section.Type
+		if itemType == "mixed" {
+			itemType = item.Type
+		}
+		items := libraries[i].movies
+		switch itemType {
+		case "show":
+			items = libraries[i].shows
+		case "movie":
+		default:
+			return
+		}
+		if _, exists := items[item.TMDB_ID]; item.TMDB_ID != "" && !exists {
+			items[item.TMDB_ID] = *item
 		}
 	})
 	return libraries
@@ -209,8 +231,9 @@ type matched struct {
 // match finds the creator's sets with an item in the library
 func match(sets models.CreatorSetsResponse, lib library) matched {
 	inLibrary := func(set models.SetRef) bool {
+		items := lib.itemsFor(set.Type)
 		return slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-			_, ok := lib.items[id]
+			_, ok := items[id]
 			return ok
 		})
 	}
@@ -218,8 +241,9 @@ func match(sets models.CreatorSetsResponse, lib library) matched {
 	withInfo := func(list []models.SetRef) []models.SetRef {
 		out := []models.SetRef{}
 		for _, set := range list {
+			items := lib.itemsFor(set.Type)
 			if slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-				_, inLib := lib.items[id]
+				_, inLib := items[id]
 				_, hasInfo := sets.IncludedItems[id]
 				return inLib && hasInfo
 			}) {
@@ -229,25 +253,26 @@ func match(sets models.CreatorSetsResponse, lib library) matched {
 		return out
 	}
 
+	// A mixed library matches both show and movie sets
 	m := matched{}
 	setsByID := map[string]models.SetRef{}
 	boxsetTypes := []string{}
-	switch lib.kind {
-	case "show":
+	if len(lib.shows) > 0 {
 		m.showSets = withInfo(sets.ShowSets)
-		boxsetTypes = []string{"show"}
+		boxsetTypes = append(boxsetTypes, "show")
 		for _, set := range sets.ShowSets {
 			if inLibrary(set) {
-				setsByID[set.ID] = set
+				setsByID[set.Type+"|"+set.ID] = set
 			}
 		}
-	case "movie":
+	}
+	if len(lib.movies) > 0 {
 		m.movieSets = withInfo(sets.MovieSets)
 		m.collectionSets = withInfo(sets.CollectionSets)
-		boxsetTypes = []string{"movie", "collection"}
+		boxsetTypes = append(boxsetTypes, "movie", "collection")
 		for _, set := range append(slices.Clone(sets.MovieSets), sets.CollectionSets...) {
 			if inLibrary(set) {
-				setsByID[set.ID] = set
+				setsByID[set.Type+"|"+set.ID] = set
 			}
 		}
 	}
@@ -258,7 +283,7 @@ func match(sets models.CreatorSetsResponse, lib library) matched {
 		b := Boxset{BoxsetRef: boxset, Sets: []models.SetRef{}}
 		for _, setType := range boxsetTypes {
 			for _, id := range boxset.SetIDs[setType] {
-				if set, ok := setsByID[id]; ok {
+				if set, ok := setsByID[setType+"|"+id]; ok {
 					b.Sets = append(b.Sets, set)
 				}
 			}
@@ -273,7 +298,7 @@ func match(sets models.CreatorSetsResponse, lib library) matched {
 // filter applies the search and the saved filter
 type filter struct {
 	query Query
-	items map[string]models.MediaItem
+	lib   library
 }
 
 func (f filter) sets(list []models.SetRef) []models.SetRef {
@@ -326,24 +351,27 @@ func (f filter) setSaved(set models.SetRef) bool {
 
 // savedWithThisSet is whether an item of the set is saved with this set
 func (f filter) savedWithThisSet(set models.SetRef) bool {
+	items := f.lib.itemsFor(set.Type)
 	return slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-		item, ok := f.items[id]
+		item, ok := items[id]
 		return ok && slices.ContainsFunc(item.DBSavedSets, func(saved models.DBSavedSet) bool { return saved.ID == set.ID })
 	})
 }
 
 // notSaved is whether an item of the set isn't saved, or isn't in the library
 func (f filter) notSaved(set models.SetRef) bool {
+	items := f.lib.itemsFor(set.Type)
 	return slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-		item, ok := f.items[id]
+		item, ok := items[id]
 		return !ok || len(item.DBSavedSets) == 0
 	})
 }
 
 // savedWithOtherSet is whether an item of the set is saved, but only with other creators' sets
 func (f filter) savedWithOtherSet(set models.SetRef) bool {
+	items := f.lib.itemsFor(set.Type)
 	return slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-		item, ok := f.items[id]
+		item, ok := items[id]
 		return ok && len(item.DBSavedSets) > 0 && all(item.DBSavedSets, func(saved models.DBSavedSet) bool {
 			return saved.ID != set.ID && saved.UserCreated != f.query.Username
 		})
@@ -355,8 +383,9 @@ func (f filter) matchesSearch(title string, set models.SetRef) bool {
 	if search == "" || strings.Contains(strings.ToLower(title), search) {
 		return true
 	}
+	items := f.lib.itemsFor(set.Type)
 	return slices.ContainsFunc(set.ItemIDs, func(id string) bool {
-		item, ok := f.items[id]
+		item, ok := items[id]
 		return ok && strings.Contains(strings.ToLower(item.Title), search)
 	})
 }
