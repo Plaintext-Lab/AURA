@@ -54,6 +54,8 @@
 - The startup page now fits on mobile screens.
 - The Sonarr & Radarr settings no longer squeeze the title against the type dropdown on mobile.
 - Search results show sooner after typing stops.
+- The Download Queue History tab is now the Failed tab and only shows downloads with warnings or errors.
+- Redesigned the Download Queue cards to match the Saved Sets cards.
 
 ### Fixed
 
@@ -73,6 +75,8 @@
 - Fixed the media item page's set sorting and filters resetting after opening a collection.
 - Fixed the home screen icon missing when aura is added to an iPhone home screen from a page other than Home.
 - Fixed sets downloaded automatically, like those from favorite creators, showing "Never" as their Last Downloaded date.
+- Fixed the Download Queue page showing nothing after one item finished, even when other items were still waiting.
+- Fixed the Saved Sets Date Downloaded sort showing some items in the wrong order.
 
 ### Updated
 
