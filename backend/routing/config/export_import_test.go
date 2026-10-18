@@ -43,10 +43,37 @@ func TestExportAppConfig(t *testing.T) {
 	}
 }
 
+func TestExportAppConfigRedacted(t *testing.T) {
+	setupConfigSectionTest(t)
+
+	recorder := httptest.NewRecorder()
+	ExportAppConfig(recorder, httptest.NewRequest(http.MethodGet, "/api/config/export?redacted=true", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Header().Get("Content-Disposition"), "aura-config-redacted-") {
+		t.Errorf("Content-Disposition = %q", recorder.Header().Get("Content-Disposition"))
+	}
+	body := recorder.Body.String()
+	if !strings.HasPrefix(body, config.RedactedConfigMarker) {
+		t.Errorf("a redacted export should start with the marker, got %q", body[:min(len(body), 80)])
+	}
+	for _, secret := range []string{"client-secret", "$argon2id$", "discord.example.com", "id.example.com"} {
+		if strings.Contains(body, secret) {
+			t.Errorf("redacted export still has %q", secret)
+		}
+	}
+	if config.Current.Auth.OIDC.ClientSecret != "client-secret" {
+		t.Error("exporting should not change the current config")
+	}
+}
+
 func TestImportAppConfigRejectsInvalidFiles(t *testing.T) {
 	tests := []struct{ name, yamlText, wantError string }{
 		{"empty", "  ", "The config file is empty"},
 		{"not yaml", "Auth: [unclosed", "The config file could not be read"},
+		{"redacted", config.RedactedConfigMarker + ", exported today\nAuth:\n  Enabled: false\n", "This is a redacted config for sharing"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

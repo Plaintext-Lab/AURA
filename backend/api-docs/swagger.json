@@ -252,7 +252,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Download the full application configuration as a YAML file.",
+                "description": "Download the full application configuration as a YAML file. With redacted=true, the secrets, emails and addresses are replaced so it can be shared; a redacted file can't be imported.",
                 "produces": [
                     "application/x-yaml"
                 ],
@@ -260,6 +260,14 @@
                     "Config"
                 ],
                 "summary": "Export Config",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Replace the secrets, emails and addresses, for sharing",
+                        "name": "redacted",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "The config as YAML",

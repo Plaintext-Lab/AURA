@@ -17,9 +17,10 @@ const maxImportConfigSize = 1 << 20 // 1 MiB
 
 // ExportAppConfig godoc
 // @Summary      Export Config
-// @Description  Download the full application configuration as a YAML file.
+// @Description  Download the full application configuration as a YAML file. With redacted=true, the secrets, emails and addresses are replaced so it can be shared; a redacted file can't be imported.
 // @Tags         Config
 // @Produce      application/x-yaml
+// @Param        redacted  query     bool  false  "Replace the secrets, emails and addresses, for sharing"
 // @Security     SessionCookie
 // @Security     ApiKeyAuth
 // @Failure      401  {object}  httpx.UnauthorizedResponse "Unauthorized (only when Auth.Enabled=true)"
@@ -48,12 +49,29 @@ func ExportAppConfig(w http.ResponseWriter, r *http.Request) {
 # as config.yaml and start aura with AURA_IMPORT_CONFIG=true.
 
 `, now.Format(time.RFC3339), config.AppVersion)
+	filename := fmt.Sprintf("aura-config-%s.yaml", now.Format("2006-01-02"))
+
+	redacted := r.URL.Query().Get("redacted") == "true"
+	if redacted {
+		data, err = config.RedactConfigYAML(data)
+		if err != nil {
+			logAction.SetError("Failed to redact config", err.Error(), nil)
+			httpx.SendResponse(w, ld, nil)
+			return
+		}
+		header = fmt.Sprintf(`%s, exported %s (aura %s)
+# Passwords, tokens, API keys, emails and addresses are replaced, so it can be shared.
+# Each address is replaced by host-1, host-2 and so on. It can't be imported.
+
+`, config.RedactedConfigMarker, now.Format(time.RFC3339), config.AppVersion)
+		filename = fmt.Sprintf("aura-config-redacted-%s.yaml", now.Format("2006-01-02"))
+	}
 
 	logAction.Complete()
-	logging.LOGGER.Info().Timestamp().Msg("Config exported")
+	logging.LOGGER.Info().Timestamp().Bool("redacted", redacted).Msg("Config exported")
 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="aura-config-%s.yaml"`, now.Format("2006-01-02")))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	// The file contains secrets, so it must not be cached
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
@@ -94,6 +112,12 @@ func ImportAppConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(req.YAML) == "" {
 		logAction.SetError("The config file is empty", "Choose a config file exported from aura (config.yaml format)", nil)
+		httpx.SendResponse(w, ld, response)
+		return
+	}
+	// Importing a redacted file would replace the real secrets with <redacted>
+	if strings.HasPrefix(strings.TrimSpace(req.YAML), config.RedactedConfigMarker) {
+		logAction.SetError("This is a redacted config for sharing, it can't be imported", "Import a full export instead", nil)
 		httpx.SendResponse(w, ld, response)
 		return
 	}

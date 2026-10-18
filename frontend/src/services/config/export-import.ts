@@ -6,12 +6,15 @@ import { log } from "@/lib/logger";
 import type { APIResponse } from "@/types/api/api-response";
 import type { AppStatusResponse } from "@/types/config/response-status";
 
-// Download the full config as a YAML file. Includes secrets
-export const ExportAppConfig = async (): Promise<
-  { ok: true; blob: Blob; filename: string } | { ok: false; error: string }
-> => {
+// Download the config as a YAML file. The full config includes secrets, a redacted one can be shared
+export const ExportAppConfig = async (
+  redacted = false
+): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; error: string }> => {
   try {
-    const response = await apiClient.get<Blob>(`/config/export`, { responseType: "blob" });
+    const response = await apiClient.get<Blob>(`/config/export`, {
+      responseType: "blob",
+      params: redacted ? { redacted: true } : undefined,
+    });
     const disposition = String(response.headers["content-disposition"] ?? "");
     const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "aura-config.yaml";
     return { ok: true, blob: response.data, filename };

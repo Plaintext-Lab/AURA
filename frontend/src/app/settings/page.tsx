@@ -243,6 +243,7 @@ function SettingsPageContent() {
 
   // Export / Import
   const [exporting, setExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<{ name: string; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -410,10 +411,11 @@ function SettingsPageContent() {
     return null;
   };
 
-  const handleExport = async () => {
+  const handleExport = async (redacted: boolean) => {
     setExporting(true);
-    const result = await ExportAppConfig();
+    const result = await ExportAppConfig(redacted);
     setExporting(false);
+    setExportDialogOpen(false);
     if (!result.ok) {
       toast.error(`Failed to export configuration: ${result.error}`);
       return;
@@ -424,7 +426,7 @@ function SettingsPageContent() {
     link.download = result.filename;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success("Configuration exported");
+    toast.success(redacted ? "Redacted configuration exported" : "Configuration exported");
   };
 
   const handleImportFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -611,11 +613,16 @@ function SettingsPageContent() {
               <div>
                 <Label>Export Configuration</Label>
                 <p className="text-sm text-muted-foreground">
-                  Download your configuration as a YAML file, to back it up or move it to another install. It includes
-                  your passwords, tokens and API keys, so keep it private.
+                  Download your configuration as a YAML file. Export the full file to back it up or move it to another
+                  install, or a redacted one to share when you need help.
                 </p>
               </div>
-              <Button variant="outline" onClick={handleExport} disabled={exporting} className="cursor-pointer shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setExportDialogOpen(true)}
+                disabled={exporting}
+                className="cursor-pointer shrink-0"
+              >
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 Export
               </Button>
@@ -857,6 +864,59 @@ function SettingsPageContent() {
               )}
             </div>
           </div>
+
+          {/* Choose between a redacted or a full export */}
+          <Dialog open={exportDialogOpen} onOpenChange={(open) => !exporting && setExportDialogOpen(open)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Configuration</DialogTitle>
+                <DialogDescription>Choose what to include in the file.</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-2">
+                {[
+                  {
+                    redacted: true,
+                    icon: ShieldCheck,
+                    title: "Redacted",
+                    description:
+                      "To share when you need help. Passwords, tokens, API keys, emails and addresses are replaced. It can't be imported.",
+                  },
+                  {
+                    redacted: false,
+                    icon: DatabaseBackup,
+                    title: "Full",
+                    description:
+                      "To back up or move to another install. It includes your passwords, tokens and API keys, so keep it private.",
+                  },
+                ].map((option) => (
+                  <button
+                    key={option.title}
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => handleExport(option.redacted)}
+                    className="flex items-start gap-3 rounded-md border p-3 text-left transition hover:bg-muted/50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option.icon className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
+                    <span>
+                      <span className="block font-medium">{option.title}</span>
+                      <span className="block text-sm text-muted-foreground">{option.description}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setExportDialogOpen(false)}
+                  disabled={exporting}
+                  className="cursor-pointer"
+                >
+                  {exporting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {exporting ? "Exporting..." : "Cancel"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Confirm before replacing the configuration */}
           <Dialog

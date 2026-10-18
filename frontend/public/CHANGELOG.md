@@ -39,6 +39,7 @@
 - Added option to restore notifications to their default templates in Settings > Notifications.
 - Added option to retry failed downloads in the Download Queue, which will re-add them to the queue with the same settings as before.
 - Added failed download count to the Navbar so you can see at a glance if any downloads failed.
+- Added option to a redacted version of the config file. This is helpful for sharing your config file without exposing sensitive information like tokens, passwords and API keys.
 
 ### UI Tweaks
 

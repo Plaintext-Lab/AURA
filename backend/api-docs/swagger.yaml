@@ -2459,7 +2459,14 @@ paths:
       - Auth
   /api/config/export:
     get:
-      description: Download the full application configuration as a YAML file.
+      description: Download the full application configuration as a YAML file. With
+        redacted=true, the secrets, emails and addresses are replaced so it can be
+        shared; a redacted file can't be imported.
+      parameters:
+      - description: Replace the secrets, emails and addresses, for sharing
+        in: query
+        name: redacted
+        type: boolean
       produces:
       - application/x-yaml
       responses:

@@ -350,8 +350,8 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
     sectionId: "advanced",
     sectionLabel: "Advanced",
     label: "Export Configuration",
-    description: "Download your configuration as a backup",
-    keywords: ["export", "backup", "download config", "yaml"],
+    description: "Download your configuration as a backup, or a redacted one to share",
+    keywords: ["export", "backup", "download config", "yaml", "redacted", "share", "support"],
   },
   {
     sectionId: "advanced",
