@@ -10,7 +10,7 @@ import (
 	"errors"
 )
 
-const LATEST_DB_VERSION = 9
+const LATEST_DB_VERSION = 10
 
 var Client DB
 
@@ -161,6 +161,9 @@ type DB interface {
 
 	// Delete a single Download History entry by ID
 	DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo)
+
+	// Delete an item's failures for a set that downloaded without any
+	DeleteDownloadHistoryForSet(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo)
 
 	// Delete all Download History entries
 	DeleteAllDownloadHistory(ctx context.Context) (Err logging.LogErrorInfo)
@@ -582,6 +585,13 @@ func DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogE
 		return logging.Error_DBClientNotInitialized()
 	}
 	return Client.DeleteDownloadHistoryEntry(ctx, id)
+}
+
+func DeleteDownloadHistoryForSet(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.DeleteDownloadHistoryForSet(ctx, tmdbID, libraryTitle, edition, setID)
 }
 
 func DeleteAllDownloadHistory(ctx context.Context) (Err logging.LogErrorInfo) {

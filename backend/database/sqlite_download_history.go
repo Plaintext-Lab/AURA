@@ -20,6 +20,9 @@ type DownloadHistoryEntry struct {
 	MediaItemYear   int                          `json:"media_item_year"`
 	SetID           string                       `json:"set_id"`
 	SetTitle        string                       `json:"set_title"`
+	SetCreator      string                       `json:"set_creator"`
+	SelectedTypes   models.SelectedTypes         `json:"selected_types"`
+	WarningCount    int                          `json:"warning_count"`
 	ImagesSucceeded int                          `json:"images_succeeded"`
 	ImagesFailed    int                          `json:"images_failed"`
 	Status          string                       `json:"status"`
@@ -45,6 +48,11 @@ func (s *SQliteDB) InsertDownloadHistoryEntry(ctx context.Context, entry Downloa
 	failedImagesJSON, err := json.Marshal(entry.FailedImages)
 	if err != nil {
 		logAction.SetError("Failed to marshal Download History failed images", err.Error(), map[string]any{"error": err.Error()})
+		return *logAction.Error
+	}
+	selectedTypesJSON, err := json.Marshal(entry.SelectedTypes)
+	if err != nil {
+		logAction.SetError("Failed to marshal Download History selected types", err.Error(), map[string]any{"error": err.Error()})
 		return *logAction.Error
 	}
 
@@ -82,12 +90,12 @@ WHERE tmdb_id = ? AND library_title = ? AND edition = ? AND set_id = ?;
 	if findErr == nil {
 		_, err = tx.ExecContext(ctx, `
 UPDATE DownloadHistory
-SET media_item_title = ?, media_item_year = ?, set_title = ?, images_succeeded = ?,
-    images_failed = ?, status = ?, failed_images = ?, created_at = CURRENT_TIMESTAMP
+SET media_item_title = ?, media_item_year = ?, set_title = ?, set_creator = ?, selected_types = ?, warning_count = ?,
+    images_succeeded = ?, images_failed = ?, status = ?, failed_images = ?, created_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 `,
-			entry.MediaItemTitle, entry.MediaItemYear, entry.SetTitle, entry.ImagesSucceeded,
-			entry.ImagesFailed, status, string(failedImagesJSON), existingID,
+			entry.MediaItemTitle, entry.MediaItemYear, entry.SetTitle, entry.SetCreator, string(selectedTypesJSON), entry.WarningCount,
+			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON), existingID,
 		)
 		if err != nil {
 			logAction.SetError("DB: UPDATE DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
@@ -97,30 +105,19 @@ WHERE id = ?;
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO DownloadHistory (
   tmdb_id, library_title, edition, media_item_title, media_item_year,
-  set_id, set_title, images_succeeded, images_failed, status, failed_images
+  set_id, set_title, set_creator, selected_types, warning_count,
+  images_succeeded, images_failed, status, failed_images
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 `,
 			entry.TMDB_ID, entry.LibraryTitle, entry.Edition, entry.MediaItemTitle, entry.MediaItemYear,
-			entry.SetID, entry.SetTitle, entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON),
+			entry.SetID, entry.SetTitle, entry.SetCreator, string(selectedTypesJSON), entry.WarningCount,
+			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON),
 		)
 		if err != nil {
 			logAction.SetError("DB: INSERT DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
 			return *logAction.Error
 		}
-	}
-
-	// Retention: keep only the last 5 successful entries, globally. Warning/error entries are never deleted.
-	_, err = tx.ExecContext(ctx, `
-DELETE FROM DownloadHistory
-WHERE status = 'success'
-  AND id NOT IN (
-    SELECT id FROM DownloadHistory WHERE status = 'success' ORDER BY created_at DESC LIMIT 5
-  );
-`)
-	if err != nil {
-		logAction.SetError("DB: DownloadHistory retention cleanup failed", err.Error(), map[string]any{"error": err.Error()})
-		return *logAction.Error
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -149,7 +146,8 @@ func (s *SQliteDB) GetDownloadHistory(ctx context.Context, limit, offset int) (e
 
 	q := `
 SELECT id, tmdb_id, library_title, edition, media_item_title, media_item_year,
-       set_id, set_title, images_succeeded, images_failed, status, failed_images, created_at
+       set_id, set_title, set_creator, selected_types, warning_count,
+       images_succeeded, images_failed, status, failed_images, created_at
 FROM DownloadHistory
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
@@ -163,15 +161,17 @@ LIMIT ? OFFSET ?;
 
 	for rows.Next() {
 		var entry DownloadHistoryEntry
-		var failedImagesJSON string
+		var failedImagesJSON, selectedTypesJSON string
 		if err := rows.Scan(
 			&entry.ID, &entry.TMDB_ID, &entry.LibraryTitle, &entry.Edition, &entry.MediaItemTitle, &entry.MediaItemYear,
-			&entry.SetID, &entry.SetTitle, &entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.CreatedAt,
+			&entry.SetID, &entry.SetTitle, &entry.SetCreator, &selectedTypesJSON, &entry.WarningCount,
+			&entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.CreatedAt,
 		); err != nil {
 			logAction.SetError("DB: scan DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
 			return entries, 0, *logAction.Error
 		}
 		_ = json.Unmarshal([]byte(failedImagesJSON), &entry.FailedImages)
+		_ = json.Unmarshal([]byte(selectedTypesJSON), &entry.SelectedTypes)
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
@@ -216,5 +216,29 @@ func (s *SQliteDB) DeleteAllDownloadHistory(ctx context.Context) (Err logging.Lo
 		return *logAction.Error
 	}
 
+	return logging.LogErrorInfo{}
+}
+
+// DeleteDownloadHistoryForSet removes an item's failures for a set that downloaded without any, and its failures before any set was downloaded
+func (s *SQliteDB) DeleteDownloadHistoryForSet(ctx context.Context, tmdbID, libraryTitle, edition, setID string) (Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Delete Download History for Set %s", setID), logging.LevelDebug)
+	defer logAction.Complete()
+
+	if s == nil || s.conn == nil {
+		logAction.SetError("DB: connection is nil", "", map[string]any{})
+		return *logAction.Error
+	}
+
+	result, err := s.conn.ExecContext(ctx, `
+DELETE FROM DownloadHistory
+WHERE tmdb_id = ? AND library_title = ? AND edition = ? AND (set_id = ? OR set_id = '');
+`, tmdbID, libraryTitle, edition, setID)
+	if err != nil {
+		logAction.SetError("DB: DELETE DownloadHistory for a set failed", err.Error(), map[string]any{"error": err.Error()})
+		return *logAction.Error
+	}
+	if deleted, err := result.RowsAffected(); err == nil {
+		logAction.AppendResult("deleted", deleted)
+	}
 	return logging.LogErrorInfo{}
 }

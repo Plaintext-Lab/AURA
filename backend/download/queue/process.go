@@ -82,7 +82,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 	if queueItem.MediaItem.RatingKey == "" || queueItem.MediaItem.Title == "" || queueItem.MediaItem.LibraryTitle == "" || queueItem.MediaItem.TMDB_ID == "" {
 		reason := "Media Item missing required fields: ratingKey/title/libraryTitle/tmdbId"
 		fileErrors = append(fileErrors, reason)
-		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, "", "", reason)
+		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, models.DBPosterSetDetail{}, reason)
 		finalize()
 		return
 	}
@@ -90,7 +90,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 	if len(queueItem.PosterSets) == 0 {
 		reason := "No poster sets found"
 		fileWarnings = append(fileWarnings, reason)
-		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, "", "", reason)
+		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, models.DBPosterSetDetail{}, reason)
 		finalize()
 		return
 	}
@@ -103,7 +103,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 	found, mediaErr := mediaserver.GetMediaItemDetails(ctx, &queueItem.MediaItem)
 	if mediaErr.Message != "" || !found {
 		fileErrors = append(fileErrors, mediaErr.Message)
-		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, "", "", mediaErr.Message)
+		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, models.DBPosterSetDetail{}, mediaErr.Message)
 		finalize()
 		return
 	}
@@ -120,7 +120,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 		if posterSet.ID == "" || posterSet.Type == "" || posterSet.Title == "" {
 			setErrors = append(setErrors, "poster set missing required fields: id/type/title")
 			fileErrors = append(fileErrors, setErrors...)
-			recordDownloadHistoryFailure(ctx, queueItem.MediaItem, posterSet.ID, posterSet.Title, setErrors[0])
+			recordDownloadHistoryFailure(ctx, queueItem.MediaItem, posterSet, setErrors[0])
 			SendNotification(
 				FileIssues{Errors: setErrors, Warnings: setWarnings},
 				queueItem.MediaItem,
@@ -139,7 +139,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 			!posterSet.SelectedTypes.Titlecard {
 			setWarnings = append(setWarnings, "poster set has no selected image types")
 			fileWarnings = append(fileWarnings, setWarnings...)
-			recordDownloadHistoryFailure(ctx, queueItem.MediaItem, posterSet.ID, posterSet.Title, setWarnings[0])
+			recordDownloadHistoryFailure(ctx, queueItem.MediaItem, posterSet, setWarnings[0])
 			SendNotification(
 				FileIssues{Errors: setErrors, Warnings: setWarnings},
 				queueItem.MediaItem,
@@ -200,7 +200,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 			queueItem.Source,
 		)
 
-		recordDownloadHistory(ctx, queueItem.MediaItem, posterSet.ID, posterSet.Title, imageResults)
+		recordDownloadHistory(ctx, queueItem.MediaItem, posterSet, imageResults, len(setWarnings))
 
 		fileErrors = append(fileErrors, setErrors...)
 		fileWarnings = append(fileWarnings, setWarnings...)
@@ -213,7 +213,7 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 	upsertErr := database.UpsertSavedItem(ctx, queueItem)
 	if upsertErr.Message != "" {
 		fileErrors = append(fileErrors, upsertErr.Message)
-		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, "", "", upsertErr.Message)
+		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, models.DBPosterSetDetail{}, upsertErr.Message)
 		finalize()
 		return
 	}
@@ -240,7 +240,8 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 	}()
 }
 
-func recordDownloadHistory(ctx context.Context, mediaItem models.MediaItem, setID, setTitle string, imageResults []models.ImageDownloadResult) {
+// recordDownloadHistory keeps a set's failed download in the history. A set that downloaded without failures clears its earlier ones instead.
+func recordDownloadHistory(ctx context.Context, mediaItem models.MediaItem, posterSet models.DBPosterSetDetail, imageResults []models.ImageDownloadResult, warningCount int) {
 	succeeded := 0
 	failedImages := []models.ImageDownloadResult{}
 	for _, r := range imageResults {
@@ -256,14 +257,25 @@ func recordDownloadHistory(ctx context.Context, mediaItem models.MediaItem, setI
 		return
 	}
 
+	// Saved Sets shows the successful downloads, the history only keeps failures
+	if len(failedImages) == 0 {
+		if deleteErr := database.DeleteDownloadHistoryForSet(ctx, mediaItem.TMDB_ID, mediaItem.LibraryTitle, mediaItem.Edition, posterSet.ID); deleteErr.Message != "" {
+			logging.LOGGER.Error().Timestamp().Str("error", deleteErr.Message).Msg("Failed to clear earlier Download History failures")
+		}
+		return
+	}
+
 	entry := database.DownloadHistoryEntry{
 		TMDB_ID:         mediaItem.TMDB_ID,
 		LibraryTitle:    mediaItem.LibraryTitle,
 		Edition:         mediaItem.Edition,
 		MediaItemTitle:  mediaItem.Title,
 		MediaItemYear:   mediaItem.Year,
-		SetID:           setID,
-		SetTitle:        setTitle,
+		SetID:           posterSet.ID,
+		SetTitle:        posterSet.Title,
+		SetCreator:      posterSet.UserCreated,
+		SelectedTypes:   posterSet.SelectedTypes,
+		WarningCount:    warningCount,
 		ImagesSucceeded: succeeded,
 		ImagesFailed:    len(failedImages),
 		FailedImages:    failedImages,
@@ -274,10 +286,10 @@ func recordDownloadHistory(ctx context.Context, mediaItem models.MediaItem, setI
 	}
 }
 
-func recordDownloadHistoryFailure(ctx context.Context, mediaItem models.MediaItem, setID, setTitle, reason string) {
-	recordDownloadHistory(ctx, mediaItem, setID, setTitle, []models.ImageDownloadResult{
+func recordDownloadHistoryFailure(ctx context.Context, mediaItem models.MediaItem, posterSet models.DBPosterSetDetail, reason string) {
+	recordDownloadHistory(ctx, mediaItem, posterSet, []models.ImageDownloadResult{
 		{FailureReason: reason},
-	})
+	}, 0)
 }
 
 // countJobImages counts the images a job downloads, skipping the same sets and images as processQueueJob

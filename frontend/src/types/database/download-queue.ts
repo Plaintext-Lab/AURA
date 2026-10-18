@@ -1,4 +1,5 @@
 import type { DBSavedItem } from "@/types/database/db-poster-set";
+import type { SelectedTypes } from "@/types/media-and-posters/media-item-and-library";
 
 export type DownloadQueueJobStatus = "pending" | "processing" | "success" | "warning" | "error";
 
@@ -58,6 +59,9 @@ export interface DownloadHistoryEntry {
   media_item_year: number;
   set_id: string;
   set_title: string;
+  set_creator: string;
+  selected_types: SelectedTypes;
+  warning_count: number;
   images_succeeded: number;
   images_failed: number;
   status: DownloadHistoryStatus;

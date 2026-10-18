@@ -1,10 +1,9 @@
 "use client";
 
-import { formatExactDateTime } from "@/helper/format-date-last-updates";
 import { formatImageTypeLabel } from "@/helper/format-image-type";
 import { RemoveDownloadHistoryEntry } from "@/services/downloads/history-remove";
 import { RemoveItemFromQueue } from "@/services/downloads/queue-remove";
-import { Trash2 } from "lucide-react";
+import { RefreshCcw, RefreshCwOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import React from "react";
@@ -12,17 +11,20 @@ import React from "react";
 import Link from "next/link";
 
 import { AssetImage } from "@/components/shared/asset-image";
+import { CreatorAvatar } from "@/components/shared/creator-avatar";
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import { renderTypeBadges } from "@/components/shared/saved-sets-shared";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { H4 } from "@/components/ui/typography";
 
 import { cn } from "@/lib/cn";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 
+import type { DBPosterSetDetail, DBSavedItem } from "@/types/database/db-poster-set";
 import type { DownloadHistoryEntry, DownloadQueueJob } from "@/types/database/download-queue";
 import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
 
@@ -44,6 +46,55 @@ type DownloadEntryCardProps =
       fetchHistory?: () => Promise<void>;
     };
 
+// countSelectedImages is how many of the sets' images are of a selected type
+const countSelectedImages = (posterSets: DBPosterSetDetail[]) =>
+  posterSets.reduce((total, set) => {
+    const selected = set.selected_types;
+    return (
+      total +
+      (set.images ?? []).filter((image) => {
+        switch (image.type) {
+          case "poster":
+            return selected.poster;
+          case "backdrop":
+            return selected.backdrop;
+          case "season_poster":
+            return image.season_number === 0 ? selected.special_season_poster : selected.season_poster;
+          case "titlecard":
+            return selected.titlecard;
+          default:
+            return false;
+        }
+      }).length
+    );
+  }, 0);
+
+// SetDetails is the set's name, then its ID and creator
+const SetDetails: React.FC<{ title: string; id: string; creator: string }> = ({ title, id, creator }) => (
+  <div className="w-full">
+    <span className="text-sm text-muted-foreground">Set: {title}</span>
+    <div className="flex flex-row items-center justify-between gap-2 rounded-sm hover:bg-muted/50">
+      <span className="text-primary text-sm shrink-0">{id}</span>
+      {creator && (
+        <div className="flex items-center gap-1">
+          <CreatorAvatar username={creator} className="rounded-lg mr-1 w-4 h-4" iconClassName="w-4 h-4" />
+          <Link href={`/user/${creator}`} className="text-primary hover:underline text-xs text-right">
+            {creator}
+          </Link>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const hasSelectedTypes = (selected: DBPosterSetDetail["selected_types"] | undefined) =>
+  !!selected &&
+  (selected.poster ||
+    selected.backdrop ||
+    selected.season_poster ||
+    selected.special_season_poster ||
+    selected.titlecard);
+
 const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
   const { setMediaItem } = useMediaStore();
 
@@ -57,6 +108,7 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
   const libraryTitle = isQueue ? mediaItem!.library_title : props.entry.library_title;
   const edition = isQueue ? mediaItem!.edition : props.entry.edition;
   const ratingKey = isQueue ? mediaItem!.rating_key : props.entry.rating_key;
+  const imageCount = isQueue ? countSelectedImages(posterSets) : 0;
 
   const onDeleteConfirm = async () => {
     if (isQueue) {
@@ -99,15 +151,48 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
   return (
     <Card className="relative w-full max-w-md mx-auto">
       <CardHeader>
-        <div className="absolute top-2 left-2">
+        {/* Top Left: Auto Download Icon or the Download Result */}
+        <div className="absolute top-2 left-2 flex items-center gap-2">
+          {isQueue ? (
+            posterSets.some((set) => set.auto_download) ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <RefreshCcw className="text-green-500 cursor-help" size={24} />
+                </PopoverTrigger>
+                <PopoverContent className="p-2 max-w-xs">
+                  <p className="text-sm">
+                    Auto Download is enabled for this item. Once it's downloaded, it will be periodically checked for
+                    new updates based on your Auto Download settings.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <RefreshCwOff className="text-red-500 cursor-help" size={24} />
+                </PopoverTrigger>
+                <PopoverContent className="p-2 max-w-xs">
+                  <p className="text-sm">Auto Download is disabled for this item.</p>
+                </PopoverContent>
+              </Popover>
+            )
+          ) : (
+            <Badge variant="outline" className={cn("text-sm", statusStyles[props.entry.status])}>
+              {props.entry.status.toUpperCase()}
+            </Badge>
+          )}
+        </div>
+
+        {/* Top Right: Delete */}
+        <div className="absolute top-2 right-2">
           <ConfirmDestructiveDialogActionButton
-            variant="outline"
-            className="text-destructive border-1 shadow-none hover:text-red-500 cursor-pointer"
-            confirmText={isQueue ? "Delete File" : "Delete Entry"}
-            title={isQueue ? "Delete Downloaded File?" : "Delete History Entry?"}
+            variant="ghost"
+            className="text-destructive p-1 shadow-none hover:bg-muted/50 hover:text-red-500 cursor-pointer"
+            confirmText={isQueue ? "Remove" : "Delete Entry"}
+            title={isQueue ? "Remove from the Download Queue?" : "Delete History Entry?"}
             description={
               isQueue
-                ? "Are you sure you want to delete the downloaded file for this media item? This action cannot be undone."
+                ? "Are you sure you want to remove this item from the download queue? This action cannot be undone."
                 : "Are you sure you want to delete this download history entry? This action cannot be undone."
             }
             onConfirm={onDeleteConfirm}
@@ -115,37 +200,27 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
             <Trash2 className="w-5 h-5" />
           </ConfirmDestructiveDialogActionButton>
         </div>
-        <div className="absolute top-2 right-2">
-          {!isQueue && (
-            <Badge variant="outline" className={cn("text-sm", statusStyles[props.entry.status])}>
-              {props.entry.status.toUpperCase()}
-            </Badge>
-          )}
-        </div>
       </CardHeader>
 
-      {isQueue ? (
+      {/* Middle: Image */}
+      {ratingKey && (
         <div className="flex justify-center">
           <AssetImage
-            image={mediaItem!}
+            image={isQueue ? mediaItem! : ({ rating_key: ratingKey } as MediaItem)}
             imageType="item"
-            className="w-[80%] h-auto transition-transform hover:scale-105"
+            className="w-[90%] h-auto transition-transform hover:scale-105"
           />
         </div>
-      ) : (
-        ratingKey && (
-          <div className="flex justify-center">
-            <AssetImage image={{ rating_key: ratingKey } as MediaItem} imageType="item" className="w-[80%] h-auto" />
-          </div>
-        )
       )}
 
-      <CardContent className={cn("p-0 ml-2 mr-2", isQueue ? "" : "mt-6")}>
+      {/* Content */}
+      <CardContent className="p-0 ml-2 mr-2">
+        {/* Title */}
         <H4>
           {isQueue ? (
             <Link
               href={"/media-item/"}
-              className="text-primary hover:underline"
+              className="text-primary hover:underline text-md"
               onClick={() => {
                 setMediaItem(mediaItem!);
               }}
@@ -153,29 +228,33 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
               {title}
             </Link>
           ) : (
-            title
+            <span className="text-md">{title}</span>
           )}
         </H4>
 
-        <span className="text-xs sm:text-sm text-muted-foreground inline-block">
-          {year} · {libraryTitle}
-          {edition ? ` · ${edition}` : ""}
-        </span>
+        <div className="flex flex-col gap-1 mb-2">
+          <span className="text-xs sm:text-sm text-muted-foreground inline-block">
+            {year} · {libraryTitle}
+            {edition ? ` · ${edition}` : ""}
+          </span>
 
-        {isQueue ? (
-          posterSets.length > 0 && (
+          {isQueue && (
             <span className="text-xs sm:text-sm text-muted-foreground inline-block">
-              {`Set by: ${posterSets[0].user_created}`}
+              Number of Images:
+              <br />
+              {imageCount}
             </span>
-          )
-        ) : (
-          <>
-            <span className="text-xs sm:text-sm text-muted-foreground inline-block">{`Set: ${props.entry.set_title}`}</span>
-            <span className="text-xs text-muted-foreground inline-block">
-              {formatExactDateTime(props.entry.created_at)}
-            </span>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Set */}
+        {isQueue
+          ? posterSets.map((set) => (
+              <SetDetails key={set.id} title={set.title} id={set.id} creator={set.user_created} />
+            ))
+          : props.entry.set_id && (
+              <SetDetails title={props.entry.set_title} id={props.entry.set_id} creator={props.entry.set_creator} />
+            )}
 
         <Separator className="my-4" />
 
@@ -197,10 +276,26 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
           )
         ) : (
           <>
+            {hasSelectedTypes(props.entry.selected_types) && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {renderTypeBadges({
+                    poster_sets: [{ selected_types: props.entry.selected_types }],
+                  } as unknown as DBSavedItem)}
+                </div>
+                <Separator className="my-4" />
+              </>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="text-sm border-green-400 text-green-500">
                 {props.entry.images_succeeded} Succeeded
               </Badge>
+              {props.entry.warning_count > 0 && (
+                <Badge variant="outline" className="text-sm border-yellow-400 text-yellow-500">
+                  {props.entry.warning_count} {props.entry.warning_count === 1 ? "Warning" : "Warnings"}
+                </Badge>
+              )}
               {props.entry.images_failed > 0 && (
                 <Badge variant="outline" className="text-sm border-red-400 text-red-500">
                   {props.entry.images_failed} Failed

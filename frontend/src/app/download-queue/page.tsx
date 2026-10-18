@@ -9,6 +9,8 @@ import { toast } from "sonner";
 
 import React, { useCallback, useEffect, useState } from "react";
 
+import Link from "next/link";
+
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import DownloadEntryCard from "@/components/shared/download-entry";
 import { DownloadQueueProgressPanel } from "@/components/shared/download-queue-progress";
@@ -146,7 +148,7 @@ const DownloadQueuePage: React.FC = () => {
       <Tabs defaultValue="queue" className="w-full">
         <TabsList className="mx-auto">
           <TabsTrigger value="queue">Queue</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="history">Failed</TabsTrigger>
         </TabsList>
 
         <TabsContent value="queue" className="w-full">
@@ -197,29 +199,36 @@ const DownloadQueuePage: React.FC = () => {
 
         <TabsContent value="history" className="w-full">
           {historyLoading ? (
-            <Loader className="mt-10" message="Loading download history..." />
+            <Loader className="mt-10" message="Loading failed downloads..." />
           ) : historyError ? (
             <div className="flex flex-col items-center p-6 gap-4">
               <ErrorMessage error={historyError} />
             </div>
           ) : (
             <>
-              <div className="w-full flex justify-end mb-2">
+              <div className="w-full flex items-center justify-between gap-2 mb-2">
+                <p className="text-sm text-muted-foreground">
+                  Successful downloads show on the{" "}
+                  <Link href="/saved-sets" className="text-primary hover:underline">
+                    Saved Sets
+                  </Link>{" "}
+                  page.
+                </p>
                 <ConfirmDestructiveDialogActionButton
                   variant="outline"
                   className="text-destructive border-1 shadow-none hover:text-red-500 cursor-pointer"
-                  confirmText="Clear History"
-                  title="Clear Download History?"
-                  description="Are you sure you want to remove all download history entries? This action cannot be undone."
+                  confirmText="Clear Failed"
+                  title="Clear Failed Downloads?"
+                  description="Are you sure you want to remove all failed downloads from this list? This action cannot be undone."
                   onConfirm={onClearHistory}
                   disabled={historyEntries.length === 0}
                 >
-                  Clear History
+                  Clear Failed
                 </ConfirmDestructiveDialogActionButton>
               </div>
 
               {historyEntries.length === 0 ? (
-                <p className="text-gray-500">No download history found</p>
+                <p className="text-gray-500">No failed downloads.</p>
               ) : (
                 <ResponsiveGrid size="larger">
                   {historyEntries.map((entry) => (
