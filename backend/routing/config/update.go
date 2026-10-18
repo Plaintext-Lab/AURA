@@ -750,15 +750,6 @@ func checkConfigDifferences_Images(ctx context.Context, oldImages config.Config_
 			changed = true
 		}
 
-		if oldImages.SaveImagesLocally.EpisodeNamingConvention != newImages.SaveImagesLocally.EpisodeNamingConvention {
-			logAction.AppendResult("Images.SaveImagesLocally.EpisodeNamingConvention changed", fmt.Sprintf("from '%s' to '%s'", oldImages.SaveImagesLocally.EpisodeNamingConvention, newImages.SaveImagesLocally.EpisodeNamingConvention))
-			logging.LOGGER.Info().
-				Timestamp().
-				Str("old_episode_naming_convention", oldImages.SaveImagesLocally.EpisodeNamingConvention).
-				Str("new_episode_naming_convention", newImages.SaveImagesLocally.EpisodeNamingConvention).
-				Msg("Images.SaveImagesLocally.EpisodeNamingConvention changed")
-			changed = true
-		}
 	}
 	newValid = config.ValidateImages(ctx, newImages, msConfig)
 	// Catch any other changes not checked above

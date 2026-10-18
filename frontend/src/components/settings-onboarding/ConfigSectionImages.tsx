@@ -2,31 +2,53 @@
 
 import { ReturnErrorMessage } from "@/services/api-error-return";
 import { DeleteTempImages } from "@/services/images/api-images-actions";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import React, { useEffect, useRef } from "react";
 
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import { PopoverHelp } from "@/components/shared/popover-help";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 import { cn } from "@/lib/cn";
 
-import type { AppConfigImages } from "@/types/config/config";
+import type { AppConfigImageNameTemplates, AppConfigImages } from "@/types/config/config";
 
-const EPISODE_NAMING_CONVENTION_OPTIONS = ["match", "static"];
+// File names for each image type
+const NAME_TEMPLATE_FIELDS: { key: keyof AppConfigImageNameTemplates; label: string }[] = [
+  { key: "poster", label: "Poster" },
+  { key: "backdrop", label: "Backdrop" },
+  { key: "season_poster", label: "Season Poster" },
+  { key: "special_season_poster", label: "Specials Season Poster" },
+  { key: "titlecard", label: "Title Card" },
+];
+
+const EMPTY_NAME_TEMPLATES: AppConfigImageNameTemplates = {
+  poster: "",
+  backdrop: "",
+  season_poster: "",
+  special_season_poster: "",
+  titlecard: "",
+};
+
+// nameTemplateProblem is why a template uses the standard name instead, or empty when it's fine
+const nameTemplateProblem = (template: string, variables: string[]) => {
+  const unknown = (template.match(/\{\{[^}]*\}\}/g) ?? []).filter((v) => !variables.includes(v));
+  if (unknown.length > 0) return `Unknown ${unknown.length === 1 ? "variable" : "variables"}: ${unknown.join(", ")}`;
+  if (template.split("/").includes("..")) return "Can't use .. in a file name";
+  return "";
+};
 
 interface ConfigSectionImagesProps {
   value: AppConfigImages;
@@ -37,7 +59,6 @@ interface ConfigSectionImagesProps {
     save_images_locally?: {
       enabled?: boolean;
       path?: boolean;
-      episode_naming_convention?: boolean;
       running_on_windows?: boolean;
     };
   };
@@ -48,6 +69,12 @@ interface ConfigSectionImagesProps {
   ) => void;
   errorsUpdate?: (errors: Partial<Record<keyof AppConfigImages, string>>) => void;
   mediaServerType?: string;
+  imageNameOptions?: ImageNameOptions | null; // The file name variables and standard names, from aura
+}
+
+export interface ImageNameOptions {
+  variables: string[];
+  defaults: AppConfigImageNameTemplates;
 }
 
 export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
@@ -57,9 +84,28 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   dirtyFields = {},
   onChange,
   errorsUpdate,
-  mediaServerType,
+  imageNameOptions,
 }) => {
   const prevErrorsRef = useRef<string>("{}");
+  const nameInputRefs = useRef<Partial<Record<keyof AppConfigImageNameTemplates, HTMLInputElement | null>>>({});
+
+  // insertNameVariable puts the variable at the cursor of the file name, or at the end
+  const insertNameVariable = (key: keyof AppConfigImageNameTemplates, variable: string) => {
+    const templates = value.save_images_locally.name_templates ?? EMPTY_NAME_TEMPLATES;
+    const current = templates[key] ?? "";
+    const input = nameInputRefs.current[key];
+    const start = input?.selectionStart ?? current.length;
+    const end = input?.selectionEnd ?? current.length;
+    onChange("save_images_locally", "name_templates", {
+      ...templates,
+      [key]: current.slice(0, start) + variable + current.slice(end),
+    });
+    // Put the cursor after the variable once the field updates
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(start + variable.length, start + variable.length);
+    });
+  };
 
   const clearTempImagesFolder = async () => {
     try {
@@ -78,19 +124,8 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   const errors = React.useMemo<Partial<Record<keyof AppConfigImages, string>>>(() => {
     const errs: Partial<Record<keyof AppConfigImages, string>> = {};
 
-    // Validate SaveImagesLocally.EpisodeNamingConvention
-    if (mediaServerType && value.save_images_locally.enabled) {
-      if (!value.save_images_locally.episode_naming_convention) {
-        errs.save_images_locally = "Episode naming convention is required.";
-      } else {
-        if (!EPISODE_NAMING_CONVENTION_OPTIONS.includes(value.save_images_locally.episode_naming_convention)) {
-          errs.save_images_locally = `Episode naming convention must be one of: ${EPISODE_NAMING_CONVENTION_OPTIONS.join(", ")}.`;
-        }
-      }
-    }
-
     return errs;
-  }, [mediaServerType, value.save_images_locally.enabled, value.save_images_locally.episode_naming_convention]);
+  }, []);
 
   // Emit errors upward
   useEffect(() => {
@@ -102,7 +137,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   }, [errors, errorsUpdate]);
 
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-500">Images</h2>
         <ConfirmDestructiveDialogActionButton
@@ -189,7 +224,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
               value={value.save_images_locally.path || ""}
               onChange={(e) => onChange("save_images_locally", "path", e.target.value)}
               className={cn(
-                "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 transition",
+                "w-full px-3 py-2 border rounded-md text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 transition",
                 dirtyFields.save_images_locally?.path && "border-amber-500"
               )}
               placeholder="/path/to/images"
@@ -198,62 +233,84 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
         )}
 
         {value.save_images_locally.enabled && (
-          <div className={cn("space-y-1 mt-4")}>
-            <div className="flex items-center justify-between">
-              <Label>Episode Naming Convention</Label>
-              {editing && (
-                <PopoverHelp ariaLabel="help-media-server-episode-naming-convention">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="font-medium mb-1">Episode Naming Convention</p>
-                      <p className="text-muted-foreground">How episode files are named.</p>
-                    </div>
-                    <ul className="space-y-1">
-                      <li className="flex items-center gap-2">
-                        <span className="inline-flex h-5 items-center rounded-sm bg-muted px-2 font-mono ">match</span>
-                        <span>Some Episode Title S01E01.jpg</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="inline-flex h-5 items-center rounded-sm bg-muted px-2 font-mono">static</span>
-                        <span>S01E01.jpg</span>
-                      </li>
-                    </ul>
-                    <p className="text-muted-foreground">Used for file naming logic.</p>
-                  </div>
-                </PopoverHelp>
-              )}
+          <div className="mt-4 space-y-3 border-t pt-4">
+            <div>
+              <Label>File Names</Label>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                The name of each saved image, the extension is added for you. The standard names work with every media
+                server. Use / for folders, and start with / to place the file from the Path folder instead of next to
+                the media. An empty name uses the standard name.
+              </p>
             </div>
-            <Select
-              disabled={!editing}
-              value={value.save_images_locally.episode_naming_convention || ""}
-              onValueChange={(v) => onChange("save_images_locally", "episode_naming_convention", v)}
-            >
-              <SelectTrigger
-                id="media-server-episode-naming-convention-trigger"
-                className={cn(
-                  "w-full",
-                  dirtyFields.save_images_locally?.episode_naming_convention && "border-amber-500"
-                )}
-              >
-                <SelectValue placeholder="Select convention..." />
-              </SelectTrigger>
-              <SelectContent>
-                {EPISODE_NAMING_CONVENTION_OPTIONS.map((o) => (
-                  <SelectItem key={o} value={o}>
-                    {o}
-                  </SelectItem>
+            {imageNameOptions && (
+              <div className="flex flex-wrap gap-1">
+                {imageNameOptions.variables.map((variable) => (
+                  <span key={variable} className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[11px] sm:text-xs">
+                    {variable}
+                  </span>
                 ))}
-                <SelectScrollUpButton />
-                <SelectScrollDownButton />
-              </SelectContent>
-            </Select>
+              </div>
+            )}
+            {NAME_TEMPLATE_FIELDS.map((field) => {
+              const templates = value.save_images_locally.name_templates ?? EMPTY_NAME_TEMPLATES;
+              const template = templates[field.key] ?? "";
+              const problem = imageNameOptions ? nameTemplateProblem(template, imageNameOptions.variables) : "";
+              return (
+                <div key={field.key} className="space-y-1">
+                  <Label htmlFor={`name-template-${field.key}`} className="text-xs sm:text-sm">
+                    {field.label}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    {/* Add a variable to the file name */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 cursor-pointer"
+                          disabled={!editing || !imageNameOptions}
+                          aria-label={`Add a variable to the ${field.label} file name`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+                        {imageNameOptions?.variables.map((variable) => (
+                          <DropdownMenuItem
+                            key={variable}
+                            className="cursor-pointer font-mono text-xs"
+                            onSelect={() => insertNameVariable(field.key, variable)}
+                          >
+                            {variable}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Input
+                      id={`name-template-${field.key}`}
+                      ref={(el) => {
+                        nameInputRefs.current[field.key] = el;
+                      }}
+                      disabled={!editing}
+                      value={template}
+                      placeholder={imageNameOptions?.defaults[field.key]}
+                      onChange={(e) =>
+                        onChange("save_images_locally", "name_templates", { ...templates, [field.key]: e.target.value })
+                      }
+                      className="h-8 sm:h-9 font-mono text-xs sm:text-sm"
+                    />
+                  </div>
+                  {problem && <p className="text-xs text-red-500">{problem}, the standard name is used.</p>}
+                </div>
+              );
+            })}
           </div>
         )}
 
         {value.save_images_locally.enabled && (
           <div
             className={cn(
-              "mt-4 flex items-center justify-between rounded-md border p-3",
+              "mt-4 flex items-center justify-between border-t pt-4",
               dirtyFields.save_images_locally?.running_on_windows && "border-amber-500"
             )}
           >

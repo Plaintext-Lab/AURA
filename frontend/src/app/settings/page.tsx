@@ -31,7 +31,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ConfigSaveStatus } from "@/components/settings-onboarding/ConfigSaveStatus";
 import { ConfigSectionAuth } from "@/components/settings-onboarding/ConfigSectionAuth";
 import { ConfigSectionBackups } from "@/components/settings-onboarding/ConfigSectionBackups";
-import { ConfigSectionImages } from "@/components/settings-onboarding/ConfigSectionImages";
+import { ConfigSectionImages, type ImageNameOptions } from "@/components/settings-onboarding/ConfigSectionImages";
 import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/ConfigSectionLabelsAndTags";
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
@@ -237,6 +237,7 @@ function SettingsPageContent() {
   const [draftConfig, setDraftConfig] = useState<AppConfig>(() => defaultAppConfig());
   const [notificationTemplateVariables, setNotificationTemplateVariables] =
     useState<NotificationTemplateVariablesCatalog | null>(null);
+  const [imageNameOptions, setImageNameOptions] = useState<ImageNameOptions | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [authDisabledByEnv, setAuthDisabledByEnv] = useState(false);
@@ -279,6 +280,10 @@ function SettingsPageContent() {
 
       if (templateVariableResponse.status === "success" && templateVariableResponse.data?.variables) {
         setNotificationTemplateVariables(templateVariableResponse.data.variables);
+        setImageNameOptions({
+          variables: templateVariableResponse.data.image_name_variables ?? [],
+          defaults: templateVariableResponse.data.image_name_defaults,
+        });
       }
 
       const cfg = response.data?.status.current_setup ?? defaultAppConfig();
@@ -554,6 +559,7 @@ function SettingsPageContent() {
             onChange={updateImagesField}
             errorsUpdate={(errs) => updateSectionErrors("images", errs as Record<string, string>)}
             mediaServerType={draftConfig.media_server.type}
+            imageNameOptions={imageNameOptions}
           />
         );
       case "labels-and-tags":

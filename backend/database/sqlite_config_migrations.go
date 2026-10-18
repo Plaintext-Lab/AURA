@@ -30,6 +30,10 @@ var configMigrations = []configMigration{
 		Description: "Move MediaServer to MediaServers, as the main media server",
 		Migrate:     moveMediaServerToMediaServers,
 	},
+	{
+		Description: "Replace Images.SaveImagesLocally.EpisodeNamingConvention with the title card file name",
+		Migrate:     moveEpisodeNamingConventionToTitlecardName,
+	},
 }
 
 // Version 1 is the first config schema, stored without any migrations
@@ -92,6 +96,31 @@ INSERT OR REPLACE INTO Config (key, value, updated_at) VALUES
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM Config WHERE key LIKE 'MediaServer.%';`); err != nil {
 		return fmt.Errorf("failed to remove MediaServer values: %w", err)
+	}
+	return nil
+}
+
+// moveEpisodeNamingConventionToTitlecardName keeps the static episode naming as the title card file name, match is the standard name
+func moveEpisodeNamingConventionToTitlecardName(ctx context.Context, tx *sql.Tx) error {
+	var value string
+	err := tx.QueryRowContext(ctx, `SELECT value FROM Config WHERE key = 'Images.SaveImagesLocally.EpisodeNamingConvention';`).Scan(&value)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get EpisodeNamingConvention: %w", err)
+	}
+	var convention string
+	_ = json.Unmarshal([]byte(value), &convention)
+	if strings.EqualFold(convention, "static") {
+		name, _ := json.Marshal("S{{SeasonNumber}}E{{EpisodeNumber}}")
+		if _, err := tx.ExecContext(ctx, `
+INSERT OR REPLACE INTO Config (key, value, updated_at) VALUES ('Images.SaveImagesLocally.NameTemplates.Titlecard', ?, CURRENT_TIMESTAMP);`, string(name)); err != nil {
+			return fmt.Errorf("failed to set the title card file name: %w", err)
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM Config WHERE key = 'Images.SaveImagesLocally.EpisodeNamingConvention';`); err != nil {
+		return fmt.Errorf("failed to remove EpisodeNamingConvention: %w", err)
 	}
 	return nil
 }

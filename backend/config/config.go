@@ -182,10 +182,35 @@ type Config_CacheImages struct {
 }
 
 type Config_SaveImagesLocally struct {
-	Enabled                 bool   `json:"enabled" yaml:"Enabled"`                                                       // Whether to save images next to their content.
-	Path                    string `json:"path,omitempty" yaml:"Path,omitempty"`                                         // By default, this is set to alongside the content. If set, this will override that behavior and save all images to this path.
-	EpisodeNamingConvention string `json:"episode_naming_convention,omitempty" yaml:"EpisodeNamingConvention,omitempty"` // Episode naming convention for saved titlecard images. Will default to match
-	RunningOnWindows        bool   `json:"running_on_windows,omitempty" yaml:"RunningOnWindows,omitempty"`               // Whether the application is running on Windows. This affects path formatting.
+	Enabled          bool   `json:"enabled" yaml:"Enabled"`                                         // Whether to save images next to their content.
+	Path             string `json:"path,omitempty" yaml:"Path,omitempty"`                           // By default, this is set to alongside the content. If set, this will override that behavior and save all images to this path.
+	RunningOnWindows bool   `json:"running_on_windows,omitempty" yaml:"RunningOnWindows,omitempty"` // Whether the application is running on Windows. This affects path formatting.
+
+	NameTemplates Config_ImageNameTemplates `json:"name_templates" yaml:"NameTemplates,omitempty"` // File names for each image type, empty uses the standard names
+}
+
+// DefaultImageNameTemplates are the standard names, they work with every media server
+func DefaultImageNameTemplates() Config_ImageNameTemplates {
+	return Config_ImageNameTemplates{
+		Poster:              "poster",
+		Backdrop:            "backdrop",
+		SeasonPoster:        "season{{SeasonNumber}}-poster",
+		SpecialSeasonPoster: "season-specials-poster",
+		Titlecard:           "{{EpisodeFileName}}-thumb",
+	}
+}
+
+type Config_ImageNameTemplates struct {
+	Poster              string `json:"poster" yaml:"Poster,omitempty"`
+	Backdrop            string `json:"backdrop" yaml:"Backdrop,omitempty"`
+	SeasonPoster        string `json:"season_poster" yaml:"SeasonPoster,omitempty"`
+	SpecialSeasonPoster string `json:"special_season_poster" yaml:"SpecialSeasonPoster,omitempty"`
+	Titlecard           string `json:"titlecard" yaml:"Titlecard,omitempty"`
+}
+
+var ImageNameTemplateVariables = []string{
+	"{{Title}}", "{{Year}}", "{{TMDBID}}", "{{LibraryTitle}}", "{{LibraryID}}", "{{Edition}}",
+	"{{SeasonNumber}}", "{{EpisodeNumber}}", "{{EpisodeFileName}}",
 }
 
 type Config_TMDB struct {

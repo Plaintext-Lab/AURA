@@ -332,21 +332,29 @@ func ValidateImages(ctx context.Context, Images *Config_Images, msConfig Config_
 
 	isValid := true
 
-	// If Images.SaveImagesLocally.Enabled is true, validate the EpisodeNamingConvention
-	if Images.SaveImagesLocally.Enabled {
-		validEpisodeNamingConventions := []string{"match", "static"}
-
-		Images.SaveImagesLocally.EpisodeNamingConvention = strings.ToLower(Images.SaveImagesLocally.EpisodeNamingConvention)
-		if !stringSliceContains(validEpisodeNamingConventions, Images.SaveImagesLocally.EpisodeNamingConvention) {
-			if Images.SaveImagesLocally.EpisodeNamingConvention == "" {
-				Images.SaveImagesLocally.EpisodeNamingConvention = "match"
-				logAction.AppendWarning("message", "Images.SaveImagesLocally.EpisodeNamingConvention not set, defaulting to 'match'")
-			} else if Images.SaveImagesLocally.EpisodeNamingConvention != "match" && Images.SaveImagesLocally.EpisodeNamingConvention != "static" {
-				Images.SaveImagesLocally.EpisodeNamingConvention = "match"
-				logAction.AppendWarning("message", "Images.SaveImagesLocally.EpisodeNamingConvention invalid, defaulting to 'match'")
-			}
+	// An empty template, or one with unknown variables or .., uses the standard name
+	templates := &Images.SaveImagesLocally.NameTemplates
+	defaults := DefaultImageNameTemplates()
+	for _, t := range []struct {
+		name     string
+		template *string
+		fallback string
+	}{
+		{"Poster", &templates.Poster, defaults.Poster},
+		{"Backdrop", &templates.Backdrop, defaults.Backdrop},
+		{"SeasonPoster", &templates.SeasonPoster, defaults.SeasonPoster},
+		{"SpecialSeasonPoster", &templates.SpecialSeasonPoster, defaults.SpecialSeasonPoster},
+		{"Titlecard", &templates.Titlecard, defaults.Titlecard},
+	} {
+		*t.template = strings.TrimSpace(*t.template)
+		if *t.template == "" {
+			*t.template = t.fallback
+			continue
 		}
-
+		if !validateTemplateVariables(*t.template, ImageNameTemplateVariables) || slices.Contains(strings.Split(*t.template, "/"), "..") {
+			logAction.AppendWarning("message", fmt.Sprintf("Images.SaveImagesLocally.NameTemplates.%s has invalid variables or .., using the standard name", t.name))
+			*t.template = t.fallback
+		}
 	}
 	return isValid
 }

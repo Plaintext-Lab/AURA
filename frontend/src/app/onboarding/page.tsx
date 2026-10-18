@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
 import { ConfigSectionAuth } from "@/components/settings-onboarding/ConfigSectionAuth";
-import { ConfigSectionImages } from "@/components/settings-onboarding/ConfigSectionImages";
+import { ConfigSectionImages, type ImageNameOptions } from "@/components/settings-onboarding/ConfigSectionImages";
 import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/ConfigSectionLabelsAndTags";
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
@@ -218,6 +218,7 @@ const OnboardingPage = () => {
   const [configState, setConfigState] = useState<AppConfig>(() => status?.current_setup || defaultAppConfig());
   const [notificationTemplateVariables, setNotificationTemplateVariables] =
     useState<NotificationTemplateVariablesCatalog | null>(null);
+  const [imageNameOptions, setImageNameOptions] = useState<ImageNameOptions | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, Record<string, string>>>({});
 
   const [activeSectionId, setActiveSectionId] = useState(SECTIONS[0].id);
@@ -262,6 +263,10 @@ const OnboardingPage = () => {
       if (!mounted) return;
       if (response.status === "success" && response.data?.variables) {
         setNotificationTemplateVariables(response.data.variables);
+        setImageNameOptions({
+          variables: response.data.image_name_variables ?? [],
+          defaults: response.data.image_name_defaults,
+        });
       }
     };
 
@@ -605,6 +610,7 @@ const OnboardingPage = () => {
             onChange={updateImagesField}
             errorsUpdate={(errs) => updateSectionErrors("images", errs as Record<string, string>)}
             mediaServerType={configState.media_server.type}
+            imageNameOptions={imageNameOptions}
           />
         );
       case "sonarr-radarr":

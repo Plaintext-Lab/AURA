@@ -207,6 +207,18 @@ func ParseConfigYAML(data []byte) (cfg Config, err error) {
 	if err = yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, err
 	}
+	// Older config files name title cards with EpisodeNamingConvention, static keeps only the episode number
+	var episodeNaming struct {
+		Images struct {
+			SaveImagesLocally struct {
+				EpisodeNamingConvention string `yaml:"EpisodeNamingConvention"`
+			} `yaml:"SaveImagesLocally"`
+		} `yaml:"Images"`
+	}
+	if yaml.Unmarshal(data, &episodeNaming) == nil && cfg.Images.SaveImagesLocally.NameTemplates.Titlecard == "" &&
+		strings.EqualFold(episodeNaming.Images.SaveImagesLocally.EpisodeNamingConvention, "static") {
+		cfg.Images.SaveImagesLocally.NameTemplates.Titlecard = "S{{SeasonNumber}}E{{EpisodeNumber}}"
+	}
 	if len(cfg.MediaServers) > 0 {
 		cfg.LoadMainMediaServer()
 		cfg.SyncMediaServers()

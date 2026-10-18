@@ -197,10 +197,10 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   {
     sectionId: "images",
     sectionLabel: "Images",
-    label: "Episode Naming Convention",
-    description: "How saved titlecard images are named",
-    keywords: ["episode", "titlecard", "naming"],
-    configPath: "save_images_locally.episode_naming_convention",
+    label: "File Names",
+    description: "How saved images are named, like poster, backdrop and title cards",
+    keywords: ["file names", "naming", "episode", "titlecard", "poster", "agregarr"],
+    configPath: "save_images_locally.name_templates",
   },
 
   {

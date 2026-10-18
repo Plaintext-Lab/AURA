@@ -14,7 +14,11 @@ Auth.TrustProxyForCookieSecure: bool
 Backups.Keep: int
 Images.CacheImages.Enabled: bool
 Images.SaveImagesLocally.Enabled: bool
-Images.SaveImagesLocally.EpisodeNamingConvention: string
+Images.SaveImagesLocally.NameTemplates.Poster: string
+Images.SaveImagesLocally.NameTemplates.Backdrop: string
+Images.SaveImagesLocally.NameTemplates.SeasonPoster: string
+Images.SaveImagesLocally.NameTemplates.SpecialSeasonPoster: string
+Images.SaveImagesLocally.NameTemplates.Titlecard: string
 Images.SaveImagesLocally.Path: string
 Images.SaveImagesLocally.RunningOnWindows: bool
 Jobs.AutoDownload.Cron: string

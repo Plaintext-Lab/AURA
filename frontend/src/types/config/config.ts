@@ -100,8 +100,16 @@ export interface AppConfigCacheImages {
 export interface AppConfigSaveImagesLocally {
   enabled: boolean; // Whether to save images locally.
   path: string; // Path to save images locally. If empty, images will be saved next to content.
-  episode_naming_convention: string; // Naming convention for episode images.
   running_on_windows?: boolean; // Convert Windows paths from the media server like C:\Movies to /C/Movies
+  name_templates?: AppConfigImageNameTemplates; // File names for each image type
+}
+
+export interface AppConfigImageNameTemplates {
+  poster: string;
+  backdrop: string;
+  season_poster: string;
+  special_season_poster: string;
+  titlecard: string;
 }
 
 export interface AppConfigTMDB {

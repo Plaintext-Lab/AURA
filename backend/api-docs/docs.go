@@ -518,7 +518,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get all available notification template variables grouped by category and by template type.",
+                "description": "Get all available notification template variables grouped by category and by template type, and the variables and standard names for saved image file names.",
                 "produces": [
                     "application/json"
                 ],
@@ -5067,6 +5067,26 @@ const docTemplate = `{
                 }
             }
         },
+        "config.Config_ImageNameTemplates": {
+            "type": "object",
+            "properties": {
+                "backdrop": {
+                    "type": "string"
+                },
+                "poster": {
+                    "type": "string"
+                },
+                "season_poster": {
+                    "type": "string"
+                },
+                "special_season_poster": {
+                    "type": "string"
+                },
+                "titlecard": {
+                    "type": "string"
+                }
+            }
+        },
         "config.Config_Images": {
             "type": "object",
             "properties": {
@@ -5503,9 +5523,13 @@ const docTemplate = `{
                     "description": "Whether to save images next to their content.",
                     "type": "boolean"
                 },
-                "episode_naming_convention": {
-                    "description": "Episode naming convention for saved titlecard images. Will default to match",
-                    "type": "string"
+                "name_templates": {
+                    "description": "File names for each image type, empty uses the standard names",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_ImageNameTemplates"
+                        }
+                    ]
                 },
                 "path": {
                     "description": "By default, this is set to alongside the content. If set, this will override that behavior and save all images to this path.",
@@ -7232,6 +7256,21 @@ const docTemplate = `{
         "routes_config.templateVariablesResponse": {
             "type": "object",
             "properties": {
+                "image_name_defaults": {
+                    "description": "The standard file names",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_ImageNameTemplates"
+                        }
+                    ]
+                },
+                "image_name_variables": {
+                    "description": "Variables the saved image file names can use",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "variables": {
                     "$ref": "#/definitions/config.NotificationTemplateVariableCatalog"
                 }

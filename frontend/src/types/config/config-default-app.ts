@@ -54,7 +54,6 @@ export const defaultAppConfig = (): AppConfig =>
       save_images_locally: {
         enabled: false,
         path: "",
-        episode_naming_convention: "",
       },
     },
     tmdb: {

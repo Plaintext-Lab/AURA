@@ -80,7 +80,8 @@ func DefaultConfig() Config {
 				Enabled: false,
 			},
 			SaveImagesLocally: Config_SaveImagesLocally{
-				Enabled: false,
+				Enabled:       false,
+				NameTemplates: DefaultImageNameTemplates(),
 			},
 		},
 		Notifications: Config_Notifications{

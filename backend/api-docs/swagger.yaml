@@ -187,6 +187,19 @@ definitions:
         description: Title for the custom notification.
         type: string
     type: object
+  config.Config_ImageNameTemplates:
+    properties:
+      backdrop:
+        type: string
+      poster:
+        type: string
+      season_poster:
+        type: string
+      special_season_poster:
+        type: string
+      titlecard:
+        type: string
+    type: object
   config.Config_Images:
     properties:
       cache_images:
@@ -467,10 +480,10 @@ definitions:
       enabled:
         description: Whether to save images next to their content.
         type: boolean
-      episode_naming_convention:
-        description: Episode naming convention for saved titlecard images. Will default
-          to match
-        type: string
+      name_templates:
+        allOf:
+        - $ref: '#/definitions/config.Config_ImageNameTemplates'
+        description: File names for each image type, empty uses the standard names
       path:
         description: By default, this is set to alongside the content. If set, this
           will override that behavior and save all images to this path.
@@ -1660,6 +1673,15 @@ definitions:
     type: object
   routes_config.templateVariablesResponse:
     properties:
+      image_name_defaults:
+        allOf:
+        - $ref: '#/definitions/config.Config_ImageNameTemplates'
+        description: The standard file names
+      image_name_variables:
+        description: Variables the saved image file names can use
+        items:
+          type: string
+        type: array
       variables:
         $ref: '#/definitions/config.NotificationTemplateVariableCatalog'
     type: object
@@ -2627,7 +2649,8 @@ paths:
   /api/config/template-variables:
     get:
       description: Get all available notification template variables grouped by category
-        and by template type.
+        and by template type, and the variables and standard names for saved image
+        file names.
       produces:
       - application/json
       responses:

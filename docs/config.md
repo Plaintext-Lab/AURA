@@ -430,8 +430,13 @@ Images:
     SaveImagesLocally:
         Enabled: false
         Path: ""
-        EpisodeNamingConvention: "match"
         RunningOnWindows: false
+        NameTemplates:
+            Poster: "poster"
+            Backdrop: "backdrop"
+            SeasonPoster: "season{{SeasonNumber}}-poster"
+            SpecialSeasonPoster: "season-specials-poster"
+            Titlecard: "{{EpisodeFileName}}-thumb"
 ```
 
 ## CacheImages.Enabled
@@ -464,15 +469,16 @@ Images:
     - Ensure the specified path is added to your docker volume mounts.
     - Ensure the specified path is writable by the application.
 
-## SaveImagesLocally.EpisodeNamingConvention
+## SaveImagesLocally.NameTemplates
 
-- **Default:** `"match"`
-- **Options:** `"match"` or `"static"`
-- **Description:** The naming convention for episode images when saving locally.
+- **Default:** the standard names above, which work with Plex, Emby, Jellyfin and Silo.
+- **Description:** The file name of each saved image type (`Poster`, `Backdrop`, `SeasonPoster`, `SpecialSeasonPoster` and `Titlecard`), without the extension.
 - **Details:**
-    - `"match"`: Episode images will match the episode file name.
-    - `"static"`: Episode images will use a static naming format like `S01E01.jpg` or `S1E1.jpg`.
-- **Note:** This option is only applicable when `SaveImagesLocally.Enabled` is `true`.
+    - Variables: `{{Title}}`, `{{Year}}`, `{{TMDBID}}`, `{{LibraryTitle}}`, `{{LibraryID}}`, `{{Edition}}`, `{{SeasonNumber}}`, `{{EpisodeNumber}}` and `{{EpisodeFileName}}`.
+    - The extension is added for you. Use `/` for folders. A name that starts with `/` is placed from `SaveImagesLocally.Path` instead of next to the media.
+    - An empty name, or one with an unknown variable or `..`, uses the standard name.
+    - Example for Agregarr's base posters, with `Path` set to that folder: `/{{LibraryTitle}}-{{LibraryID}}/{{Title}} ({{Year}}) tmdb-{{TMDBID}}/poster`.
+    - This replaces `EpisodeNamingConvention`. A config with `"static"` gets the title card name `S{{SeasonNumber}}E{{EpisodeNumber}}`.
 
 ## SaveImagesLocally.RunningOnWindows
 

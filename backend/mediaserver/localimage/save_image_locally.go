@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -55,62 +54,20 @@ func SaveImageLocally(ctx context.Context, item *models.MediaItem, imageFile mod
 		return *getFilePathAction.Error
 	}
 
+	// The folder the image is saved in, its name comes from its name template
+	episodePath := ""
 	switch item.Type {
 	case "movie":
-		// Handle Movie Specific Logic
 		newFilePath = path.Dir(item.Movie.File.Path)
 		getFilePathAction.AppendResult("movie_file_path", newFilePath)
-		switch imageFile.Type {
-		case "poster":
-			newFileName = "poster" + ext
-		case "backdrop":
-			newFileName = "backdrop" + ext
-		}
 	case "show":
-		// Handle show-specific logic
 		newFilePath = item.Series.Location
 		getFilePathAction.AppendResult("series_location", newFilePath)
-		switch imageFile.Type {
-		case "poster":
-			newFileName = "poster" + ext
-		case "backdrop":
-			newFileName = "backdrop" + ext
-		case "season_poster":
-			seasonNumber := utils.FormatIntAsTwoDigitString(*imageFile.SeasonNumber)
-			newFileName = fmt.Sprintf("season%s-poster%s", seasonNumber, ext)
-		case "special_season_poster":
-			newFileName = "season-specials-poster" + ext
-		case "titlecard":
-			episodeNamingConvention := config.Current.Images.SaveImagesLocally.EpisodeNamingConvention
-			// For titlecards, get the file path from the media server
-			episodePath := getEpisodePathFromImageFile(*item, imageFile)
+		// Title cards are saved next to their episode
+		if imageFile.Type == "titlecard" {
+			episodePath = getEpisodePathFromImageFile(*item, imageFile)
 			getFilePathAction.AppendResult("episode_path_lookup", episodePath)
-			if episodePath != "" {
-				newFilePath = path.Dir(episodePath)
-				switch episodeNamingConvention {
-				case "match":
-					newFileName = path.Base(episodePath)
-					newFileName = newFileName[:len(newFileName)-len(path.Ext(newFileName))] + "-thumb" + ext
-				case "static":
-					filename := path.Base(episodePath)
-					re := regexp.MustCompile(`(?i)\bS?\d{1,3}[Ex]\d{1,3}\b`)
-					trimmed := strings.TrimSuffix(filename, path.Ext(filename))
-					matchedString := re.FindString(trimmed)
-					if matchedString != "" {
-						newFileName = matchedString + ext
-					} else {
-						// If we failed to get the season and episode numbers, try and get them from the file struct
-						newFileName = fmt.Sprintf("S%02dE%02d%s", *imageFile.SeasonNumber, *imageFile.EpisodeNumber, ext)
-					}
-				default:
-					getFilePathAction.SetError("Invalid Episode Naming Convention",
-						"EpisodeNamingConvention must be either 'match' or 'static'",
-						map[string]any{
-							"EpisodeNamingConvention": episodeNamingConvention,
-						})
-					return *getFilePathAction.Error
-				}
-			} else {
+			if episodePath == "" {
 				getFilePathAction.SetError("Failed to determine file path for titlecard",
 					fmt.Sprintf("Could not find episode path in %s data", serverType),
 					map[string]any{
@@ -118,6 +75,7 @@ func SaveImageLocally(ctx context.Context, item *models.MediaItem, imageFile mod
 					})
 				return *getFilePathAction.Error
 			}
+			newFilePath = path.Dir(episodePath)
 		}
 	default:
 		getFilePathAction.SetError("Unsupported Media Item Type for Poster Update",
@@ -233,6 +191,24 @@ func SaveImageLocally(ctx context.Context, item *models.MediaItem, imageFile mod
 		}
 		newPathAction.Complete()
 	}
+
+	// The name template names the file, and can add folders
+	libraryID := ""
+	if section, ok := cache.LibraryStore.GetSectionByTitle(item.LibraryTitle); ok {
+		libraryID = section.ID
+	}
+	vars := nameTemplateVars(*item, imageFile, libraryID, episodePath)
+	template, standard := nameTemplate(imageFile.Type)
+	templated := templatedPath(template, newFilePath, config.Current.Images.SaveImagesLocally.Path, vars, ext)
+	if templated == "" {
+		templated = templatedPath(standard, newFilePath, "", vars, ext)
+	}
+	if templated == "" {
+		logAction.SetError("Failed to name the image file", "Check the file names in Settings > Images", map[string]any{"image_type": imageFile.Type})
+		return *logAction.Error
+	}
+	newFilePath, newFileName = path.Dir(templated), path.Base(templated)
+	logAction.AppendResult("name_template", template)
 
 	createFileAction := logAction.AddSubAction("Saving Image to New File Path", logging.LevelDebug)
 	savedFilePath := path.Join(newFilePath, newFileName)
