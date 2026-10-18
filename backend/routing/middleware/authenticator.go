@@ -29,6 +29,7 @@ var publicPathPrefixes = []string{
 	"/api/auth/oidc/",
 	"/api/images/media/",
 	"/api/images/mediux/",
+	"/api/plugin/silo/download/", // Signed by aura, Silo can't send an API key
 }
 
 // Authenticator is a middleware that authenticates requests to protected routes using, in order:

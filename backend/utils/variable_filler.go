@@ -205,3 +205,22 @@ func TemplateVars_NewItemAutoDownload(mediaItem models.MediaItem, setItem models
 	}
 	return vars
 }
+
+// TemplateVars_SiloPlugin is TemplateVars_DownloadQueue for a set Silo used from the aura Silo plugin
+func TemplateVars_SiloPlugin(mediaItem models.MediaItem, setItem models.DBPosterSetDetail, Errors []string, Warnings []string) map[string]string {
+	vars := TemplateVars_DownloadQueue(mediaItem, setItem, Errors, Warnings)
+	used := fmt.Sprintf("Silo used a set by \"%s\" from the %s Silo Plugin, so %s downloaded the whole set", setItem.UserCreated, config.AppName, config.AppName)
+	switch vars["ReasonTitle"] {
+	case "Success":
+		vars["Reason"] = used + " with no issues."
+	case "Warning":
+		vars["Reason"] = fmt.Sprintf("%s with warnings:\n%s", used, strings.Join(Warnings, "\n"))
+	default:
+		vars["Reason"] = fmt.Sprintf("%s with errors:\n%s", used, strings.Join(Errors, "\n"))
+		if len(Warnings) > 0 {
+			vars["Reason"] += fmt.Sprintf("\n\n and the following Warnings:\n%s", strings.Join(Warnings, "\n"))
+		}
+	}
+	vars["ReasonTitle"] = "Silo Plugin: " + vars["ReasonTitle"]
+	return vars
+}

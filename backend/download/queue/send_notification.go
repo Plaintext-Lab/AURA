@@ -64,8 +64,11 @@ func SendNotification(
 	}
 
 	vars := utils.TemplateVars_DownloadQueue(mediaItem, posterSet, fileIssues.Errors, fileIssues.Warnings)
-	if fromFavoriteCreator {
+	switch {
+	case fromFavoriteCreator:
 		vars = utils.TemplateVars_NewItemAutoDownload(mediaItem, posterSet, fileIssues.Errors, fileIssues.Warnings, source == models.SourceFavoriteCreatorsNewItem)
+	case source == models.SourceSiloPlugin:
+		vars = utils.TemplateVars_SiloPlugin(mediaItem, posterSet, fileIssues.Errors, fileIssues.Warnings)
 	}
 	title := utils.RenderTemplate(template.Title, vars)
 	message := utils.RenderTemplate(template.Message, vars)

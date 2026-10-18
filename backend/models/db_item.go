@@ -14,6 +14,7 @@ type DBSavedItem struct {
 const (
 	SourceFavoriteCreatorsNewItem  = "favorite_creators_new_item"  // A new item, from a favorite creator
 	SourceFavoriteCreatorsAllItems = "favorite_creators_all_items" // Run for All Items, from a favorite creator
+	SourceSiloPlugin               = "silo_plugin"                 // Silo used an image from the aura plugin
 )
 
 // PosterSetDetail groups poster set details per media item.

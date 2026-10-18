@@ -114,6 +114,11 @@ func DownloadFromFavoriteCreators(ctx context.Context, items []models.MediaItem,
 	return result, logging.LogErrorInfo{}
 }
 
+// FavoriteCreators is the favorite creators from the User Preferences, then followed creators, without hidden ones
+func FavoriteCreators(ctx context.Context) []string {
+	return favoriteCreators(ctx, config.Current.UserPreferences.FavoriteCreators)
+}
+
 // favoriteCreators is the ranked favorites, then followed creators not in the list, without hidden ones
 func favoriteCreators(ctx context.Context, ranked []string) []string {
 	favorites := slices.Clone(ranked)
@@ -170,6 +175,11 @@ func comparePopularity(a, b int) int {
 	default:
 		return a - b
 	}
+}
+
+// DownloadDefaultTypes is the image types in the Download Defaults
+func DownloadDefaultTypes() models.SelectedTypes {
+	return selectedTypes(config.Current.UserPreferences.DownloadDefaults)
 }
 
 // selectedTypes is the image types to download, from the Download Defaults

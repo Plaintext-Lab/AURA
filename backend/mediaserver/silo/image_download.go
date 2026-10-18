@@ -45,6 +45,13 @@ func (s *Silo) DownloadApplyImageToMediaItem(ctx context.Context, item *models.M
 		}
 	}
 
+	// With the aura plugin, a refresh gets the saved set's images from the plugin, so the item's images stay unlocked
+	if auraPluginActive(ctx, s, item.LibraryTitle) {
+		scheduleUnlockAndRefresh(s, *item)
+		logAction.AppendResult("aura_plugin", "Silo will refresh the item to get the image from the aura plugin")
+		return logging.LogErrorInfo{}
+	}
+
 	// Construct the MediUX Image URL
 	// Silo downloads the image from MediUX itself
 	imageURL, Err := mediux.ConstructImageUrl(ctx, imageFile.ID, imageFile.Modified.String(), mediux.ImageQualityOriginal)

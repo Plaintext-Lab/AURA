@@ -17,6 +17,7 @@ import (
 	routes_mediux "aura/routing/mediux"
 	"aura/routing/middleware"
 	routes_search "aura/routing/search"
+	routes_silo_plugin "aura/routing/siloplugin"
 	routes_sonarr_radarr "aura/routing/sonarr-radarr"
 	routes_validation "aura/routing/validation"
 	"aura/utils/httpx"
@@ -183,6 +184,13 @@ func AddRoutes(r *chi.Mux) {
 			r.Get("/set", routes_mediux.GetSetByID)
 			r.Get("/sets/item", routes_mediux.GetItemSets)
 			r.Get("/sets/user", routes_mediux.GetCreatorSets)
+		})
+
+		// Silo Plugin Routes, the download path is public and signed
+		r.Route("/plugin/silo", func(r chi.Router) {
+			r.Get("/status", routes_silo_plugin.GetStatus)
+			r.Get("/images", routes_silo_plugin.GetImages)
+			r.Get("/download/{token}", routes_silo_plugin.Download)
 		})
 
 		// Validation Routes

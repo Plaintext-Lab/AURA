@@ -325,6 +325,25 @@ func (c *MediaServerLibraryCache) GetMediaItemFromSectionByTMDBIDAndEdition(sect
 	return &models.MediaItem{}, false
 }
 
+// GetMediaItemsByTMDBID returns the items with the TMDB ID in every library
+func (c *MediaServerLibraryCache) GetMediaItemsByTMDBID(tmdbID string) []models.MediaItem {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	items := []models.MediaItem{}
+	if tmdbID == "" {
+		return items
+	}
+	for _, section := range c.sections {
+		for _, item := range section.MediaItems {
+			if item.TMDB_ID == tmdbID {
+				items = append(items, item)
+			}
+		}
+	}
+	return items
+}
+
 func (c *MediaServerLibraryCache) GetMediaItemByRatingKey(ratingKey string) (*models.MediaItem, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

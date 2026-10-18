@@ -4047,6 +4047,173 @@
                 }
             }
         },
+        "/api/plugin/silo/download/{token}": {
+            "get": {
+                "description": "For a signed download path from Get Images, adds the set to the Download Queue for items that don't have it saved, then returns the original image. With notify=1 it only queues the set, the plugin calls it that way when Silo uses an image. Public, the signed token is the auth.",
+                "produces": [
+                    "image/jpeg"
+                ],
+                "tags": [
+                    "Silo Plugin"
+                ],
+                "summary": "Download an Image for the Silo Plugin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Signed download token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "1 to only queue the set, without the image",
+                        "name": "notify",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "1 to save the set with Auto Download on",
+                        "name": "autodownload",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/plugin/silo/images": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "The MediUX images for a movie or show in aura's libraries, the best ranked set first: saved sets, then favorite creator rank, then MediUX popularity. For a refresh, a type with saved images only has those and the other types only have favorite creator images; the gallery has every image. Each image has a preview URL and a signed download path; Silo fetching the download path saves the set in aura.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Silo Plugin"
+                ],
+                "summary": "Get Images for the Silo Plugin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TMDB ID of the movie or show",
+                        "name": "tmdb_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "movie, show or series",
+                        "name": "item_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "refresh (default) offers saved and favorite creator images only, gallery offers every image",
+                        "name": "purpose",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_silo_plugin.getImagesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/plugin/silo/status": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Lets the aura Silo plugin check its URL and API key.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Silo Plugin"
+                ],
+                "summary": "Silo Plugin Status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_silo_plugin.getStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/search": {
             "get": {
                 "description": "Perform a search across media items, collection items, Mediux users, and saved sets based on the provided query and filters. The search supports filtering by year, library section, and unique identifiers (TMDB ID or RatingKey) using specific query syntax. The response includes matching media items, collection items, Mediux users, and saved sets, along with metadata about the last full update for each category to help clients determine if they need to refresh their cached data.",
@@ -7682,6 +7849,25 @@
                 }
             }
         },
+        "routes_silo_plugin.getImagesResponse": {
+            "type": "object",
+            "properties": {
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/siloplugin.Image"
+                    }
+                }
+            }
+        },
+        "routes_silo_plugin.getStatusResponse": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                }
+            }
+        },
         "routes_validation.SendTestNotification_Request": {
             "type": "object",
             "properties": {
@@ -7761,6 +7947,62 @@
                 },
                 "valid": {
                     "type": "boolean"
+                }
+            }
+        },
+        "siloplugin.Image": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "type": "string"
+                },
+                "download_path": {
+                    "description": "Signed, the plugin calls it with notify=1 when Silo uses the image",
+                    "type": "string"
+                },
+                "episode_number": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "poster, backdrop, season_poster or titlecard",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Language name from MediUX, empty for textless",
+                    "type": "string"
+                },
+                "modified": {
+                    "type": "string"
+                },
+                "original_url": {
+                    "description": "Public, Silo can only download artwork from public addresses on a refresh",
+                    "type": "string"
+                },
+                "preview_url": {
+                    "type": "string"
+                },
+                "saved": {
+                    "description": "From a saved set, with its type selected",
+                    "type": "boolean"
+                },
+                "season_number": {
+                    "type": "integer"
+                },
+                "set_id": {
+                    "type": "string"
+                },
+                "set_rank": {
+                    "description": "1 is the best set for the item",
+                    "type": "integer"
+                },
+                "set_title": {
+                    "type": "string"
+                },
+                "set_type": {
+                    "type": "string"
                 }
             }
         }
