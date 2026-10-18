@@ -123,7 +123,8 @@ WITH base AS (
      WHERE si.tmdb_id = mi.tmdb_id AND si.library_title = mi.library_title AND si.edition = mi.edition
     ) AS set_count,
 
-    (SELECT MAX(si.last_downloaded)
+    -- julianday compares the moment, the dates are saved with different time zones
+    (SELECT MAX(julianday(si.last_downloaded))
      FROM SavedItems si
      WHERE si.tmdb_id = mi.tmdb_id AND si.library_title = mi.library_title AND si.edition = mi.edition
     ) AS max_last_downloaded
