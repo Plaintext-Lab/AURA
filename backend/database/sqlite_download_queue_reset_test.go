@@ -32,4 +32,3 @@ func TestResetInterruptedDownloadQueueJobs(t *testing.T) {
 		t.Error("the reset job should have no start time or worker")
 	}
 }
-

@@ -323,6 +323,9 @@ func buildSavedItemsWhere(filter models.DBFilter) (whereSQL string, args []any) 
 		args = append(args, a...)
 	}
 
+	// Only items with saved sets
+	add("mi.set_count > 0")
+
 	if strings.TrimSpace(filter.ItemTMDB_ID) != "" {
 		add("mi.tmdb_id = ?", strings.TrimSpace(filter.ItemTMDB_ID))
 	}

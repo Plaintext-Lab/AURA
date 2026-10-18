@@ -182,7 +182,7 @@ func TestEJRefreshAddsNewItemsToTheMainCache(t *testing.T) {
 
 	// Another media server's items stay out of the main cache
 	other := &EJ{Config: config.Config_MediaServer{ID: "other", Type: "Jellyfin", URL: server.URL, UserID: "user"}}
-	if items, _, Err := other.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" || len(items) != 1 {
+	if items, _, _, Err := other.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" || len(items) != 1 {
 		t.Fatalf("GetLibrarySectionItems on another media server = %d items, %s", len(items), Err.Message)
 	}
 	if _, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); found {
@@ -191,7 +191,7 @@ func TestEJRefreshAddsNewItemsToTheMainCache(t *testing.T) {
 
 	// The main media server adds items found by a refresh, so their images and pages load
 	main := &EJ{Config: config.Config_MediaServer{ID: "main", Type: "Jellyfin", URL: server.URL, UserID: "user"}}
-	if _, _, Err := main.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" {
+	if _, _, _, Err := main.GetLibrarySectionItems(testContext(), section, "0", ""); Err.Message != "" {
 		t.Fatalf("GetLibrarySectionItems on the main media server: %s", Err.Message)
 	}
 	if item, found := cache.LibraryStore.GetMediaItemByRatingKey("300"); !found || item.TMDB_ID != "603" || item.AddedAt != 1741064767 {

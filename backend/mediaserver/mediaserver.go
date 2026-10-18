@@ -26,8 +26,11 @@ type MediaServerInterface interface {
 	// Get full details about a specific library section
 	GetLibrarySectionDetails(ctx context.Context, library *models.LibrarySection) (found bool, Err logging.LogErrorInfo)
 
-	// Get items in a specific library section
-	GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) ([]models.MediaItem, int, logging.LogErrorInfo)
+	// Get items in a specific library section, the section's total and how many entries were sent
+	GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo)
+
+	// Get items in a specific library section, newest first
+	GetNewestLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo)
 
 	// Get Movie Collections for a specific library section
 	GetMovieCollections(ctx context.Context, section models.LibrarySection) (collections []models.CollectionItem, Err logging.LogErrorInfo)
@@ -124,14 +127,6 @@ func GetLibrarySectionDetails(ctx context.Context, library *models.LibrarySectio
 		return false, Err
 	}
 	return msClient.GetLibrarySectionDetails(ctx, library)
-}
-
-func GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) ([]models.MediaItem, int, logging.LogErrorInfo) {
-	msClient, Err := NewMediaServerClient(&config.Current.MediaServer)
-	if Err.Message != "" {
-		return nil, 0, Err
-	}
-	return msClient.GetLibrarySectionItems(ctx, section, sectionStartIndex, limit)
 }
 
 func GetMovieCollections(ctx context.Context, section models.LibrarySection) (collections []models.CollectionItem, Err logging.LogErrorInfo) {
@@ -239,7 +234,6 @@ func supportsRating(server config.Config_MediaServer) bool {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// DownloadApplyImageToMediaItem applies an image on the main media server, then on the other media servers
 func DownloadApplyImageToMediaItem(ctx context.Context, item *models.MediaItem, imageFile models.ImageFile) (Err logging.LogErrorInfo) {
 	Err = DownloadApplyImageToMainMediaServer(ctx, item, imageFile)
 	if Err.Message != "" {

@@ -16,7 +16,16 @@ import (
 	"strings"
 )
 
-func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, Err logging.LogErrorInfo) {
+func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return e.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, false)
+}
+
+// GetNewestLibrarySectionItems gets a library's items, newest first
+func (e *EJ) GetNewestLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return e.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, true)
+}
+
+func (e *EJ) getLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string, newestFirst bool) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"%s: Fetching Items for Library Section: %s", e.Config.Type, section.Title,
 	), logging.LevelInfo)
@@ -35,13 +44,18 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	u, err := url.Parse(e.Config.URL)
 	if err != nil {
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 	u.Path = path.Join(u.Path, "Users", e.Config.UserID, "Items")
 	query := u.Query()
 	query.Add("Recursive", "true")
-	query.Add("SortBy", "Name")
-	query.Add("SortOrder", "Ascending")
+	if newestFirst {
+		query.Add("SortBy", "DateCreated")
+		query.Add("SortOrder", "Descending")
+	} else {
+		query.Add("SortBy", "Name")
+		query.Add("SortOrder", "Ascending")
+	}
 	query.Add("IncludeItemTypes", "Movie,Series")
 	query.Add("Fields", "DateLastContentAdded,PremiereDate,DateCreated,ProviderIds,BasicSyncInfo,CanDelete,CanDownload,PrimaryImageAspectRatio,ProductionYear,Status,EndDate")
 	query.Add("ParentId", section.ID)
@@ -54,7 +68,7 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	resp, respBody, Err := makeRequest(ctx, e.Config, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 	defer resp.Body.Close()
 
@@ -62,16 +76,23 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 	var ejResp EmbyJellyLibraryItemsResponse
 	Err = httpx.DecodeResponseToJSON(ctx, respBody, &ejResp, fmt.Sprintf("%s Library Section Items Response", e.Config.Type))
 	if Err.Message != "" {
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 
 	// Check to see if any items were returned
 	if len(ejResp.Items) == 0 {
 		logAction.AppendWarning("message", fmt.Sprintf("Library Section '%s' is empty", section.Title))
-		return items, totalSize, Err
+		return items, totalSize, fetched, Err
 	}
 
 	totalSize = ejResp.TotalRecordCount
+	fetched = len(ejResp.Items)
+
+	// Saved sets and ignored state for the whole page
+	dbStates, dbErr := database.GetLibraryDBStates(ctx, section.Title)
+	if dbErr.Message != "" {
+		logAction.AppendWarning("db_states_error", dbErr.Message)
+	}
 
 	for _, ejItem := range ejResp.Items {
 		var item models.MediaItem
@@ -79,9 +100,9 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		// If Type is Boxset, then split them up
 		if ejItem.Type == "BoxSet" {
 			// Split the BoxSet into individual items
-			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, e.Config, ejItem.Name, ejItem.ID, section.Title)
+			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, e.Config, ejItem.Name, ejItem.ID, section.Title, dbStates)
 			if boxSetErr.Message != "" {
-				return nil, 0, boxSetErr
+				return nil, 0, 0, boxSetErr
 			}
 			// Only include unique items from the BoxSet split (some servers may return duplicate items in the BoxSet response vs the main section items response)
 			existingRatingKeys := make(map[string]bool)
@@ -134,31 +155,11 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		}
 		if item.TMDB_ID == "" {
 			logging.LOGGER.Warn().Timestamp().Str("item_title", item.Title).Str("library_section", section.Title).Msgf("Skipping item in '%s' as no TMDB ID could be found", section.Title)
-			totalSize-- // Decrement total size as this item will be skipped
-			continue    // Skip items without TMDB ID
+			continue // Skip items without TMDB ID
 		}
 
-		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition)
-		if logErr.Message != "" {
-			logAction.AppendWarning("message", "Failed to check if media item exists in database")
-			logAction.AppendWarning("error", Err)
-		}
-		if !ignored {
-			item.DBSavedSets = sets
-		} else {
-			item.DBSavedSets = []models.DBSavedSet{}
-			item.IgnoredInDB = true
-			item.IgnoredMode = ignoredMode
-		}
-
-		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
-		if e.Config.IsMain() {
-			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-			if updateErr.Message != "" {
-				logAction.AppendWarning("update_on_server_error", updateErr.Message)
-			}
-		}
+		// Saved sets and ignored state from the database
+		database.ApplyDBState(dbStates, &item)
 
 		// Check if Media Item exists in MediUX with a set
 		if cache.MediuxItems.CheckItemExists(item.Type, item.TMDB_ID) {
@@ -172,10 +173,10 @@ func (e *EJ) GetLibrarySectionItems(ctx context.Context, section models.LibraryS
 		items = append(items, item)
 	}
 
-	return items, totalSize, logging.LogErrorInfo{}
+	return items, totalSize, fetched, logging.LogErrorInfo{}
 }
 
-func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Config_MediaServer, collectionName, parentID, sectionTitle string) (items []models.MediaItem, Err logging.LogErrorInfo) {
+func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Config_MediaServer, collectionName, parentID, sectionTitle string, dbStates map[string]database.MediaItemDBState) (items []models.MediaItem, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Splitting BoxSet Collection: %s in Section: %s into Individual Items", collectionName, sectionTitle,
 	), logging.LevelInfo)
@@ -301,27 +302,8 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 			continue // Skip items without TMDB ID
 		}
 
-		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, itemInfo.TMDB_ID, itemInfo.LibraryTitle, itemInfo.Edition)
-		if logErr.Message != "" {
-			logAction.AppendWarning("message", "Failed to check if media item exists in database")
-			logAction.AppendWarning("error", logErr)
-		}
-		if !ignored {
-			itemInfo.DBSavedSets = sets
-		} else {
-			itemInfo.DBSavedSets = []models.DBSavedSet{}
-			itemInfo.IgnoredInDB = true
-			itemInfo.IgnoredMode = ignoredMode
-		}
-
-		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
-		if msConfig.IsMain() {
-			updateErr := database.UpdateMediaItemOnServer(ctx, itemInfo.TMDB_ID, itemInfo.LibraryTitle, itemInfo.Edition, true)
-			if updateErr.Message != "" {
-				logAction.AppendWarning("update_on_server_error", updateErr.Message)
-			}
-		}
+		// Saved sets and ignored state from the database
+		database.ApplyDBState(dbStates, &itemInfo)
 
 		// Check if Media Item exists in MediUX with a set
 		if cache.MediuxItems.CheckItemExists(itemInfo.Type, itemInfo.TMDB_ID) {

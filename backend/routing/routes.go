@@ -161,7 +161,10 @@ func AddRoutes(r *chi.Mux) {
 		r.Route("/mediaserver", func(r chi.Router) {
 			r.Get("/libraries", routes_ms.GetLibrarySections)
 			r.Post("/libraries/options", routes_ms.GetLibrarySectionOptions)
-			r.Get("/library/items", routes_ms.GetLibrarySectionItems)
+			r.Get("/library/items", routes_ms.GetLibraryItems)
+			r.Get("/library/item/related", routes_ms.GetRelatedLibraryItems)
+			r.Post("/library/refresh", routes_ms.RefreshLibrary)
+			r.Get("/library/refresh/stream", routes_ms.StreamLibraryProgress)
 			r.Get("/item", routes_ms.GetMediaItemDetails)
 			r.Get("/collections", routes_ms.GetMovieCollections)
 			r.Get("/collections/item", routes_ms.GetAllCollectionChildrenItems)
@@ -177,7 +180,7 @@ func AddRoutes(r *chi.Mux) {
 			r.Get("/user", routes_mediux.GetUserFollowingAndHiding)
 			r.Get("/set", routes_mediux.GetSetByID)
 			r.Get("/sets/item", routes_mediux.GetItemSets)
-			r.Get("/sets/user", routes_mediux.GetAllUserSets)
+			r.Get("/sets/user", routes_mediux.GetCreatorSets)
 		})
 
 		// Validation Routes

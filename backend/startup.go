@@ -164,12 +164,17 @@ func runWarmup() (success bool) {
 		logging.LOGGER.Info().Timestamp().Msgf("%d database migrations performed", migrationsCompleted)
 	}
 
-	// Cache: Add all media server sections and items
-	config.SetAppLoadingStep("Preloading Media Server Data into Cache")
-	_ = mediaserver.GetAllLibrarySectionsAndItems(ctx, false)
-	logging.LOGGER.Info().Timestamp().Int("sections", cache.LibraryStore.GetSectionsCount()).Int("items", cache.LibraryStore.GetItemsCount()).Msg("Loaded Media Server sections and items into cache")
-	logging.LOGGER.Info().Timestamp().Int("collection_items", len(cache.CollectionsStore.GetAllCollections())).
-		Msg("Loaded Media Server collections into cache")
+	// Cache: Load the library saved by the last load
+	config.SetAppLoadingStep("Loading Media Server Data from the Database")
+	loadedFromDatabase := mediaserver.LoadLibraryCacheFromDatabase(ctx)
+	logging.LOGGER.Info().Timestamp().Int("items", loadedFromDatabase).Msg("Loaded Media Server items from the database into cache")
+
+	// Cache: Without a saved library, wait for the media server
+	if loadedFromDatabase == 0 {
+		config.SetAppLoadingStep("Preloading Media Server Data into Cache")
+		_ = mediaserver.GetAllLibrarySectionsAndItems(ctx, false)
+		logMediaServerCache()
+	}
 
 	// Database: Vacuum
 	config.SetAppLoadingStep("Optimizing Database")
@@ -181,6 +186,17 @@ func runWarmup() (success bool) {
 
 	action.Complete()
 	ld.Log()
+
+	// Cache: With a saved library, load the media server in the background
+	if loadedFromDatabase > 0 {
+		go func() {
+			ctx, ld := logging.CreateLoggingContext(context.Background(), "Warmup")
+			ctx = logging.WithCurrentAction(ctx, ld.AddAction("Loading Media Server Data in the Background", logging.LevelInfo))
+			defer ld.Log()
+			_ = mediaserver.GetAllLibrarySectionsAndItems(ctx, false)
+			logMediaServerCache()
+		}()
+	}
 
 	// Cronjob: Auto Download Processing
 	config.SetAppLoadingStep("Starting Background Jobs")
@@ -274,4 +290,10 @@ func dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.ServeHTTP(w, r)
+}
+
+func logMediaServerCache() {
+	logging.LOGGER.Info().Timestamp().Int("sections", cache.LibraryStore.GetSectionsCount()).Int("items", cache.LibraryStore.GetItemsCount()).Msg("Loaded Media Server sections and items into cache")
+	logging.LOGGER.Info().Timestamp().Int("collection_items", len(cache.CollectionsStore.GetAllCollections())).
+		Msg("Loaded Media Server collections into cache")
 }

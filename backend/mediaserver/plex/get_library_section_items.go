@@ -16,7 +16,16 @@ import (
 	"time"
 )
 
-func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, Err logging.LogErrorInfo) {
+func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return p.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, false)
+}
+
+// GetNewestLibrarySectionItems gets a library's items, newest first
+func (p *Plex) GetNewestLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return p.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, true)
+}
+
+func (p *Plex) getLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string, newestFirst bool) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Plex: Fetching Items for Library Section: %s", section.Title,
 	), logging.LevelInfo)
@@ -35,13 +44,16 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	u, err := url.Parse(p.Config.URL)
 	if err != nil {
 		logAction.SetError("Failed to parse base URL", "Ensure the URL is valid", map[string]any{"error": err.Error()})
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 	u.Path = path.Join(u.Path, "library", "sections", section.ID, "all")
 	query := u.Query()
 	query.Set("X-Plex-Container-Start", sectionStartIndex)
 	query.Set("X-Plex-Container-Size", limit)
 	query.Set("includeGuids", "1")
+	if newestFirst {
+		query.Set("sort", "addedAt:desc")
+	}
 	u.RawQuery = query.Encode()
 	URL := u.String()
 
@@ -49,7 +61,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	resp, respBody, Err := makeRequest(ctx, p.Config, URL, "GET", nil)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 	defer resp.Body.Close()
 
@@ -57,10 +69,17 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	var plexResp PlexLibraryItemsWrapper
 	Err = httpx.DecodeResponseToJSON(ctx, respBody, &plexResp, "Plex Library Items Response")
 	if Err.Message != "" {
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 
 	totalSize = plexResp.MediaContainer.TotalSize
+	fetched = len(plexResp.MediaContainer.Metadata)
+
+	// Saved sets and ignored state for the whole page
+	dbStates, dbErr := database.GetLibraryDBStates(ctx, section.Title)
+	if dbErr.Message != "" {
+		logAction.AppendWarning("db_states_error", dbErr.Message)
+	}
 
 	for _, metadata := range plexResp.MediaContainer.Metadata {
 		var item models.MediaItem
@@ -137,31 +156,11 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		}
 		if item.TMDB_ID == "" {
 			logging.LOGGER.Warn().Timestamp().Str("item_title", item.Title).Str("library_section", section.Title).Msgf("Skipping item in '%s' as no TMDB ID could be found", section.Title)
-			totalSize-- // Decrement total size as this item will be skipped
-			continue    // Skip items without TMDB ID
+			continue // Skip items without TMDB ID
 		}
 
-		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition)
-		if logErr.Message != "" {
-			logAction.AppendWarning("message", "Failed to check if media item exists in database")
-			logAction.AppendWarning("error", Err)
-		}
-		if !ignored {
-			item.DBSavedSets = sets
-		} else {
-			item.DBSavedSets = []models.DBSavedSet{}
-			item.IgnoredInDB = true
-			item.IgnoredMode = ignoredMode
-		}
-
-		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
-		if p.Config.IsMain() {
-			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-			if updateErr.Message != "" {
-				logAction.AppendWarning("update_on_server_error", updateErr.Message)
-			}
-		}
+		// Saved sets and ignored state from the database
+		database.ApplyDBState(dbStates, &item)
 
 		// Check if Media Item exists in MediUX with a set
 		if cache.MediuxItems.CheckItemExists(item.Type, item.TMDB_ID) {
@@ -185,7 +184,8 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	}
 
 	// For show sections, bulk-fetch all episodes to compute LatestEpisodeAddedAt per show.
-	if section.Type == "show" && p.Config.EnableSortByEpisodeAddedDate {
+	// Skipped for the newest items, it gets every episode of the library
+	if section.Type == "show" && p.Config.EnableSortByEpisodeAddedDate && !newestFirst {
 		latestEpAdded, fetchErr := fetchLatestEpisodeAddedAtByShow(ctx, p.Config, section.ID)
 		if fetchErr.Message != "" {
 			logAction.AppendWarning("latest_episode_added_at", "Failed to bulk-fetch latest episode addedAt for shows")
@@ -196,7 +196,7 @@ func (p *Plex) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		}
 	}
 
-	return items, totalSize, logging.LogErrorInfo{}
+	return items, totalSize, fetched, logging.LogErrorInfo{}
 }
 
 // fetchLatestEpisodeAddedAtByShow fetches all episodes for a library section in one bulk

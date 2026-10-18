@@ -30,3 +30,18 @@ func TestServerLibraryStores(t *testing.T) {
 		t.Error("the removed media server's cache should be empty when it is used again")
 	}
 }
+
+func TestRemoveItemsNotSeen(t *testing.T) {
+	store := Cache_NewLibraryCache()
+	store.UpdateSection(&models.LibrarySection{
+		LibrarySectionBase: models.LibrarySectionBase{Title: "Movies"},
+		MediaItems:         []models.MediaItem{{TMDB_ID: "1"}, {TMDB_ID: "2"}, {TMDB_ID: "2", Edition: "4K"}},
+	})
+	seen := map[string]bool{MediaItemCacheKey(&models.MediaItem{TMDB_ID: "2", Edition: "4K"}): true}
+	if removed := store.RemoveItemsNotSeen("Movies", seen); removed != 2 || store.GetItemsCount() != 1 {
+		t.Errorf("removed %d, %d left, want 2 removed and 1 left", removed, store.GetItemsCount())
+	}
+	if removed := store.RemoveItemsNotSeen("Series", seen); removed != 0 {
+		t.Errorf("a library that isn't cached removed %d", removed)
+	}
+}

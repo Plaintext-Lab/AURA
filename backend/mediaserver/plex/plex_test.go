@@ -85,9 +85,9 @@ func TestPlexConnectionAndLibraries(t *testing.T) {
 		t.Errorf("GetLibrarySections = %+v, %s (only movie and show libraries)", sections, Err.Message)
 	}
 
-	items, total, Err := p.GetLibrarySectionItems(testContext(), sections[0], "0", "")
-	if Err.Message != "" || len(items) != 1 || total != 1 {
-		t.Fatalf("GetLibrarySectionItems = %d items, total %d, %s (the item without a TMDB ID is skipped)", len(items), total, Err.Message)
+	items, total, fetched, Err := p.GetLibrarySectionItems(testContext(), sections[0], "0", "")
+	if Err.Message != "" || len(items) != 1 || total != 2 || fetched != 2 {
+		t.Fatalf("GetLibrarySectionItems = %d items, total %d, fetched %d, %s (the item without a TMDB ID is skipped, but still counted)", len(items), total, fetched, Err.Message)
 	}
 	if item := items[0]; item.TMDB_ID != "603" || item.RatingKey != "100" || item.LibraryTitle != "Movies" || item.Movie == nil || item.Movie.File.Path != "/data/movies/Movie.mkv" {
 		t.Errorf("item = %+v", item)

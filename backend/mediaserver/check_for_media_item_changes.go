@@ -24,10 +24,15 @@ func CheckForMediaItemChanges(ctx context.Context) (Err logging.LogErrorInfo) {
 
 	// Compare each DB MediaItem's RatingKey with the Cache's RatingKey
 	// If different, update the DB MediaItem's RatingKey
-	// If a DB MediaItem is not found in the Cache AND it doesn't have Saved Sets AND it is not Temp Ignored, this is an item we can remove from the DB
+	// A DB MediaItem without Saved Sets that is not Ignored is removed by the library load
 	// If a DB MediaItem is not found in the Cache AND it has Saved Sets, this is an item we want to keep in the DB but we should send a notification about it so the user can investigate
 	// If a DB MediaItem is not found in the Cache AND it is Temp Ignored, this is an item we can remove from the DB
 	for _, dbItem := range dbMediaItems {
+		// The library load keeps the library's other items up to date
+		if !dbItem.HasSavedSet && !dbItem.IsIgnored {
+			continue
+		}
+
 		cachedItem, found := cache.LibraryStore.GetMediaItemFromSectionByTMDBIDAndEdition(dbItem.LibraryTitle, dbItem.TMDB_ID, dbItem.Edition)
 		if !found {
 			// The exact (tmdb_id, edition) pair wasn't found
@@ -62,14 +67,7 @@ func CheckForMediaItemChanges(ctx context.Context) (Err logging.LogErrorInfo) {
 			reason := ""
 			action := ""
 			moreInfo := ""
-			if !dbItem.HasSavedSet && !dbItem.IsIgnored {
-				// If the item is not found in the cache AND it doesn't have Saved Sets AND it is not Temp Ignored, this is an item we can remove from the DB
-				logging.LOGGER.Warn().Timestamp().Str("tmdb_id", dbItem.TMDB_ID).Str("library_title", dbItem.LibraryTitle).Msg("MediaItem not found in cache and has no Saved Sets or Temp Ignore - removing from database")
-				reason = "This item was not in any Saved Sets and does not have a status of Ignored."
-				action = "This item will be removed from the database since it is not in the media server cache and does not have any Saved Sets or Ignored status"
-				moreInfo = "This may indicate that the media item was removed from the media server or there is an issue with the media server cache. Please verify if this media item still exists in the media server. If it does exist and you want to keep it in the database, please add it to a Saved Set or set it to be ignored temporarily."
-				database.DeleteMediaItemAndIgnoredStatus(ctx, dbItem.TMDB_ID, dbItem.LibraryTitle, dbItem.Edition)
-			} else if dbItem.HasSavedSet {
+			if dbItem.HasSavedSet {
 				// If the item is not found in the cache AND it has Saved Sets
 				logging.LOGGER.Warn().Timestamp().Str("tmdb_id", dbItem.TMDB_ID).Str("library_title", dbItem.LibraryTitle).Msg("MediaItem not found in cache but has Saved Sets")
 				reason = "This item was not in the cache but has Saved Sets."

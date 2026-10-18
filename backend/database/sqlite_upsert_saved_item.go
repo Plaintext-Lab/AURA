@@ -256,14 +256,16 @@ func upsertMediaItem(ctx context.Context, tx *sql.Tx, mediaItem models.MediaItem
 	defer logAction.Complete()
 
 	q := `
-INSERT INTO MediaItems (tmdb_id, library_title, edition, rating_key, type, title, year, on_server)
-VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+INSERT INTO MediaItems (tmdb_id, library_title, edition, rating_key, type, title, year, on_server, first_seen_at, last_seen_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, 1, CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER))
 ON CONFLICT(tmdb_id, library_title, edition) DO UPDATE SET
-  rating_key = excluded.rating_key,
-  type       = excluded.type,
-  title      = excluded.title,
-  year       = excluded.year,
-  on_server  = 1
+  rating_key    = excluded.rating_key,
+  type          = excluded.type,
+  title         = excluded.title,
+  year          = excluded.year,
+  on_server     = 1,
+  first_seen_at = CASE WHEN MediaItems.first_seen_at = 0 THEN excluded.first_seen_at ELSE MediaItems.first_seen_at END,
+  last_seen_at  = excluded.last_seen_at
 RETURNING id;
 `
 	err := tx.QueryRowContext(ctx, q,

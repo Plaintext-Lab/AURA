@@ -6,6 +6,7 @@ import (
 	"context"
 )
 
+// GetAllMediaItems returns the saved and ignored media items
 func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, "Retrieving all MediaItems from SQLite database", logging.LevelDebug)
 	defer logAction.Complete()
@@ -13,11 +14,12 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 	items = []models.MediaItem{}
 	logErr = logging.LogErrorInfo{}
 
-	// Query all MediaItems
+	// Query the saved and ignored MediaItems
 	// A single read does not need a transaction, which would take the write lock (immediate transactions)
 	rows, err := s.conn.QueryContext(ctx, `
 		SELECT tmdb_id, library_title, edition, rating_key, type, title, year
-		FROM MediaItems;
+		FROM MediaItems mi
+		WHERE NOT (`+notSavedOrIgnored+`);
 	`)
 	if err != nil {
 		logAction.SetError("Failed to query MediaItems", "", map[string]any{"error": err.Error()})

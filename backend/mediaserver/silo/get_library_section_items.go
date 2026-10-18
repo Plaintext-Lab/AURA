@@ -14,7 +14,16 @@ import (
 	"time"
 )
 
-func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, Err logging.LogErrorInfo) {
+func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return s.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, false)
+}
+
+// GetNewestLibrarySectionItems gets a library's items, newest first
+func (s *Silo) GetNewestLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
+	return s.getLibrarySectionItems(ctx, section, sectionStartIndex, limit, true)
+}
+
+func (s *Silo) getLibrarySectionItems(ctx context.Context, section models.LibrarySection, sectionStartIndex string, limit string, newestFirst bool) (items []models.MediaItem, totalSize int, fetched int, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
 		"Silo: Fetching Items for Library Section: %s", section.Title,
 	), logging.LevelInfo)
@@ -31,27 +40,38 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 	startIndex, err := strconv.Atoi(sectionStartIndex)
 	if err != nil || startIndex < 0 {
 		logAction.SetError("Invalid start index", "The start index must be a positive number", map[string]any{"start_index": sectionStartIndex})
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 	limitCount, err := strconv.Atoi(limit)
 	if err != nil || limitCount < 1 {
 		logAction.SetError("Invalid limit", "The limit must be a positive number", map[string]any{"limit": limit})
-		return items, totalSize, *logAction.Error
+		return items, totalSize, fetched, *logAction.Error
 	}
 
 	// Get the Catalog Items for the Library Section
-	catalogItems, totalSize, Err := getCatalogItems(ctx, s.Config, section, startIndex, limitCount)
+	sort := "title"
+	if newestFirst {
+		sort = "-added_at"
+	}
+	catalogItems, totalSize, Err := getCatalogItems(ctx, s.Config, section, startIndex, limitCount, sort)
 	if Err.Message != "" {
 		logAction.SetErrorFromInfo(Err)
-		return items, 0, *logAction.Error
+		return items, 0, 0, *logAction.Error
 	}
+	fetched = len(catalogItems)
 
 	// Check to see if any items were returned
 	if len(catalogItems) == 0 {
 		if startIndex == 0 {
 			logAction.AppendWarning("message", fmt.Sprintf("Library Section '%s' is empty", section.Title))
 		}
-		return items, totalSize, logging.LogErrorInfo{}
+		return items, totalSize, fetched, logging.LogErrorInfo{}
+	}
+
+	// Saved sets and ignored state for the whole page
+	dbStates, dbErr := database.GetLibraryDBStates(ctx, section.Title)
+	if dbErr.Message != "" {
+		logAction.AppendWarning("db_states_error", dbErr.Message)
 	}
 
 	for _, catalogItem := range catalogItems {
@@ -72,7 +92,6 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 
 		if item.Type == "" {
 			logAction.AppendWarning(fmt.Sprintf("skipped '%s'", catalogItem.Title), map[string]string{"type": catalogItem.Type})
-			totalSize-- // Decrement total size as this item will be skipped
 			continue
 		}
 
@@ -81,7 +100,7 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		itemInfo, Err := getItemInfo(ctx, s.Config, catalogItem.ContentID)
 		if Err.Message != "" {
 			logAction.SetErrorFromInfo(Err)
-			return []models.MediaItem{}, 0, *logAction.Error
+			return []models.MediaItem{}, 0, 0, *logAction.Error
 		}
 
 		// Movies have a release date, Series have a first air date
@@ -121,31 +140,11 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		}
 		if item.TMDB_ID == "" {
 			logging.LOGGER.Warn().Timestamp().Str("item_title", item.Title).Str("library_section", section.Title).Msgf("Skipping item in '%s' as no TMDB ID could be found", section.Title)
-			totalSize-- // Decrement total size as this item will be skipped
-			continue    // Skip items without TMDB ID
+			continue // Skip items without TMDB ID
 		}
 
-		// Check if Media Item exists in DB
-		ignored, ignoredMode, sets, logErr := database.CheckIfMediaItemExists(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition)
-		if logErr.Message != "" {
-			logAction.AppendWarning("message", "Failed to check if media item exists in database")
-			logAction.AppendWarning("error", logErr)
-		}
-		if !ignored {
-			item.DBSavedSets = sets
-		} else {
-			item.DBSavedSets = []models.DBSavedSet{}
-			item.IgnoredInDB = true
-			item.IgnoredMode = ignoredMode
-		}
-
-		// Update the Media Item on Server in the DB. Only the main media server's items are saved.
-		if s.Config.IsMain() {
-			updateErr := database.UpdateMediaItemOnServer(ctx, item.TMDB_ID, item.LibraryTitle, item.Edition, true)
-			if updateErr.Message != "" {
-				logAction.AppendWarning("update_on_server_error", updateErr.Message)
-			}
-		}
+		// Saved sets and ignored state from the database
+		database.ApplyDBState(dbStates, &item)
 
 		// Check if Media Item exists in MediUX with a set
 		if cache.MediuxItems.CheckItemExists(item.Type, item.TMDB_ID) {
@@ -159,10 +158,10 @@ func (s *Silo) GetLibrarySectionItems(ctx context.Context, section models.Librar
 		items = append(items, item)
 	}
 
-	return items, totalSize, logging.LogErrorInfo{}
+	return items, totalSize, fetched, logging.LogErrorInfo{}
 }
 
-func getCatalogItems(ctx context.Context, msConfig config.Config_MediaServer, section models.LibrarySection, startIndex int, limit int) (catalogItems []SiloCatalogItem, totalSize int, Err logging.LogErrorInfo) {
+func getCatalogItems(ctx context.Context, msConfig config.Config_MediaServer, section models.LibrarySection, startIndex int, limit int, sort string) (catalogItems []SiloCatalogItem, totalSize int, Err logging.LogErrorInfo) {
 	catalogItems = []SiloCatalogItem{}
 	totalSize = 0
 
@@ -189,7 +188,7 @@ func getCatalogItems(ctx context.Context, msConfig config.Config_MediaServer, se
 		if catalogType != "" {
 			query.Set("type", catalogType)
 		}
-		query.Set("sort", "title")
+		query.Set("sort", sort)
 		query.Set("limit", strconv.Itoa(pageSize))
 		if cursor == "" {
 			query.Set("seek", strconv.Itoa(startIndex))

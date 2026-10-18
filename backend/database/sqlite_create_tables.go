@@ -54,6 +54,15 @@ CREATE TABLE MediaItems (
 	title TEXT NOT NULL,
 	year INTEGER NOT NULL,
 	on_server INTEGER NOT NULL DEFAULT 0 CHECK (on_server IN (0,1)),
+	added_at INTEGER NOT NULL DEFAULT 0,
+	updated_at INTEGER NOT NULL DEFAULT 0,
+	released_at INTEGER NOT NULL DEFAULT 0,
+	latest_episode_added_at INTEGER NOT NULL DEFAULT 0,
+	content_rating TEXT NOT NULL DEFAULT '',
+	summary TEXT NOT NULL DEFAULT '',
+	guids TEXT NOT NULL DEFAULT '[]',
+	first_seen_at INTEGER NOT NULL DEFAULT 0,
+	last_seen_at INTEGER NOT NULL DEFAULT 0,
 	UNIQUE (tmdb_id, library_title, edition)
 );
 	`

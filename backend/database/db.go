@@ -10,7 +10,7 @@ import (
 	"errors"
 )
 
-const LATEST_DB_VERSION = 8
+const LATEST_DB_VERSION = 9
 
 var Client DB
 
@@ -108,6 +108,20 @@ type DB interface {
 
 	// Update Media Item on_server flag
 	UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo)
+
+	// Get the saved sets and ignored state of every item in a library
+	GetLibraryDBStates(ctx context.Context, libraryTitle string) (map[string]MediaItemDBState, logging.LogErrorInfo)
+
+	// Save a page of the main media server's items
+	SaveLibraryItems(ctx context.Context, items []models.MediaItem, seenAt int64) logging.LogErrorInfo
+
+	// Get the creators of the saved sets and how many of their sets are saved
+
+	// Get the main media server's items that are on the server
+	GetLibraryItemsOnServer(ctx context.Context) ([]models.MediaItem, logging.LogErrorInfo)
+
+	// Remove the library items that are no longer on the main media server
+	FinishLibraryLoad(ctx context.Context, usedLibraries []string, loadedSince map[string]int64) logging.LogErrorInfo
 
 	// Move saved Media Items to the items on a new main media server, all or none of them
 	MoveMediaItems(ctx context.Context, moves []MediaItemMove) (Err logging.LogErrorInfo)
@@ -318,8 +332,10 @@ func UpsertSavedItem(ctx context.Context, newItem models.DBSavedItem) (Err loggi
 			if Err.Message != "" {
 				return Err
 			}
+			syncLibraryCache(ctx, sharedItem.MediaItem.TMDB_ID, sharedItem.MediaItem.Edition, sharedItem.MediaItem.LibraryTitle)
 		}
 	}
+	syncLibraryCache(ctx, newItem.MediaItem.TMDB_ID, newItem.MediaItem.Edition, newItem.MediaItem.LibraryTitle)
 	return logging.LogErrorInfo{}
 }
 
@@ -389,9 +405,9 @@ func DeletePosterSetForMediaItem(ctx context.Context, tmdbID, libraryTitle, edit
 	}
 
 	// Silo uses one item for every library it is in, so remove the set from the other libraries as well
-	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
-		logSharedLibraryError(Client.DeletePosterSetForMediaItem(ctx, tmdbID, otherLibraryTitle, edition, setID), tmdbID, otherLibraryTitle)
-	}
+	applyToSharedLibraries(ctx, tmdbID, libraryTitle, edition, func(otherLibraryTitle string) logging.LogErrorInfo {
+		return Client.DeletePosterSetForMediaItem(ctx, tmdbID, otherLibraryTitle, edition, setID)
+	})
 	return logging.LogErrorInfo{}
 }
 
@@ -405,9 +421,9 @@ func DeleteAllPosterSetsForMediaItem(ctx context.Context, tmdbID, libraryTitle, 
 	}
 
 	// Silo uses one item for every library it is in, so remove the sets from the other libraries as well
-	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
-		logSharedLibraryError(Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, otherLibraryTitle, edition), tmdbID, otherLibraryTitle)
-	}
+	applyToSharedLibraries(ctx, tmdbID, libraryTitle, edition, func(otherLibraryTitle string) logging.LogErrorInfo {
+		return Client.DeleteAllPosterSetsForMediaItem(ctx, tmdbID, otherLibraryTitle, edition)
+	})
 	return logging.LogErrorInfo{}
 }
 
@@ -421,9 +437,9 @@ func IgnoreMediaItem(ctx context.Context, tmdbID, libraryTitle, edition, mode, c
 	}
 
 	// Silo uses one item for every library it is in, so ignore the item in the other libraries as well
-	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition) {
-		logSharedLibraryError(Client.IgnoreMediaItem(ctx, tmdbID, otherLibraryTitle, edition, mode, currentSets), tmdbID, otherLibraryTitle)
-	}
+	applyToSharedLibraries(ctx, tmdbID, libraryTitle, edition, func(otherLibraryTitle string) logging.LogErrorInfo {
+		return Client.IgnoreMediaItem(ctx, tmdbID, otherLibraryTitle, edition, mode, currentSets)
+	})
 	return logging.LogErrorInfo{}
 }
 
@@ -437,9 +453,9 @@ func StopIgnoringMediaItem(ctx context.Context, TMDB_ID, libraryTitle, edition s
 	}
 
 	// Silo uses one item for every library it is in, so stop ignoring the item in the other libraries as well
-	for _, otherLibraryTitle := range getSiloSharedLibraryTitles(TMDB_ID, libraryTitle, edition) {
-		logSharedLibraryError(Client.StopIgnoringMediaItem(ctx, TMDB_ID, otherLibraryTitle, edition), TMDB_ID, otherLibraryTitle)
-	}
+	applyToSharedLibraries(ctx, TMDB_ID, libraryTitle, edition, func(otherLibraryTitle string) logging.LogErrorInfo {
+		return Client.StopIgnoringMediaItem(ctx, TMDB_ID, otherLibraryTitle, edition)
+	})
 	return logging.LogErrorInfo{}
 }
 
@@ -448,6 +464,38 @@ func GetTempIgnoredItems(ctx context.Context) (items []models.MediaItem, Err log
 		return []models.MediaItem{}, logging.Error_DBClientNotInitialized()
 	}
 	return Client.GetTempIgnoredItems(ctx)
+}
+
+// GetLibraryDBStates returns the saved sets and ignored state of every item in a library that has either
+func GetLibraryDBStates(ctx context.Context, libraryTitle string) (map[string]MediaItemDBState, logging.LogErrorInfo) {
+	if Client == nil {
+		return map[string]MediaItemDBState{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetLibraryDBStates(ctx, libraryTitle)
+}
+
+// SaveLibraryItems saves a page of the main media server's items
+func SaveLibraryItems(ctx context.Context, items []models.MediaItem, seenAt int64) logging.LogErrorInfo {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.SaveLibraryItems(ctx, items, seenAt)
+}
+
+// GetLibraryItemsOnServer returns the main media server's items that are on the server
+func GetLibraryItemsOnServer(ctx context.Context) ([]models.MediaItem, logging.LogErrorInfo) {
+	if Client == nil {
+		return []models.MediaItem{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetLibraryItemsOnServer(ctx)
+}
+
+// FinishLibraryLoad removes the library items that are no longer on the main media server
+func FinishLibraryLoad(ctx context.Context, usedLibraries []string, loadedSince map[string]int64) logging.LogErrorInfo {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.FinishLibraryLoad(ctx, usedLibraries, loadedSince)
 }
 
 func UpdateMediaItemOnServer(ctx context.Context, tmdbID string, libraryTitle string, edition string, onServer bool) (logErr logging.LogErrorInfo) {
@@ -566,6 +614,31 @@ func getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition string) []string {
 		}
 	}
 	return libraryTitles
+}
+
+// applyToSharedLibraries makes a change to the same Silo item in the other libraries, then copies the item to aura's library cache
+func applyToSharedLibraries(ctx context.Context, tmdbID, libraryTitle, edition string, change func(otherLibraryTitle string) logging.LogErrorInfo) {
+	otherLibraryTitles := getSiloSharedLibraryTitles(tmdbID, libraryTitle, edition)
+	for _, otherLibraryTitle := range otherLibraryTitles {
+		logSharedLibraryError(change(otherLibraryTitle), tmdbID, otherLibraryTitle)
+	}
+	syncLibraryCache(ctx, tmdbID, edition, append(otherLibraryTitles, libraryTitle)...)
+}
+
+// syncLibraryCache copies an item's saved sets and ignored state from the database to aura's library cache
+func syncLibraryCache(ctx context.Context, tmdbID, edition string, libraryTitles ...string) {
+	for _, libraryTitle := range libraryTitles {
+		ignored, ignoredMode, sets, Err := Client.CheckIfMediaItemExists(ctx, tmdbID, libraryTitle, edition)
+		if Err.Message != "" {
+			continue
+		}
+		if ignored {
+			sets = []models.DBSavedSet{}
+		} else {
+			ignoredMode = ""
+		}
+		cache.LibraryStore.UpdateMediaItemDBState(libraryTitle, tmdbID, edition, sets, ignored, ignoredMode)
+	}
 }
 
 // logSharedLibraryError logs a failed change in another library without failing the original change

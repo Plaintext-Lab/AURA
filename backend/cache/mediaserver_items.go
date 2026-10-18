@@ -122,38 +122,86 @@ func (c *MediaServerLibraryCache) UpdateMediaItem(sectionTitle string, item *mod
 
 	// Check if section exists
 	if section, exists := c.sections[sectionTitle]; exists {
-		// Create a map of existing items for O(1) lookup
-		existingItems := make(map[string]*models.MediaItem)
+		// Find the item directly instead of building a lookup of every item each time
 		for i := range section.MediaItems {
-			existingItems[mediaItemCacheKey(&section.MediaItems[i])] = &section.MediaItems[i]
+			if section.MediaItems[i].TMDB_ID == item.TMDB_ID && section.MediaItems[i].Edition == item.Edition {
+				// Update existing item
+				section.MediaItems[i] = *item
+				return
+			}
 		}
-		if existingItem, found := existingItems[mediaItemCacheKey(item)]; found {
-			// Update existing item
-			*existingItem = *item
-		} else {
-			// Append new item
-			section.MediaItems = append(section.MediaItems, *item)
-			section.TotalSize = len(section.MediaItems)
+		// Append new item
+		section.MediaItems = append(section.MediaItems, *item)
+		section.TotalSize = len(section.MediaItems)
+	}
+}
+
+// UpdateMediaItemDBState sets an item's saved sets and ignored state, as they are in the database
+func (c *MediaServerLibraryCache) UpdateMediaItemDBState(sectionTitle, tmdbID, edition string, sets []models.DBSavedSet, ignored bool, ignoredMode string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	section, exists := c.sections[sectionTitle]
+	if !exists {
+		return
+	}
+	for i := range section.MediaItems {
+		item := &section.MediaItems[i]
+		if item.TMDB_ID == tmdbID && item.Edition == edition {
+			item.DBSavedSets = sets
+			item.IgnoredInDB = ignored
+			item.IgnoredMode = ignoredMode
 		}
 	}
 }
 
-func (c *MediaServerLibraryCache) UpdateMediaItemDBSavedSets(sectionTitle string, item *models.MediaItem, dbSavedSets []models.DBSavedSet) {
+// RemoveItemsNotSeen removes the items of a section that a full load of it didn't see
+func (c *MediaServerLibraryCache) RemoveItemsNotSeen(sectionTitle string, seen map[string]bool) (removed int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Check if section exists
-	if section, exists := c.sections[sectionTitle]; exists {
-		// Create a map of existing items for O(1) lookup
-		existingItems := make(map[string]*models.MediaItem)
-		for i := range section.MediaItems {
-			existingItems[mediaItemCacheKey(&section.MediaItems[i])] = &section.MediaItems[i]
-		}
-		if existingItem, found := existingItems[mediaItemCacheKey(item)]; found {
-			// Update existing item
-			existingItem.DBSavedSets = dbSavedSets
+	section, exists := c.sections[sectionTitle]
+	if !exists {
+		return 0
+	}
+	kept := section.MediaItems[:0]
+	for _, item := range section.MediaItems {
+		if seen[mediaItemCacheKey(&item)] {
+			kept = append(kept, item)
 		}
 	}
+	removed = len(section.MediaItems) - len(kept)
+	section.MediaItems = kept
+	section.TotalSize = len(kept)
+	return removed
+}
+
+// SectionItemKeys returns the cache keys of a section's items
+func (c *MediaServerLibraryCache) SectionItemKeys(sectionTitle string) map[string]bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	keys := map[string]bool{}
+	if section, exists := c.sections[sectionTitle]; exists {
+		for i := range section.MediaItems {
+			keys[mediaItemCacheKey(&section.MediaItems[i])] = true
+		}
+	}
+	return keys
+}
+
+// SectionItemCount returns how many items a section has
+func (c *MediaServerLibraryCache) SectionItemCount(sectionTitle string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if section, exists := c.sections[sectionTitle]; exists {
+		return len(section.MediaItems)
+	}
+	return 0
+}
+
+// MediaItemCacheKey is how the cache tells items apart
+func MediaItemCacheKey(item *models.MediaItem) string {
+	return mediaItemCacheKey(item)
 }
 
 // GetSectionByTitle retrieves a section by Title
@@ -199,11 +247,22 @@ func (c *MediaServerLibraryCache) GetAllSectionsSortedByTitle() []*models.Librar
 	return sections
 }
 
-// RemoveSectionByTitle removes a section from the cache by Title
-func (c *MediaServerLibraryCache) RemoveSectionByTitle(title string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.sections, title)
+// ForEachMediaItem calls fn for every item, sections in title order. fn must not change the cache
+func (c *MediaServerLibraryCache) ForEachMediaItem(fn func(section models.LibrarySectionBase, item *models.MediaItem)) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	titles := make([]string, 0, len(c.sections))
+	for title := range c.sections {
+		titles = append(titles, title)
+	}
+	sort.Strings(titles)
+	for _, title := range titles {
+		section := c.sections[title]
+		for i := range section.MediaItems {
+			fn(section.LibrarySectionBase, &section.MediaItems[i])
+		}
+	}
 }
 
 // ClearAllSections removes all sections from the cache
