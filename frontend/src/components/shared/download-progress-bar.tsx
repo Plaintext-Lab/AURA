@@ -9,11 +9,17 @@ import { cn } from "@/lib/cn";
 interface DownloadProgressBarProps {
   value: number; // 0 to 100
   label?: string; // What is downloading, shown in the bar until it is done
+  shortLabel?: string; // Shown instead of the label on narrow screens
   hasErrors?: boolean; // Whether any image failed
 }
 
 // The progress of a download, used by the Download Modal and the Download Queue page
-export const DownloadProgressBar: React.FC<DownloadProgressBarProps> = ({ value, label, hasErrors = false }) => {
+export const DownloadProgressBar: React.FC<DownloadProgressBarProps> = ({
+  value,
+  label,
+  shortLabel,
+  hasErrors = false,
+}) => {
   const done = value >= 100;
 
   return (
@@ -35,7 +41,8 @@ export const DownloadProgressBar: React.FC<DownloadProgressBarProps> = ({ value,
             className="pointer-events-none absolute inset-0 mt-0.5 flex min-w-0 items-center justify-center px-2 text-xs text-white"
             title={label}
           >
-            <span className="w-full min-w-0 truncate text-center">{label}</span>
+            <span className="hidden w-full min-w-0 truncate text-center sm:block">{label}</span>
+            <span className="w-full min-w-0 truncate text-center sm:hidden">{shortLabel || label}</span>
           </span>
         )}
       </div>

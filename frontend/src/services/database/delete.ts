@@ -1,8 +1,8 @@
+import { clearOpenMediaItemSavedSets } from "@/helper/update-open-media-item";
 import apiClient from "@/services/api-client";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 
 import { log } from "@/lib/logger";
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 
 import type { APIResponse } from "@/types/api/api-response";
 import type { DBSavedItem } from "@/types/database/db-poster-set";
@@ -37,8 +37,7 @@ export const DeleteItemFromDB = async (deleteItem: DBSavedItem): Promise<APIResp
         response.data
       );
     }
-    const { clearMediaItemSavedSets } = useLibrarySectionsStore.getState();
-    clearMediaItemSavedSets({
+    clearOpenMediaItemSavedSets({
       tmdbID: deleteItem.media_item.tmdb_id,
       libraryTitle: deleteItem.media_item.library_title,
       edition: deleteItem.media_item.edition,

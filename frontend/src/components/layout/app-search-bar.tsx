@@ -40,14 +40,15 @@ import { log } from "@/lib/logger";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 
-import { useCollectionsSupported } from "@/hooks/collections-supported";
-
 import type { APIResponse } from "@/types/api/api-response";
 import type { DBSavedItem } from "@/types/database/db-poster-set";
 import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
 import type { MediuxUserInfo } from "@/types/mediux/mediux-user-follow-hide";
 
 // Props for DynamicSearch component
+// How long typing has to stop before searching
+const SEARCH_DELAY_MS = 200;
+
 export interface DynamicSearchProps {
   placeholder?: string;
   className?: string;
@@ -106,7 +107,6 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
   const { setMediaItem } = useMediaStore();
 
   // Some media servers do not support collections
-  const collectionsSupported = useCollectionsSupported();
 
   // Filter States
   const [filters, setFilters] = useState<{ [key: string]: boolean }>({
@@ -221,7 +221,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
     }
   }, [searchQuery]);
 
-  // Use Effect - To perform search when searchInput changes (with debounce of 500ms)
+  // Use Effect - To perform search when searchInput changes, once typing stops for SEARCH_DELAY_MS
   useEffect(() => {
     if (searchInput.trim() === "") {
       setIsSearching(false);
@@ -243,7 +243,7 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
         const searchResp = await HandleSearch({
           searchQuery: searchInput,
           searchMediaItems: filters.mediaItem,
-          searchCollectionItems: collectionsSupported && filters.collectionItem,
+          searchCollectionItems: filters.collectionItem,
           searchMediuxUsers: filters.mediuxUser,
           searchSavedSets: filters.savedSets,
         });
@@ -270,18 +270,10 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
       } finally {
         setIsLoading(false);
       }
-    }, 500);
+    }, SEARCH_DELAY_MS);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [
-    filters.mediaItem,
-    filters.collectionItem,
-    filters.mediuxUser,
-    filters.savedSets,
-    collectionsSupported,
-    searchInput,
-    setSearchQuery,
-  ]);
+  }, [filters.mediaItem, filters.collectionItem, filters.mediuxUser, filters.savedSets, searchInput, setSearchQuery]);
 
   // Keyboard Navigation Handler
   // Handles keyboard events for navigating and selecting search results
@@ -433,31 +425,29 @@ export function DynamicSearch({ placeholder = "Search", className }: DynamicSear
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <span className="text-xs font-medium text-muted-foreground mr-2 shrink-0">Filter:</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {filterOrder
-                        .filter((filterType) => collectionsSupported || filterType !== "collectionItem")
-                        .map((filterType) => (
-                          <Badge
-                            key={filterType}
-                            variant={filters[filterType] ? "default" : "secondary"}
-                            className={cn(
-                              "capitalize text-xs cursor-pointer transition-colors",
-                              filters[filterType]
-                                ? "hover:bg-primary-dynamic/20"
-                                : "text-muted-foreground hover:text-primary-dynamic hover:border-primary-dynamic/50"
-                            )}
-                            onClick={() => toggleFilter(filterType)}
-                          >
-                            {filterType === "mediaItem"
-                              ? "Media Items"
-                              : filterType === "collectionItem"
-                                ? "Collection Items"
-                                : filterType === "mediuxUser"
-                                  ? "MediUX Users"
-                                  : filterType === "savedSets"
-                                    ? "Saved Sets"
-                                    : filterType}
-                          </Badge>
-                        ))}
+                      {filterOrder.map((filterType) => (
+                        <Badge
+                          key={filterType}
+                          variant={filters[filterType] ? "default" : "secondary"}
+                          className={cn(
+                            "capitalize text-xs cursor-pointer transition-colors",
+                            filters[filterType]
+                              ? "hover:bg-primary-dynamic/20"
+                              : "text-muted-foreground hover:text-primary-dynamic hover:border-primary-dynamic/50"
+                          )}
+                          onClick={() => toggleFilter(filterType)}
+                        >
+                          {filterType === "mediaItem"
+                            ? "Media Items"
+                            : filterType === "collectionItem"
+                              ? "Collection Items"
+                              : filterType === "mediuxUser"
+                                ? "MediUX Users"
+                                : filterType === "savedSets"
+                                  ? "Saved Sets"
+                                  : filterType}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                   <Separator className="mb-4" />

@@ -4,8 +4,6 @@ import { AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Lead } from "@/components/ui/typography";
 
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
-
 import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
 import type { IncludedItem, SetRef } from "@/types/media-and-posters/sets";
 
@@ -34,11 +32,10 @@ type SeasonInfo = {
 type SeasonsAndEpisodesMap = Map<number, SeasonInfo>;
 
 export function SetFileCounts({ mediaItem, set, includedItems }: SetFileCountsProps) {
-  const { sections } = useLibrarySectionsStore();
-
   if (!set || !set.images || set.images.length === 0) return null;
 
-  const librarySection = sections[mediaItem.library_title];
+  // aura only adds the library's item to an included item when it is in the library
+  const inLibrary = (tmdbID: string) => !!includedItems?.[tmdbID]?.media_item?.rating_key;
 
   // --- MOVIE LOGIC ---
   const getMovieFileCounts = () => {
@@ -61,21 +58,10 @@ export function SetFileCounts({ mediaItem, set, includedItems }: SetFileCountsPr
       )
     );
     let missingMovies: { id: string; title: string }[] = [];
-    if (librarySection && itemIDs.length) {
-      const libraryTmdbIDs = new Set(
-        librarySection.media_items.filter((item) => item.tmdb_id).map((item) => item.tmdb_id)
-      );
-
+    if (itemIDs.length) {
       missingMovies = itemIDs
-        .filter((item_id) => !libraryTmdbIDs.has(item_id))
-        .map((item_id) => {
-          const title =
-            includedItems?.[item_id]?.mediux_info.title ||
-            librarySection.media_items.find((item) => item.tmdb_id === item_id)?.title ||
-            includedItems?.[item_id]?.media_item.title ||
-            item_id;
-          return { id: item_id, title };
-        });
+        .filter((item_id) => !inLibrary(item_id))
+        .map((item_id) => ({ id: item_id, title: includedItems?.[item_id]?.mediux_info?.title || item_id }));
 
       const totalTmdbIDs = itemIDs.length;
       const missingTmdbIDs = missingMovies.length;

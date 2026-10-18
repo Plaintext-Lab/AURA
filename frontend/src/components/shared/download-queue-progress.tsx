@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDownloadProgressText } from "@/helper/format-download-progress";
+import { formatDownloadProgressShortText, formatDownloadProgressText } from "@/helper/format-download-progress";
 import { Loader2 } from "lucide-react";
 
 import React from "react";
@@ -45,7 +45,12 @@ export const DownloadQueueProgressPanel: React.FC<DownloadQueueProgressPanelProp
         )}
       </div>
 
-      <DownloadProgressBar value={percent} label={label} hasErrors={!!progress && progress.failed > 0} />
+      <DownloadProgressBar
+        value={percent}
+        label={label}
+        shortLabel={progress && total > 0 ? formatDownloadProgressShortText(progress) : undefined}
+        hasErrors={!!progress && progress.failed > 0}
+      />
 
       <p className="text-xs text-muted-foreground">
         {total > 0 ? `${done.toLocaleString()} of ${plural(total, "image", "images")}` : "Getting ready..."}

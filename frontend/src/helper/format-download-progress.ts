@@ -8,6 +8,10 @@ export const formatDownloadProgressText = (
   total: number
 ): string => `Downloading ${formatImageTypeLabel(image) || "Image"} for '${title}' (${current}/${total})`;
 
+// The same text for narrow screens
+export const formatDownloadProgressShortText = (image: ImageTypeLabelInput): string =>
+  `Downloading ${formatImageTypeLabel(image) || "Image"}`;
+
 // Where an image comes in the download order: each season's poster, then its titlecards by episode, specials last
 const seasonImageOrder = (image: { type: string; season_number?: number; episode_number?: number }) => [
   image.season_number === undefined ? -1 : image.season_number === 0 ? Number.MAX_SAFE_INTEGER : image.season_number,

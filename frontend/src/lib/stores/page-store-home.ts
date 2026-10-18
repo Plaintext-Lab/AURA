@@ -12,12 +12,8 @@ import type {
 } from "@/types/ui-options";
 import type { TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS } from "@/types/ui-options";
 
-type Direction = "next" | "previous";
-
 interface Home_PageStore extends SortStore<string, TYPE_SORT_ORDER_OPTIONS>, PaginationStore<number, number> {
   // Filters
-  filteredAndSortedMediaItems: MediaItem[];
-  setFilteredAndSortedMediaItems: (items: MediaItem[]) => void;
   filteredLibraries: string[];
   setFilteredLibraries: (libraries: string[]) => void;
   filterInDB: TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS;
@@ -26,8 +22,6 @@ interface Home_PageStore extends SortStore<string, TYPE_SORT_ORDER_OPTIONS>, Pag
   setFilterIgnored: (ignored: TYPE_FILTER_IGNORED_OPTIONS) => void;
   hasSetsAvailableFilter: TYPE_HOME_PAGE_FILTER_HAS_SETS_AVAILABLE_OPTIONS;
   setHasSetsAvailableFilter: (filter: TYPE_HOME_PAGE_FILTER_HAS_SETS_AVAILABLE_OPTIONS) => void;
-
-  getAdjacentMediaItem: (currentRatingKey: string, direction: Direction) => MediaItem | null;
 
   // Adjacent Items
   previousMediaItem: MediaItem | null;
@@ -43,7 +37,7 @@ interface Home_PageStore extends SortStore<string, TYPE_SORT_ORDER_OPTIONS>, Pag
 
 export const useHomePageStore = create<Home_PageStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       sortOption: "dateAdded",
       setSortOption: (option) => set({ sortOption: option }),
 
@@ -56,9 +50,6 @@ export const useHomePageStore = create<Home_PageStore>()(
       itemsPerPage: 20,
       setItemsPerPage: (itemsPerPage) => set({ itemsPerPage }),
 
-      filteredAndSortedMediaItems: [],
-      setFilteredAndSortedMediaItems: (items) => set({ filteredAndSortedMediaItems: items }),
-
       filteredLibraries: [],
       setFilteredLibraries: (libraries) => set({ filteredLibraries: libraries }),
 
@@ -70,25 +61,6 @@ export const useHomePageStore = create<Home_PageStore>()(
 
       hasSetsAvailableFilter: "",
       setHasSetsAvailableFilter: (filter) => set({ hasSetsAvailableFilter: filter }),
-
-      /**
-       * Retrieves adjacent media item (wrap-around) from the Home page store's
-       * filteredAndSortedMediaItems array.
-       */
-      getAdjacentMediaItem: (tmdbID: string, direction: Direction): MediaItem | null => {
-        const mediaItems = get().filteredAndSortedMediaItems || [];
-        if (!mediaItems.length) return null;
-
-        const currentIndex = mediaItems.findIndex((m) => m.tmdb_id === tmdbID);
-        if (currentIndex === -1) return null;
-
-        const nextIndex =
-          direction === "next"
-            ? (currentIndex + 1) % mediaItems.length
-            : (currentIndex - 1 + mediaItems.length) % mediaItems.length;
-
-        return mediaItems[nextIndex] ?? null;
-      },
 
       previousMediaItem: null,
       setPreviousMediaItem: (mediaItem) => set({ previousMediaItem: mediaItem }),
@@ -105,7 +77,6 @@ export const useHomePageStore = create<Home_PageStore>()(
           sortOrder: "desc",
           currentPage: 1,
           itemsPerPage: 20,
-          filteredAndSortedMediaItems: [],
           filteredLibraries: [],
           filterInDB: "",
           filterIgnored: "",
@@ -123,13 +94,10 @@ export const useHomePageStore = create<Home_PageStore>()(
         sortOrder: state.sortOrder,
         currentPage: state.currentPage,
         itemsPerPage: state.itemsPerPage,
-        filteredAndSortedMediaItems: state.filteredAndSortedMediaItems,
         filteredLibraries: state.filteredLibraries,
         filterInDB: state.filterInDB,
         filterIgnored: state.filterIgnored,
         hasSetsAvailableFilter: state.hasSetsAvailableFilter,
-        previousMediaItem: state.previousMediaItem,
-        nextMediaItem: state.nextMediaItem,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();

@@ -2,7 +2,6 @@ import apiClient from "@/services/api-client";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 
 import { log } from "@/lib/logger";
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 
 import type { APIResponse } from "@/types/api/api-response";
 
@@ -44,8 +43,6 @@ export const StopIgnoringItemInDB = async (
         response.data
       );
     }
-    const { updateIgnoreStatus } = useLibrarySectionsStore.getState();
-    updateIgnoreStatus(tmdbID, libraryTitle, false, "", edition);
     return response.data;
   } catch (error) {
     log(
@@ -92,8 +89,6 @@ export const IgnoreItemInDB = async (
         response.data
       );
     }
-    const { updateIgnoreStatus } = useLibrarySectionsStore.getState();
-    updateIgnoreStatus(tmdbID, libraryTitle, true, ignoreMode, edition);
     return response.data;
   } catch (error) {
     log(

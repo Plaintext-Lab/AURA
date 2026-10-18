@@ -1,9 +1,10 @@
 "use client";
 
-import { findMediaItemInOtherLibraries } from "@/helper/find-cross-library-media-items";
+import { comparePopularity } from "@/helper/compare-popularity";
 import { makePlural } from "@/helper/make_plural";
 import { ReturnErrorMessage } from "@/services/api-error-return";
 import { GetMediaItemDetails } from "@/services/mediaserver/get-media-item-details";
+import { GetRelatedLibraryItems, homeLibraryQuery } from "@/services/mediaserver/library-items";
 import { GetItemSets } from "@/services/mediux/get-item-sets";
 import { GetUserFollowingAndHiding } from "@/services/mediux/get-user-follow-hiding";
 import {
@@ -34,8 +35,8 @@ import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
+import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 import { useHomePageStore } from "@/lib/stores/page-store-home";
 import { useMediaPageStore } from "@/lib/stores/page-store-media";
@@ -51,10 +52,6 @@ const MediaItemPage = () => {
 
   // Partial Media Item States
   const partialMediaItem = useMediaStore((state) => state.mediaItem);
-
-  // Library Sections States (From Library Section Store)
-  const librarySectionsMap = useLibrarySectionsStore((state) => state.sections);
-  const librarySectionsHasHydrated = useLibrarySectionsStore((state) => state.hasHydrated);
 
   // Response Loading States
   const [detailsLoading, setDetailsLoading] = useState<boolean>(true);
@@ -122,8 +119,8 @@ const MediaItemPage = () => {
   // Image Version State (for forcing image reloads)
   const [imageVersion, setImageVersion] = useState(Date.now());
 
-  // Get Adjacent Items from Home Page Store
-  const { setNextMediaItem, setPreviousMediaItem, getAdjacentMediaItem } = useHomePageStore();
+  // The items before and after this one on the Home page, for the arrows in the navbar
+  const { setNextMediaItem, setPreviousMediaItem } = useHomePageStore();
 
   // Update the sortOption and sortOrder based on type
   useEffect(() => {
@@ -168,8 +165,7 @@ const MediaItemPage = () => {
 
   // 2. Show the partial media item right away, then fetch the full media item and the poster sets at the same time
   useEffect(() => {
-    if (!librarySectionsHasHydrated) return;
-    if (!partialMediaItem || Object.keys(librarySectionsMap).length === 0) return;
+    if (!partialMediaItem) return;
     if (fetchedRatingKey.current === partialMediaItem.rating_key) return;
     fetchedRatingKey.current = partialMediaItem.rating_key;
 
@@ -178,7 +174,9 @@ const MediaItemPage = () => {
 
     // Reset the page for the new media item
     setMediaItem(currentItem);
-    setOtherLibraryMediaItems(findMediaItemInOtherLibraries(currentItem, librarySectionsMap));
+    setOtherLibraryMediaItems([]);
+    setPreviousMediaItem(null);
+    setNextMediaItem(null);
     setPosterSets(null);
     setFilteredPosterSets(null);
     setPosterSetsIncludedItems(null);
@@ -224,6 +222,19 @@ const MediaItemPage = () => {
       } finally {
         if (isCurrentItem()) setSetsLoading(false);
       }
+    };
+
+    // The same item in other libraries, and the items before and after it on the Home page
+    const fetchRelatedItems = async (item: MediaItem) => {
+      const resp = await GetRelatedLibraryItems(
+        item,
+        homeLibraryQuery(useHomePageStore.getState(), useSearchQueryStore.getState().searchQuery)
+      );
+      if (!isCurrentItem() || resp.status === "error" || !resp.data) return;
+      log("INFO", "Media Item Page", "Fetch", `Media Item - Exists in other libraries?`, resp.data.other_libraries);
+      setOtherLibraryMediaItems(resp.data.other_libraries ?? []);
+      setPreviousMediaItem(resp.data.previous as MediaItem | null);
+      setNextMediaItem(resp.data.next as MediaItem | null);
     };
 
     // User Follows/Hides are optional, so an error here does not stop the page
@@ -292,14 +303,10 @@ const MediaItemPage = () => {
         }
         setMediaItem(mediaItemResponse);
 
-        // Find if this item exists in other libraries (same TMDB ID, different library_title)
-        const otherLibraryMatches = findMediaItemInOtherLibraries(mediaItemResponse, librarySectionsMap);
-        log("INFO", "Media Item Page", "Fetch", `Media Item - Exists in other libraries?`, otherLibraryMatches);
-        setOtherLibraryMediaItems(otherLibraryMatches);
-
-        // If the partial media item did not have a TMDB ID, the poster sets can only be fetched now
+        // Without a TMDB ID before, the poster sets and related items are fetched now
         if (!currentItem.tmdb_id) {
           fetchPosterSets(mediaItemResponse);
+          fetchRelatedItems(mediaItemResponse);
         }
       } catch (err) {
         log("ERROR", "Media Item Page", "Fetch", "Exception while fetching media item", err);
@@ -316,8 +323,9 @@ const MediaItemPage = () => {
     fetchUserFollowHide();
     if (currentItem.tmdb_id) {
       fetchPosterSets(currentItem);
+      fetchRelatedItems(currentItem);
     }
-  }, [librarySectionsHasHydrated, partialMediaItem, librarySectionsMap]);
+  }, [partialMediaItem, setNextMediaItem, setPreviousMediaItem]);
 
   // 3. Filtering logic for poster sets
   useEffect(() => {
@@ -421,13 +429,10 @@ const MediaItemPage = () => {
       }
 
       if (sortOption === "popularity") {
-        const countA = a.popularity_global ?? 0;
-        const countB = b.popularity_global ?? 0;
-        if (countA === countB) {
-          // If popularity counts are equal, sort by date
-          return dateB.getTime() - dateA.getTime();
-        }
-        return sortOrder === "asc" ? countA - countB : countB - countA;
+        // Use the MediUX-wide rank, as movie and collection sets are ranked separately
+        const byRank = comparePopularity(a.popularity_global, b.popularity_global, sortOrder);
+        // If the ranks are equal, sort by date
+        return byRank !== 0 ? byRank : dateB.getTime() - dateA.getTime();
       }
 
       if (mediaItem?.type === "show" && sortOption === "numberOfSeasons") {
@@ -545,14 +550,6 @@ const MediaItemPage = () => {
     });
     return count;
   }, [posterSets, filterByLanguage]);
-
-  // 5. Compute adjacent items when mediaItem changes
-  useEffect(() => {
-    if (!mediaItem) return;
-    if (!mediaItem?.rating_key) return;
-    setNextMediaItem(getAdjacentMediaItem(mediaItem.tmdb_id, "next"));
-    setPreviousMediaItem(getAdjacentMediaItem(mediaItem.tmdb_id, "previous"));
-  }, [getAdjacentMediaItem, mediaItem, setNextMediaItem, setPreviousMediaItem]);
 
   const handleShowSetsWithTitleCardsOnly = () => {
     setShowOnlyTitlecardSets(!showOnlyTitlecardSets);
@@ -732,8 +729,8 @@ const MediaItemPage = () => {
                       {
                         value: "popularity",
                         label: "Popularity",
-                        ascIcon: <ChartBarDecreasing />,
-                        descIcon: <ChartBarIncreasing />,
+                        ascIcon: <ChartBarIncreasing />,
+                        descIcon: <ChartBarDecreasing />,
                         type: "number" as const,
                       },
                       ...(mediaItem?.type === "movie"

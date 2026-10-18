@@ -9,6 +9,7 @@ import { getAllItemsFromDB } from "@/services/database/get-all";
 import { UpdateItemInDB } from "@/services/database/update";
 import { AddItemToDownloadQueue } from "@/services/downloads/queue-add";
 import { ApplyLabelsAndTagsToItem } from "@/services/labels-tags/apply";
+import { GetLibrarySummaries } from "@/services/mediaserver/library-items";
 import {
   ArrowDownAZ,
   ArrowDownZA,
@@ -33,6 +34,7 @@ import { ErrorMessage } from "@/components/shared/error-message";
 import { FilterSavedSets } from "@/components/shared/filter-saved-sets";
 import Loader from "@/components/shared/loader";
 import { RefreshButton } from "@/components/shared/refresh-button";
+import { RefreshProgress } from "@/components/shared/refresh-progress";
 import { ResponsiveGrid } from "@/components/shared/responsive-grid";
 import SavedSetsCard from "@/components/shared/saved-sets-cards";
 import SavedSetsTableRow from "@/components/shared/saved-sets-table";
@@ -56,11 +58,11 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 
 import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useSavedSetsPageStore } from "@/lib/stores/page-store-saved-sets";
 
 import { extractInfoFromSearchQuery } from "@/hooks/search-query";
+import { useRefreshing } from "@/hooks/use-refreshing";
 
 import type { APIResponse } from "@/types/api/api-response";
 import type { DBSavedItem } from "@/types/database/db-poster-set";
@@ -68,6 +70,8 @@ import type { DBSavedItem } from "@/types/database/db-poster-set";
 const SavedSetsPage: React.FC = () => {
   const [savedSets, setSavedSets] = useState<DBSavedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // A refresh keeps the page showing, with its progress at the top
+  const [refreshing, handleRefresh] = useRefreshing(() => fetchSavedSets());
   const [error, setError] = useState<APIResponse<unknown> | null>(null);
   const isFetchingRef = useRef(false);
   const { searchQuery, setSearchQuery } = useSearchQueryStore();
@@ -124,9 +128,16 @@ const SavedSetsPage: React.FC = () => {
     setFilterMediaItemOnServer,
   } = useSavedSetsPageStore();
 
-  // Get the library options from Global Library Store
-  const { getSectionSummaries } = useLibrarySectionsStore();
-  const librarySectionsLoaded = useLibrarySectionsStore((state) => state.hasHydrated);
+  // The library options, from aura
+  const [librarySummaries, setLibrarySummaries] = useState<{ title: string; type: string }[]>([]);
+  const [librarySectionsLoaded, setLibrarySectionsLoaded] = useState(false);
+  useEffect(() => {
+    void GetLibrarySummaries().then((libraries) => {
+      setLibrarySummaries(libraries);
+      setLibrarySectionsLoaded(true);
+    });
+  }, []);
+  const getSectionSummaries = useCallback(() => librarySummaries, [librarySummaries]);
 
   // User Filter Options: all unique users from the savedSets
   const [filterUserOptions, setFilterUserOptions] = useState<string[]>([]);
@@ -268,7 +279,7 @@ const SavedSetsPage: React.FC = () => {
   const nothingSavedYet =
     (!savedSets || savedSets.length === 0) && !hasActiveFilters && !Object.keys(recheckStatus).length;
 
-  if (loading) {
+  if (loading && !refreshing) {
     return <Loader className="mt-10" message="Loading saved sets..." />;
   }
 
@@ -553,6 +564,8 @@ const SavedSetsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-screen flex flex-col items-center">
+      {refreshing && <RefreshProgress title="Loading the saved sets from the database" />}
+
       {/* Row 1: Filter Icon (left), Autodownload (right) */}
       {!nothingSavedYet && (
         <div className="w-full flex items-center justify-between mb-2">
@@ -1079,7 +1092,7 @@ const SavedSetsPage: React.FC = () => {
       )}
 
       {/* Refresh Button */}
-      <RefreshButton onClick={fetchSavedSets} />
+      <RefreshButton onClick={() => void handleRefresh()} refreshing={refreshing} />
     </div>
   );
 };

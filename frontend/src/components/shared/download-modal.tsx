@@ -1,6 +1,10 @@
 "use client";
 
-import { compareSeasonImages, formatDownloadProgressText } from "@/helper/format-download-progress";
+import {
+  compareSeasonImages,
+  formatDownloadProgressShortText,
+  formatDownloadProgressText,
+} from "@/helper/format-download-progress";
 import { formatDownloadSize } from "@/helper/format-download-size";
 import { upsertSavedSets } from "@/helper/media-item-update-saved-sets";
 import { AddNewItemToDB } from "@/services/database/add";
@@ -58,7 +62,6 @@ import { Lead } from "@/components/ui/typography";
 
 import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
 import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
@@ -135,6 +138,7 @@ type ItemProgress = {
 
 type DownloadProgress = {
   currentText: string;
+  currentShortText?: string; // currentText for narrow screens
   totalPlanned: number;
   items: Record<string, ItemProgress>;
 };
@@ -617,10 +621,11 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
   };
 
   // --- Progress/Task Helpers ---
-  const setCurrentText = (text: string) => {
+  const setCurrentText = (text: string, shortText?: string) => {
     setProgress((prev) => ({
       ...prev,
       currentText: text,
+      currentShortText: shortText,
     }));
   };
 
@@ -697,19 +702,8 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
     return "skipped"; // all skipped
   };
 
-  // Mark the item as saved in the cached media items, including libraries that share it, and on the page
+  // Mark the item as saved on the page
   const markItemSaved = (latestMediaItem: MediaItem, item: FormItemDisplay, selectedTypes: SelectedTypes) => {
-    const { upsertMediaItemSavedSet } = useLibrarySectionsStore.getState();
-    for (const libraryTitle of sharedLibraryTitles) {
-      upsertMediaItemSavedSet({
-        tmdbID: latestMediaItem.tmdb_id,
-        libraryTitle,
-        edition: latestMediaItem.edition,
-        setID: item.Set.id,
-        setUser: item.Set.user_created,
-        selectedTypes,
-      });
-    }
     onDownloadComplete?.(upsertSavedSets(latestMediaItem, item.Set.id, item.Set.user_created, selectedTypes));
   };
 
@@ -744,7 +738,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
       attempts: (t.attempts ?? 0) + 1,
       error: undefined,
     }));
-    setCurrentText(`Adding "${payload.itemTitle}" to DB`);
+    setCurrentText(`Adding "${payload.itemTitle}" to DB`, "Adding to DB");
 
     try {
       const resp = await AddNewItemToDB(
@@ -775,7 +769,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
       attempts: (t.attempts ?? 0) + 1,
       error: undefined,
     }));
-    setCurrentText(`Adding "${payload.itemTitle}" to queue`);
+    setCurrentText(`Adding "${payload.itemTitle}" to queue`, "Adding to queue");
 
     try {
       const resp = await AddItemToDownloadQueue(payload.dbItem);
@@ -1691,13 +1685,14 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           if (cancelRef.current) return false;
           started += 1;
           const image = job.payload.imageFile;
+          const imageLabel = {
+            image_type: image.type,
+            season_number: image.season_number,
+            episode_number: image.episode_number,
+          };
           setCurrentText(
-            formatDownloadProgressText(
-              { image_type: image.type, season_number: image.season_number, episode_number: image.episode_number },
-              item.MediaItem.title,
-              started,
-              totalForItem
-            )
+            formatDownloadProgressText(imageLabel, item.MediaItem.title, started, totalForItem),
+            formatDownloadProgressShortText(imageLabel)
           );
           return runDownloadTask(job.taskId, job.payload);
         };
@@ -1970,7 +1965,14 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
                     const errors = getErrorsByItem(progress);
                     const hasErrors = errors.length > 0;
 
-                    return <DownloadProgressBar value={overall} label={progress.currentText} hasErrors={hasErrors} />;
+                    return (
+                      <DownloadProgressBar
+                        value={overall}
+                        label={progress.currentText}
+                        shortLabel={progress.currentShortText}
+                        hasErrors={hasErrors}
+                      />
+                    );
                   })()}
 
                 {/* Errors */}
