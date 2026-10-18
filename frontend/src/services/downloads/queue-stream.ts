@@ -13,7 +13,7 @@ export interface DownloadQueueStreamHandlers {
 }
 
 // Subscribes to live download queue updates over Server-Sent Events.
-export const subscribeToDownloadQueue = (handlers: DownloadQueueStreamHandlers): (() => void) => {
+export const subscribeToDownloadQueue = (handlers: Partial<DownloadQueueStreamHandlers>): (() => void) => {
   const es = new EventSource(`/api/download/queue/stream`, { withCredentials: true });
 
   es.onmessage = (event: MessageEvent<string>) => {
@@ -21,25 +21,25 @@ export const subscribeToDownloadQueue = (handlers: DownloadQueueStreamHandlers):
       const evt: DownloadQueueEvent = JSON.parse(event.data);
       switch (evt.type) {
         case "snapshot":
-          handlers.onSnapshot(evt.jobs ?? []);
+          handlers.onSnapshot?.(evt.jobs ?? []);
           break;
         case "job_added":
-          if (evt.job) handlers.onJobAdded(evt.job);
+          if (evt.job) handlers.onJobAdded?.(evt.job);
           break;
         case "job_started":
-          if (evt.job) handlers.onJobStarted(evt.job);
+          if (evt.job) handlers.onJobStarted?.(evt.job);
           break;
         case "job_progress":
-          if (evt.progress) handlers.onJobProgress(evt.progress);
+          if (evt.progress) handlers.onJobProgress?.(evt.progress);
           break;
         case "job_finished":
-          if (evt.job) handlers.onJobFinished(evt.job);
+          if (evt.job) handlers.onJobFinished?.(evt.job);
           break;
         case "job_removed":
-          if (evt.job) handlers.onJobRemoved(evt.job);
+          if (evt.job) handlers.onJobRemoved?.(evt.job);
           break;
         case "queue_cleared":
-          handlers.onQueueCleared();
+          handlers.onQueueCleared?.();
           break;
       }
     } catch (error) {

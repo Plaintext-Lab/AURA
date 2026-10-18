@@ -1,6 +1,7 @@
 "use client";
 
 import { Logout } from "@/services/auth/logout";
+import { subscribeToDownloadQueue } from "@/services/downloads/queue-stream";
 import {
   ArrowLeftCircle,
   ArrowRightCircle,
@@ -33,6 +34,7 @@ import {
 import { cn } from "@/lib/cn";
 import { DeepResetAllStores } from "@/lib/stores/clear-all-stores";
 import { useCollectionStore } from "@/lib/stores/global-store-collection-store";
+import { useFailedDownloadsStore } from "@/lib/stores/global-store-failed-downloads";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
@@ -196,6 +198,15 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
   const showLogout = !appLoading && isAuthed && !!status?.current_setup.auth.enabled && !status?.auth_disabled_by_env;
   const menuHasItems = appReady || hasNewVersion || showLogout;
 
+  // Failed downloads, kept current as Download Queue jobs finish
+  const failedCount = useFailedDownloadsStore((state) => state.failedCount);
+  const refreshFailedCount = useFailedDownloadsStore((state) => state.refreshFailedCount);
+  useEffect(() => {
+    if (!appReady || !isAuthed) return;
+    void refreshFailedCount();
+    return subscribeToDownloadQueue({ onJobFinished: () => void refreshFailedCount() });
+  }, [appReady, isAuthed, refreshFailedCount]);
+
   // Handle Logout
   const handleLogout = async () => {
     await Logout(); // clears the HttpOnly session cookie server-side
@@ -271,7 +282,13 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
               asChild
               className="cursor-pointer hover:brightness-120 active:scale-95 transition text-muted-foreground"
             >
-              <MenuIcon className={cn("w-8 h-8 ml-2", hasNewVersion && "text-yellow-500 animate-pulse")} />
+              <MenuIcon
+                className={cn(
+                  "w-8 h-8 ml-2",
+                  hasNewVersion && "text-yellow-500 animate-pulse",
+                  appReady && failedCount > 0 && "text-red-500"
+                )}
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 md:w-64" side="bottom" align="end">
               {appReady && (
@@ -295,7 +312,10 @@ export function Navbar({ version = "dev" }: AppNavbarProps) {
                     onClick={() => router.push("/download-queue")}
                   >
                     <ListOrdered className="w-6 h-6 mr-2" />
-                    Download Queue
+                    <div className="flex flex-col">
+                      <span>Download Queue</span>
+                      {failedCount > 0 && <span className="text-xs text-red-500">{failedCount} Failed</span>}
+                    </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

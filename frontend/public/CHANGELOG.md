@@ -38,6 +38,7 @@
 - Added a load time badge to the Home and User pages in Debug Mode, showing how long the page took to load and how much data it downloaded.
 - Added option to restore notifications to their default templates in Settings > Notifications.
 - Added option to retry failed downloads in the Download Queue, which will re-add them to the queue with the same settings as before.
+- Added failed download count to the Navbar so you can see at a glance if any downloads failed.
 
 ### UI Tweaks
 

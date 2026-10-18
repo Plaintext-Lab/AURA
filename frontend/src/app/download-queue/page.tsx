@@ -20,6 +20,8 @@ import { ResponsiveGrid } from "@/components/shared/responsive-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { H2 } from "@/components/ui/typography";
 
+import { useFailedDownloadsStore } from "@/lib/stores/global-store-failed-downloads";
+
 import type { APIResponse } from "@/types/api/api-response";
 import type { DownloadHistoryEntry, DownloadQueueJob, DownloadQueueProgress } from "@/types/database/download-queue";
 
@@ -35,6 +37,8 @@ const DownloadQueuePage: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<APIResponse<unknown> | null>(null);
 
+  const setFailedCount = useFailedDownloadsStore((state) => state.setFailedCount);
+
   const fetchHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
@@ -45,10 +49,11 @@ const DownloadQueuePage: React.FC = () => {
       }
       setHistoryEntries(response.data?.entries || []);
       setHistoryError(null);
+      setFailedCount(response.data?.total ?? response.data?.entries?.length ?? 0);
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [setFailedCount]);
 
   // Initial queue load (SSE also sends a snapshot on connect, but this avoids a loading flash on slow connections)
   const fetchQueueEntries = useCallback(async () => {
