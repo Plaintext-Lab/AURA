@@ -220,8 +220,8 @@ export const ConfigSectionSonarrRadarr: React.FC<ConfigSectionSonarrRadarrProps>
   // ----- Render -----
   return (
     <Card className={`p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-blue-500">Sonarr & Radarr</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-blue-500 whitespace-nowrap">Sonarr & Radarr</h2>
         <div className="flex items-center">
           {editing && libraries.length > 0 && (
             <div className="flex items-center gap-2">

@@ -41,6 +41,7 @@ const STEP_BADGE_STYLES: Record<string, string> = {
   "Preloading MediUX Items with Sets into Cache": "bg-emerald-500 text-white",
   "Initializing Database": "bg-lime-500 text-black",
   "Running Database Migrations": "bg-yellow-500 text-black",
+  "Loading Media Server Data from the Database": "bg-amber-600 text-white",
   "Preloading Media Server Data into Cache": "bg-orange-500 text-white",
   "Optimizing Database": "bg-red-500 text-white",
   "Starting Background Jobs": "bg-slate-600 text-white",
@@ -69,6 +70,7 @@ const STEP_ORDER = [
   "Preloading MediUX Users into Cache",
   "Preloading MediUX Items with Sets into Cache",
   "Running Database Migrations",
+  "Loading Media Server Data from the Database",
   "Preloading Media Server Data into Cache",
   "Optimizing Database",
   "Starting Background Jobs",
@@ -82,6 +84,16 @@ const stepProgress = (step?: string) => {
   if (index < 0) return 0;
   return Math.round((index / (STEP_ORDER.length - 1)) * 100);
 };
+
+// A label and its value, the value wraps under the label on narrow screens
+const StatusRow = ({ label, children, last = false }: { label: string; children: React.ReactNode; last?: boolean }) => (
+  <div
+    className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-3 sm:px-4", !last && "border-b")}
+  >
+    <span className="font-medium text-muted-foreground">{label}</span>
+    <span className="min-w-0 max-w-full text-right">{children}</span>
+  </div>
+);
 
 const AppStatusPage: React.FC = () => {
   const router = useRouter();
@@ -108,11 +120,11 @@ const AppStatusPage: React.FC = () => {
   }, [hasHydrated, status, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl rounded-2xl border bg-card/80 backdrop-blur p-6 shadow-xl">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-3 sm:p-4">
+      <div className="w-full max-w-4xl rounded-2xl border bg-card/80 backdrop-blur p-4 sm:p-6 shadow-xl">
         <div className="mb-6">
-          <H2 className="text-3xl font-bold tracking-tight">Aura - App Status</H2>
-          <div className="mt-1 flex items-center justify-between gap-3">
+          <H2 className="text-2xl sm:text-3xl font-bold tracking-tight">App Status</H2>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               {progress < 100 && <LoaderIcon className="animate-spin" size={16} />}
               aura is starting. This page updates as each step finishes.
@@ -157,44 +169,19 @@ const AppStatusPage: React.FC = () => {
           <div className="text-sm text-muted-foreground">Loading status...</div>
         ) : (
           <div className="w-full rounded-lg text-sm border overflow-hidden">
-            <table className="w-full border-collapse">
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-3 px-4 font-medium text-muted-foreground w-56">Media Server Name</td>
-                  <td className="py-3 px-4 text-right">{status?.media_server_name || "N/A"}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4 font-medium text-muted-foreground">App Version</td>
-                  <td className="py-3 px-4 text-right">{status?.app_version || "N/A"}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4 font-medium text-muted-foreground">App Fully Loaded</td>
-                  <td className="py-3 px-4 text-right">{boolBadge(status?.app_fully_loaded)}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4 font-medium text-muted-foreground">Config Loaded</td>
-                  <td className="py-3 px-4 text-right">{boolBadge(status?.config_loaded)}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 px-4 font-medium text-muted-foreground">Config Valid</td>
-                  <td className="py-3 px-4 text-right">{boolBadge(status?.config_valid)}</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 font-medium text-muted-foreground">Needs Setup</td>
-                  <td className="py-3 px-4 text-right">{boolBadge(status?.needs_setup, true)}</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 font-medium text-muted-foreground">Current Step</td>
-                  <td className="py-3 px-4 text-right">
-                    <Badge className={cn("ml-2", getStepBadgeClass(status?.app_loading_step))}>
-                      {status?.app_loading_step || "N/A"}
-                    </Badge>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <StatusRow label="Media Server Name">{status?.media_server_name || "N/A"}</StatusRow>
+            <StatusRow label="App Version">{status?.app_version || "N/A"}</StatusRow>
+            <StatusRow label="App Fully Loaded">{boolBadge(status?.app_fully_loaded)}</StatusRow>
+            <StatusRow label="Config Loaded">{boolBadge(status?.config_loaded)}</StatusRow>
+            <StatusRow label="Config Valid">{boolBadge(status?.config_valid)}</StatusRow>
+            <StatusRow label="Needs Setup">{boolBadge(status?.needs_setup, true)}</StatusRow>
+            <StatusRow label="Current Step" last>
+              <Badge className={cn("h-auto whitespace-normal text-left", getStepBadgeClass(status?.app_loading_step))}>
+                {status?.app_loading_step || "N/A"}
+              </Badge>
+            </StatusRow>
 
-            <div className="p-4 border-t bg-muted/20 flex justify-end">
+            <div className="p-3 sm:p-4 border-t bg-muted/20 flex justify-end">
               <Button variant="outline" onClick={() => void fetchStatus()} className="cursor-pointer">
                 Refresh Status
               </Button>
