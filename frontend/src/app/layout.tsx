@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/site.webmanifest" />
-        <link rel="apple-touch-icon" href="web-app-manifest-padded-192x192.png" />
+        <link rel="apple-touch-icon" href="/web-app-manifest-padded-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${gabarito.className}`}>
