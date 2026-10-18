@@ -389,7 +389,7 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
         const { ok, message } = await SendTestNotification(
           provider,
           "test_notification",
-          value.templates.test_notification || {
+          value.templates?.test_notification || {
             enabled: false,
             title: "Test Notification",
             message: "This is a test notification from aura.",

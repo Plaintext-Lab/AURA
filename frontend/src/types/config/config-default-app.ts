@@ -67,68 +67,8 @@ export const defaultAppConfig = (): AppConfig =>
     notifications: {
       enabled: false,
       providers: [],
-      templates: {
-        app_startup: {
-          enabled: true,
-          title: "Startup",
-          message: "The application has started.",
-          include_image: false,
-        },
-        test_notification: {
-          enabled: true,
-          title: "Test Notification",
-          message: "This is a test notification.",
-          include_image: false,
-        },
-        autodownload: {
-          enabled: true,
-          title: "Auto Download | {{ReasonTitle}}",
-          message:
-            "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}Reason:{{NewLine}}{{Reason}}",
-          include_image: true,
-        },
-        download_queue: {
-          enabled: true,
-          title: "Download Queue | {{ReasonTitle}}",
-          message:
-            "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}Reason:{{NewLine}}{{Reason}}",
-          include_image: true,
-        },
-        new_item_auto_download: {
-          enabled: true,
-          title: "Download Queue | {{ReasonTitle}}",
-          message: "{{MediaItemTitle}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
-          include_image: true,
-        },
-        new_sets_available_for_ignored_items: {
-          enabled: true,
-          title: "New Sets Available for Ignored Item",
-          message:
-            "A new set has been detected for the previously ignored item '{{MediaItemTitle}}'. It is now a part of {{SetCount}} sets in MediUX, and will no longer be ignored in {{AppName}}.",
-          include_image: true,
-        },
-        check_for_media_item_changes_job: {
-          enabled: true,
-          title: "Check For Media Item Changes Job",
-          message:
-            "The media item '{{MediaItemTitle}}' (TMDB ID: {{MediaItemTMDBID}}) in library '{{MediaItemLibraryTitle}}' could not be found in the media server cache.{{NewLine}}Reason:{{NewLine}}{{Reason}}{{NewLine}}{{NewLine}}{{Action}}{{NewLine}}{{MoreInfo}}",
-          include_image: false,
-        },
-        sonarr_notification: {
-          enabled: true,
-          title: "Sonarr Notification | {{ReasonTitle}}",
-          message:
-            "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}Reason:{{NewLine}}{{Reason}}{{NewLine}}{{Result}}",
-          include_image: true,
-        },
-        silo_plugin: {
-          enabled: true,
-          title: "Silo Plugin | {{ReasonTitle}}",
-          message:
-            "{{MediaItemTitle}} ({{MediaItemLibraryTitle}}){{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
-          include_image: true,
-        },
-      },
+      // The built-in templates come from aura's backend
+      templates: {},
     },
     sonarr_radarr: {
       applications: [{ type: "", library: "", url: "", api_token: "" }],

@@ -124,7 +124,7 @@ export interface AppConfigLabelsAndTagsApplication {
 export interface AppConfigNotifications {
   enabled: boolean;
   providers: AppConfigNotificationProviders[];
-  templates: AppConfigNotificationTemplate;
+  templates: Partial<AppConfigNotificationTemplate>;
 }
 
 export interface AppConfigNotificationProviders {

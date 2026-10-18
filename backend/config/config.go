@@ -248,7 +248,6 @@ type Config_NotificationTemplate struct {
 	// - backend/routing/validation/notification.go
 	// - backend/utils/variable_filler.go
 	// - frontend/src/components/settings-onboarding/ConfigSectionNotifications.tsx
-	// - frontend/src/types/config/config-default-app.ts
 	// - frontend/src/types/config/config.ts
 
 	AppStartup                      Config_CustomNotification `json:"app_startup" yaml:"AppStartup,omitempty"`                                               // Custom notification settings for application startup.
