@@ -62,6 +62,10 @@ func moveMediaServerToMediaServers(ctx context.Context, tx *sql.Tx) error {
 		}
 		server[strings.TrimPrefix(key, "MediaServer.")] = json.RawMessage(value)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("failed to read MediaServer values: %w", err)
+	}
 	rows.Close()
 
 	// Only add the media server if one was set up
