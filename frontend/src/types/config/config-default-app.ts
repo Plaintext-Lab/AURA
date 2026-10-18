@@ -121,6 +121,13 @@ export const defaultAppConfig = (): AppConfig =>
             "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}Reason:{{NewLine}}{{Reason}}{{NewLine}}{{Result}}",
           include_image: true,
         },
+        silo_plugin: {
+          enabled: true,
+          title: "Silo Plugin | {{ReasonTitle}}",
+          message:
+            "{{MediaItemTitle}} ({{MediaItemLibraryTitle}}){{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
+          include_image: true,
+        },
       },
     },
     sonarr_radarr: {

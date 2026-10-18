@@ -9,6 +9,7 @@ const (
 	TemplateTypeNewSetsAvailableForIgnoredItems = "new_sets_available_for_ignored_items"
 	TemplateTypeCheckForMediaItemChangesJob     = "check_for_media_item_changes_job"
 	TemplateTypeSonarrNotification              = "sonarr_notification"
+	TemplateTypeSiloPlugin                      = "silo_plugin"
 )
 
 var BaseTemplateVariables = []string{
@@ -68,7 +69,7 @@ func AllowedTemplateVariables(templateType string) []string {
 			ImageVariables,
 			DownloadReasonVariables,
 		)
-	case TemplateTypeDownloadQueue, TemplateTypeNewItemAutoDownload:
+	case TemplateTypeDownloadQueue, TemplateTypeNewItemAutoDownload, TemplateTypeSiloPlugin:
 		return mergeTemplateVariableGroups(
 			BaseTemplateVariables,
 			MediaItemVariables,
@@ -120,6 +121,7 @@ func GetNotificationTemplateVariableCatalog() NotificationTemplateVariableCatalo
 			TemplateTypeNewSetsAvailableForIgnoredItems: AllowedTemplateVariables(TemplateTypeNewSetsAvailableForIgnoredItems),
 			TemplateTypeCheckForMediaItemChangesJob:     AllowedTemplateVariables(TemplateTypeCheckForMediaItemChangesJob),
 			TemplateTypeSonarrNotification:              AllowedTemplateVariables(TemplateTypeSonarrNotification),
+			TemplateTypeSiloPlugin:                      AllowedTemplateVariables(TemplateTypeSiloPlugin),
 		},
 	}
 }

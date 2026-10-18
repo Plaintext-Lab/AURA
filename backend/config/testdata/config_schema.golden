@@ -83,6 +83,10 @@ Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Enabled: bool
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.IncludeImage: bool
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Message: string
 Notifications.NotificationTemplate.NewSetsAvailableForIgnoredItems.Title: string
+Notifications.NotificationTemplate.SiloPlugin.Enabled: bool
+Notifications.NotificationTemplate.SiloPlugin.IncludeImage: bool
+Notifications.NotificationTemplate.SiloPlugin.Message: string
+Notifications.NotificationTemplate.SiloPlugin.Title: string
 Notifications.NotificationTemplate.SonarrNotification.Enabled: bool
 Notifications.NotificationTemplate.SonarrNotification.IncludeImage: bool
 Notifications.NotificationTemplate.SonarrNotification.Message: string

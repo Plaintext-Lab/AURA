@@ -5276,6 +5276,14 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "silo_plugin": {
+                    "description": "Custom notification settings for sets downloaded when Silo uses an image from the aura Silo plugin.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_CustomNotification"
+                        }
+                    ]
+                },
                 "sonarr_notification": {
                     "description": "Custom notification settings for Sonarr events.",
                     "allOf": [
@@ -5513,6 +5521,14 @@ const docTemplate = `{
         "config.NotificationTemplateVariableCatalog": {
             "type": "object",
             "properties": {
+                "default_templates": {
+                    "description": "The built-in templates, for Restore Default",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_NotificationTemplate"
+                        }
+                    ]
+                },
                 "template_variables": {
                     "type": "object",
                     "additionalProperties": {
@@ -5732,6 +5748,12 @@ const docTemplate = `{
                 "rating_key": {
                     "type": "string"
                 },
+                "selected_types": {
+                    "$ref": "#/definitions/models.SelectedTypes"
+                },
+                "set_creator": {
+                    "type": "string"
+                },
                 "set_id": {
                     "type": "string"
                 },
@@ -5743,6 +5765,9 @@ const docTemplate = `{
                 },
                 "tmdb_id": {
                     "type": "string"
+                },
+                "warning_count": {
+                    "type": "integer"
                 }
             }
         },

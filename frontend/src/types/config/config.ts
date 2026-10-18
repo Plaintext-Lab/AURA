@@ -168,6 +168,7 @@ export interface AppConfigNotificationTemplate {
   new_sets_available_for_ignored_items: AppConfigNotificationCustomNotification;
   check_for_media_item_changes_job: AppConfigNotificationCustomNotification;
   sonarr_notification: AppConfigNotificationCustomNotification;
+  silo_plugin: AppConfigNotificationCustomNotification;
 }
 
 export interface NotificationTemplateVariablesCatalog {

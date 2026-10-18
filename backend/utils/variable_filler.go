@@ -221,6 +221,5 @@ func TemplateVars_SiloPlugin(mediaItem models.MediaItem, setItem models.DBPoster
 			vars["Reason"] += fmt.Sprintf("\n\n and the following Warnings:\n%s", strings.Join(Warnings, "\n"))
 		}
 	}
-	vars["ReasonTitle"] = "Silo Plugin: " + vars["ReasonTitle"]
 	return vars
 }

@@ -48,6 +48,12 @@ func DefaultNotificationTemplates() Config_NotificationTemplate {
 			Message:      "{{MediaItemTitle}}{{NewLine}}{{ImageName}}{{NewLine}}Set ID: {{SetID}}{{NewLine}}Reason:{{NewLine}}{{Reason}}{{NewLine}}{{Result}}",
 			IncludeImage: true,
 		},
+		SiloPlugin: Config_CustomNotification{
+			Enabled:      true,
+			Title:        "Silo Plugin | {{ReasonTitle}}",
+			Message:      "{{MediaItemTitle}} ({{MediaItemLibraryTitle}}){{NewLine}}Set ID: {{SetID}}{{NewLine}}{{NewLine}}{{Reason}}",
+			IncludeImage: true,
+		},
 	}
 }
 

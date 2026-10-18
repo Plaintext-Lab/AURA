@@ -11,7 +11,7 @@ func TestTemplateVarsSiloPlugin(t *testing.T) {
 	set := models.DBPosterSetDetail{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: "59977", UserCreated: "willtong93"}}}
 
 	vars := TemplateVars_SiloPlugin(item, set, nil, nil)
-	if vars["ReasonTitle"] != "Silo Plugin: Success" {
+	if vars["ReasonTitle"] != "Success" {
 		t.Errorf("reason title = %q", vars["ReasonTitle"])
 	}
 	if !strings.Contains(vars["Reason"], `Silo used a set by "willtong93" from the`) || !strings.Contains(vars["Reason"], "Silo Plugin") || !strings.HasSuffix(vars["Reason"], "with no issues.") {
@@ -22,7 +22,7 @@ func TestTemplateVarsSiloPlugin(t *testing.T) {
 	}
 
 	vars = TemplateVars_SiloPlugin(item, set, []string{"Poster: failed"}, []string{"Backdrop: slow"})
-	if vars["ReasonTitle"] != "Silo Plugin: Error" || !strings.Contains(vars["Reason"], "Poster: failed") || !strings.Contains(vars["Reason"], "Backdrop: slow") {
+	if vars["ReasonTitle"] != "Error" || !strings.Contains(vars["Reason"], "Poster: failed") || !strings.Contains(vars["Reason"], "Backdrop: slow") {
 		t.Errorf("errors = %q %q", vars["ReasonTitle"], vars["Reason"])
 	}
 }

@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { log } from "@/lib/logger";
 
 import type {
+  AppConfig,
   AppConfigNotificationDiscord,
   AppConfigNotificationGotify,
   AppConfigNotificationProviders,
@@ -61,6 +62,7 @@ interface ConfigSectionNotificationsProps {
   errorsUpdate?: (errors: Record<string, string>) => void;
   configAlreadyLoaded: boolean;
   templateVariablesCatalog?: NotificationTemplateVariablesCatalog | null;
+  showSiloPlugin?: boolean;
 }
 
 const PROVIDER_TYPES = ["Discord", "Pushover", "Gotify", "Webhook"] as const;
@@ -74,6 +76,7 @@ const TEMPLATE_TITLES: Partial<Record<keyof AppConfigNotificationTemplate, strin
   new_sets_available_for_ignored_items: "New Sets Available for Ignored Item",
   check_for_media_item_changes_job: "Check For Media Item Changes Job",
   sonarr_notification: "Sonarr Notification",
+  silo_plugin: "Silo Plugin",
 };
 
 const TEMPLATE_SUPPORTS_IMAGE: Partial<Record<keyof AppConfigNotificationTemplate, boolean>> = {
@@ -85,7 +88,13 @@ const TEMPLATE_SUPPORTS_IMAGE: Partial<Record<keyof AppConfigNotificationTemplat
   new_sets_available_for_ignored_items: true,
   check_for_media_item_changes_job: false,
   sonarr_notification: true,
+  silo_plugin: true,
 };
+
+// hasSiloMediaServer is whether a Silo server is in use, the Silo Plugin template is only for Silo
+export const hasSiloMediaServer = (config: AppConfig) =>
+  config.media_server?.type === "Silo" ||
+  (config.media_servers ?? []).some((server) => server.type === "Silo" && server.enabled !== false);
 
 const TEMPLATE_VAR_REGEX = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
 
@@ -97,6 +106,7 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
   errorsUpdate,
   configAlreadyLoaded,
   templateVariablesCatalog,
+  showSiloPlugin = false,
 }) => {
   const prevErrorsRef = useRef<string>("");
   const hasRunInitialValidation = useRef(false);
@@ -119,7 +129,13 @@ export const ConfigSectionNotifications: React.FC<ConfigSectionNotificationsProp
   const [appConnectionStatus, setAppConnectionStatus] = useState<Record<number, ConfigConnectionStatus>>({});
   const [remoteTokenErrors, setRemoteTokenErrors] = useState<Record<number, string | null>>({});
 
-  const templateKeys = useMemo(() => Object.keys(TEMPLATE_TITLES) as Array<keyof AppConfigNotificationTemplate>, []);
+  const templateKeys = useMemo(
+    () =>
+      (Object.keys(TEMPLATE_TITLES) as Array<keyof AppConfigNotificationTemplate>).filter(
+        (key) => key !== "silo_plugin" || showSiloPlugin
+      ),
+    [showSiloPlugin]
+  );
   const templateVariables = useMemo(() => templateVariablesCatalog, [templateVariablesCatalog]);
 
   const getUsedVars = (text: string) => {

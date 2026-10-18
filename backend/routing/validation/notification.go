@@ -162,6 +162,11 @@ func SendTestNotification(w http.ResponseWriter, r *http.Request) {
 		title = utils.RenderTemplate(req.Template.Title, vars)
 		message = utils.RenderTemplate(req.Template.Message, vars)
 		imageURL = ""
+	case config.TemplateTypeSiloPlugin:
+		vars = utils.TemplateVars_SiloPlugin(sampleMediaItem, sampleSet, nil, nil)
+		title = utils.RenderTemplate(req.Template.Title, vars)
+		message = utils.RenderTemplate(req.Template.Message, vars)
+		imageURL = ""
 	case config.TemplateTypeNewSetsAvailableForIgnoredItems:
 		vars = utils.MergeTemplateVars(
 			utils.BaseTemplateVars(),

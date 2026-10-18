@@ -388,6 +388,7 @@ func ValidateNotifications(ctx context.Context, Notifications *Config_Notificati
 		{"NewSetsAvailableForIgnoredItems", TemplateTypeNewSetsAvailableForIgnoredItems, &templates.NewSetsAvailableForIgnoredItems, defaults.NewSetsAvailableForIgnoredItems},
 		{"CheckForMediaItemChangesJob", TemplateTypeCheckForMediaItemChangesJob, &templates.CheckForMediaItemChangesJob, defaults.CheckForMediaItemChangesJob},
 		{"SonarrNotification", TemplateTypeSonarrNotification, &templates.SonarrNotification, defaults.SonarrNotification},
+		{"SiloPlugin", TemplateTypeSiloPlugin, &templates.SiloPlugin, defaults.SiloPlugin},
 	} {
 		validateNotificationTemplate(logAction, t.name, t.templateType, t.template, t.fallback)
 	}

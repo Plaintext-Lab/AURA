@@ -39,7 +39,10 @@ import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/Con
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
 import { ConfigSectionMediux } from "@/components/settings-onboarding/ConfigSectionMediux";
-import { ConfigSectionNotifications } from "@/components/settings-onboarding/ConfigSectionNotifications";
+import {
+  ConfigSectionNotifications,
+  hasSiloMediaServer,
+} from "@/components/settings-onboarding/ConfigSectionNotifications";
 import { ConfigSectionOtherMediaServersSetup } from "@/components/settings-onboarding/ConfigSectionOtherMediaServersSetup";
 import { ConfigSectionSonarrRadarr } from "@/components/settings-onboarding/ConfigSectionSonarrRadarr";
 import { NEW_SERVER_PREFIX } from "@/components/settings-onboarding/OtherMediaServerFields";
@@ -646,6 +649,7 @@ const OnboardingPage = () => {
             // Checking a provider sends a test notification, so only check when Test is clicked
             configAlreadyLoaded={false}
             templateVariablesCatalog={notificationTemplateVariables}
+            showSiloPlugin={hasSiloMediaServer(configState)}
           />
         );
       case "logging":

@@ -259,6 +259,7 @@ type Config_NotificationTemplate struct {
 	NewSetsAvailableForIgnoredItems Config_CustomNotification `json:"new_sets_available_for_ignored_items" yaml:"NewSetsAvailableForIgnoredItems,omitempty"` // Custom notification settings for when new sets become available for ignored items.
 	CheckForMediaItemChangesJob     Config_CustomNotification `json:"check_for_media_item_changes_job" yaml:"CheckForMediaItemChangesJob,omitempty"`         // Custom notification settings for the media item changes job.
 	SonarrNotification              Config_CustomNotification `json:"sonarr_notification" yaml:"SonarrNotification,omitempty"`                               // Custom notification settings for Sonarr events.
+	SiloPlugin                      Config_CustomNotification `json:"silo_plugin" yaml:"SiloPlugin,omitempty"`                                               // Custom notification settings for sets downloaded when Silo uses an image from the aura Silo plugin.
 }
 
 type Config_CustomNotification struct {

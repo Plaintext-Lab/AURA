@@ -36,7 +36,10 @@ import { ConfigSectionLabelsAndTags } from "@/components/settings-onboarding/Con
 import { ConfigSectionLogging } from "@/components/settings-onboarding/ConfigSectionLogging";
 import { ConfigSectionMediaServer } from "@/components/settings-onboarding/ConfigSectionMediaServer";
 import { ConfigSectionMediux } from "@/components/settings-onboarding/ConfigSectionMediux";
-import { ConfigSectionNotifications } from "@/components/settings-onboarding/ConfigSectionNotifications";
+import {
+  ConfigSectionNotifications,
+  hasSiloMediaServer,
+} from "@/components/settings-onboarding/ConfigSectionNotifications";
 import { ConfigSectionOtherMediaServers } from "@/components/settings-onboarding/ConfigSectionOtherMediaServers";
 import { ConfigSectionSonarrRadarr } from "@/components/settings-onboarding/ConfigSectionSonarrRadarr";
 import { UserPreferencesCard } from "@/components/settings-onboarding/UserPreferences";
@@ -576,6 +579,7 @@ function SettingsPageContent() {
             // Checking a provider sends a test notification, so only check when Test is clicked
             configAlreadyLoaded={false}
             templateVariablesCatalog={notificationTemplateVariables}
+            showSiloPlugin={hasSiloMediaServer(draftConfig)}
           />
         );
       case "logging":

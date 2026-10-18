@@ -34,8 +34,11 @@ func SendNotification(
 
 	fromFavoriteCreator := source == models.SourceFavoriteCreatorsNewItem || source == models.SourceFavoriteCreatorsAllItems
 	template := config.Current.Notifications.NotificationTemplate.DownloadQueue
-	if fromFavoriteCreator {
+	switch {
+	case fromFavoriteCreator:
 		template = config.Current.Notifications.NotificationTemplate.NewItemAutoDownload
+	case source == models.SourceSiloPlugin:
+		template = config.Current.Notifications.NotificationTemplate.SiloPlugin
 	}
 
 	// If this notification is disabled, skip

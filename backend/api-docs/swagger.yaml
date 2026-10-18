@@ -433,6 +433,11 @@ definitions:
         - $ref: '#/definitions/config.Config_CustomNotification'
         description: Custom notification settings for when new sets become available
           for ignored items.
+      silo_plugin:
+        allOf:
+        - $ref: '#/definitions/config.Config_CustomNotification'
+        description: Custom notification settings for sets downloaded when Silo uses
+          an image from the aura Silo plugin.
       sonarr_notification:
         allOf:
         - $ref: '#/definitions/config.Config_CustomNotification'
@@ -535,6 +540,10 @@ definitions:
     type: object
   config.NotificationTemplateVariableCatalog:
     properties:
+      default_templates:
+        allOf:
+        - $ref: '#/definitions/config.Config_NotificationTemplate'
+        description: The built-in templates, for Restore Default
       template_variables:
         additionalProperties:
           items:
@@ -680,6 +689,10 @@ definitions:
         type: integer
       rating_key:
         type: string
+      selected_types:
+        $ref: '#/definitions/models.SelectedTypes'
+      set_creator:
+        type: string
       set_id:
         type: string
       set_title:
@@ -688,6 +701,8 @@ definitions:
         type: string
       tmdb_id:
         type: string
+      warning_count:
+        type: integer
     type: object
   database.DownloadQueueJob:
     properties:

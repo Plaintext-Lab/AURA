@@ -1231,6 +1231,7 @@ func diffNotificationTemplates(oldT, newT config.Config_NotificationTemplate) []
 		"new_sets_available_for_ignored_items": oldT.NewSetsAvailableForIgnoredItems,
 		"check_for_media_item_changes_job":     oldT.CheckForMediaItemChangesJob,
 		"sonarr_notification":                  oldT.SonarrNotification,
+		"silo_plugin":                          oldT.SiloPlugin,
 	}
 	newMap := map[string]config.Config_CustomNotification{
 		"app_startup":                          newT.AppStartup,
@@ -1241,6 +1242,7 @@ func diffNotificationTemplates(oldT, newT config.Config_NotificationTemplate) []
 		"new_sets_available_for_ignored_items": newT.NewSetsAvailableForIgnoredItems,
 		"check_for_media_item_changes_job":     newT.CheckForMediaItemChangesJob,
 		"sonarr_notification":                  newT.SonarrNotification,
+		"silo_plugin":                          newT.SiloPlugin,
 	}
 
 	diffs := make([]notificationTemplateDiff, 0)
