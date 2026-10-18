@@ -13,3 +13,8 @@ export const GlobalStore = localforage.createInstance({
   version: 1.0,
   driver: localforage.INDEXEDDB,
 });
+
+// Remove the old library copy from the browser
+if (typeof window !== "undefined") {
+  GlobalStore.removeItem("LibrarySections").catch(() => {});
+}

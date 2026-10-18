@@ -15,9 +15,17 @@ import (
 )
 
 func makeRequest(ctx context.Context, msConfig config.Config_MediaServer, url string, method string, body []byte) (resp *http.Response, respBody []byte, Err logging.LogErrorInfo) {
+	return makeRequestWithHeaders(ctx, msConfig, url, method, body, nil)
+}
+
+// makeRequestWithHeaders is makeRequest with more headers
+func makeRequestWithHeaders(ctx context.Context, msConfig config.Config_MediaServer, url string, method string, body []byte, extraHeaders map[string]string) (resp *http.Response, respBody []byte, Err logging.LogErrorInfo) {
 	// Make the HTTP Headers for this request
 	headers := make(map[string]string)
 	headers = AddSiloAuthHeaders(msConfig, headers)
+	for name, value := range extraHeaders {
+		headers[name] = value
+	}
 
 	// Make the HTTP request to Silo
 	// If Silo rate limits the request, wait for the Retry-After delay and try again

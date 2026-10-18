@@ -64,7 +64,11 @@ func GetImageFromSilo(ctx context.Context, msConfig config.Config_MediaServer, r
 			Detail:  map[string]any{"rating_key": ratingKey, "image_type": imageType},
 		}
 	}
+	return getArtwork(ctx, msConfig, artworkPath)
+}
 
+// getArtwork downloads artwork from the signed path Silo gives
+func getArtwork(ctx context.Context, msConfig config.Config_MediaServer, artworkPath string) (imageData []byte, Err logging.LogErrorInfo) {
 	// Construct the URL for the Silo artwork request
 	artworkURL, err := url.Parse(artworkPath)
 	if err != nil {

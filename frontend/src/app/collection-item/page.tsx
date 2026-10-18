@@ -2,6 +2,7 @@
 
 import CollectionsDownloadModal from "@/app/collection-item/collection-download-modal";
 import type { CollectionItem } from "@/app/collections/page";
+import { comparePopularity } from "@/helper/compare-popularity";
 import { formatLastUpdatedDate } from "@/helper/format-date-last-updates";
 import { makePlural } from "@/helper/make_plural";
 import { ReturnErrorMessage } from "@/services/api-error-return";
@@ -23,7 +24,6 @@ import { useRouter } from "next/navigation";
 
 import { AssetImage } from "@/components/shared/asset-image";
 import { CollectionItemDetails } from "@/components/shared/collection-item-details";
-import { CollectionsNotSupported } from "@/components/shared/collections-not-supported";
 import { DimmedBackground } from "@/components/shared/dimmed_backdrop";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { CollectionItemFilter } from "@/components/shared/filter-collection-item-sets";
@@ -41,19 +41,11 @@ import { useCollectionStore } from "@/lib/stores/global-store-collection-store";
 import { useCollectionItemPageStore } from "@/lib/stores/page-store-collection-item";
 import { useCollectionsPageStore } from "@/lib/stores/page-store-collections";
 
-import { useCollectionsSupported } from "@/hooks/collections-supported";
-
 import type { APIResponse } from "@/types/api/api-response";
 import type { CollectionItemSetRef } from "@/types/media-and-posters/sets";
 import type { MediuxUserInfo } from "@/types/mediux/mediux-user-follow-hide";
 
 export default function CollectionItemPage() {
-  const collectionsSupported = useCollectionsSupported();
-  if (!collectionsSupported) return <CollectionsNotSupported />;
-  return <CollectionItemPageContent />;
-}
-
-function CollectionItemPageContent() {
   const router = useRouter();
   const isMounted = useRef(false);
 
@@ -243,14 +235,11 @@ function CollectionItemPageContent() {
       }
 
       if (sortOption === "popularity") {
-        const aPopularity = a.popularity || 0;
-        const bPopularity = b.popularity || 0;
-        if (aPopularity === bPopularity) {
-          const dateA = new Date(a.date_updated || a.date_created || "");
-          const dateB = new Date(b.date_updated || b.date_created || "");
-          return dateB.getTime() - dateA.getTime();
-        }
-        return sortOrder === "asc" ? aPopularity - bPopularity : bPopularity - aPopularity;
+        const byRank = comparePopularity(a.popularity, b.popularity, sortOrder);
+        if (byRank !== 0) return byRank;
+        const dateA = new Date(a.date_updated || a.date_created || "");
+        const dateB = new Date(b.date_updated || b.date_created || "");
+        return dateB.getTime() - dateA.getTime();
       }
 
       const dateA = new Date(a.date_updated || a.date_created || "");

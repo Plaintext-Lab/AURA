@@ -1,4 +1,3 @@
-import { useLibrarySectionsStore } from "@/lib/stores/global-store-library-sections";
 import { useMediaStore } from "@/lib/stores/global-store-media-store";
 import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { usePosterSetsStore } from "@/lib/stores/global-store-poster-sets";
@@ -30,7 +29,6 @@ export const ClearAllStores = async (options?: { deep?: boolean }) => {
   usePosterSetsStore.getState().clear();
   useOnboardingStore.getState().clear();
   useMediaStore.getState().clear();
-  useLibrarySectionsStore.getState().clear();
   useUserPreferencesStore.getState().clear();
 
   // 2. Optional deep clear: remove every persisted entry (including any future stores).

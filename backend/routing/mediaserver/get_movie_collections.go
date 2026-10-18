@@ -35,9 +35,9 @@ func GetMovieCollections(w http.ResponseWriter, r *http.Request) {
 
 	var Err logging.LogErrorInfo
 	switch config.Current.MediaServer.Type {
-	case "Plex":
-		logging.DevMsg("Fetching movie collections from Plex media server")
-		response.Collections, Err = getPlexMovieCollections(ctx)
+	case "Plex", "Silo":
+		logging.DevMsg("Fetching movie collections from each movie library")
+		response.Collections, Err = getLibraryMovieCollections(ctx)
 		if Err.Message != "" {
 			httpx.SendResponse(w, ld, response)
 			return
@@ -60,7 +60,8 @@ func GetMovieCollections(w http.ResponseWriter, r *http.Request) {
 	httpx.SendResponse(w, ld, response)
 }
 
-func getPlexMovieCollections(ctx context.Context) (collections []models.CollectionItem, Err logging.LogErrorInfo) {
+// getLibraryMovieCollections gets the collections of each movie library aura uses
+func getLibraryMovieCollections(ctx context.Context) (collections []models.CollectionItem, Err logging.LogErrorInfo) {
 	collections = []models.CollectionItem{}
 
 	// Get all Movie Library Sections
