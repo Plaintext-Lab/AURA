@@ -1415,7 +1415,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve past download history entries (one per poster set per run), including success/warning/error status and per-image failure details.",
+                "description": "Retrieve the failed downloads (one per poster set), with their warning/error status and per-image failure details.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1429,7 +1429,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Max entries to return (default 50)",
+                        "description": "Max entries to return (default 50, -1 for all)",
                         "name": "limit",
                         "in": "query"
                     },
@@ -1572,6 +1572,72 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/routes_download.RemoveDownloadHistoryEntry_Response"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/download/history/retry": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a failed download's set back to the Download Queue, from the item's saved set. The entry is cleared once the set downloads without failures.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Download"
+                ],
+                "summary": "Download History - Retry Entry",
+                "parameters": [
+                    {
+                        "description": "History Retry Item Request",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes_download.RetryDownloadHistoryEntry_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_download.RetryDownloadHistoryEntry_Response"
                                         }
                                     }
                                 }
@@ -7528,6 +7594,22 @@ const docTemplate = `{
             }
         },
         "routes_download.RemoveItemFromDownloadQueue_Response": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes_download.RetryDownloadHistoryEntry_Request": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "routes_download.RetryDownloadHistoryEntry_Response": {
             "type": "object",
             "properties": {
                 "result": {

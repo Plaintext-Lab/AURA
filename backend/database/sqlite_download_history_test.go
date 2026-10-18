@@ -27,7 +27,17 @@ func TestDownloadHistoryFailures(t *testing.T) {
 	if Err.Message != "" || total != 4 {
 		t.Fatalf("GetDownloadHistory = %d %s, want 4", total, Err.Message)
 	}
+	// -1 gets every entry
+	if all, _, _ := db.GetDownloadHistory(ctx, -1, 0); len(all) != 4 {
+		t.Errorf("GetDownloadHistory(-1) = %d entries, want 4", len(all))
+	}
 	got := entries[0]
+	if one, found, Err := db.GetDownloadHistoryEntry(ctx, got.ID); Err.Message != "" || !found || one.SetID != got.SetID || one.SetCreator != "willtong93" || !one.SelectedTypes.Titlecard {
+		t.Errorf("GetDownloadHistoryEntry = %+v %v %s", one, found, Err.Message)
+	}
+	if _, found, _ := db.GetDownloadHistoryEntry(ctx, 999); found {
+		t.Error("a missing entry shouldn't be found")
+	}
 	if got.SetCreator != "willtong93" || !got.SelectedTypes.Poster || !got.SelectedTypes.Titlecard || got.SelectedTypes.Backdrop || got.WarningCount != 2 || got.Status != "warning" {
 		t.Errorf("entry = %+v, want the set's creator, selected types and warnings kept", got)
 	}

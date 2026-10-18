@@ -129,6 +129,7 @@ func AddRoutes(r *chi.Mux) {
 				r.Get("/", routes_download.GetDownloadHistory)
 				r.Delete("/", routes_download.RemoveAllDownloadHistory)
 				r.Delete("/item", routes_download.RemoveDownloadHistoryEntry)
+				r.Post("/retry", routes_download.RetryDownloadHistoryEntry)
 			})
 		})
 

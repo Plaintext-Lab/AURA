@@ -144,10 +144,7 @@ func (s *SQliteDB) GetDownloadHistory(ctx context.Context, limit, offset int) (e
 		return entries, 0, *logAction.Error
 	}
 
-	q := `
-SELECT id, tmdb_id, library_title, edition, media_item_title, media_item_year,
-       set_id, set_title, set_creator, selected_types, warning_count,
-       images_succeeded, images_failed, status, failed_images, created_at
+	q := `SELECT ` + downloadHistoryColumns + `
 FROM DownloadHistory
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
@@ -160,18 +157,11 @@ LIMIT ? OFFSET ?;
 	defer rows.Close()
 
 	for rows.Next() {
-		var entry DownloadHistoryEntry
-		var failedImagesJSON, selectedTypesJSON string
-		if err := rows.Scan(
-			&entry.ID, &entry.TMDB_ID, &entry.LibraryTitle, &entry.Edition, &entry.MediaItemTitle, &entry.MediaItemYear,
-			&entry.SetID, &entry.SetTitle, &entry.SetCreator, &selectedTypesJSON, &entry.WarningCount,
-			&entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.CreatedAt,
-		); err != nil {
+		entry, err := scanDownloadHistoryEntry(rows)
+		if err != nil {
 			logAction.SetError("DB: scan DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
 			return entries, 0, *logAction.Error
 		}
-		_ = json.Unmarshal([]byte(failedImagesJSON), &entry.FailedImages)
-		_ = json.Unmarshal([]byte(selectedTypesJSON), &entry.SelectedTypes)
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
@@ -181,6 +171,47 @@ LIMIT ? OFFSET ?;
 
 	logAction.AppendResult("count", len(entries))
 	return entries, total, logging.LogErrorInfo{}
+}
+
+// GetDownloadHistoryEntry returns one Download History entry by ID
+func (s *SQliteDB) GetDownloadHistoryEntry(ctx context.Context, id int64) (entry DownloadHistoryEntry, found bool, Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Get Download History Entry %d", id), logging.LevelDebug)
+	defer logAction.Complete()
+
+	if s == nil || s.conn == nil {
+		logAction.SetError("DB: connection is nil", "", map[string]any{})
+		return entry, false, *logAction.Error
+	}
+
+	row := s.conn.QueryRowContext(ctx, `SELECT `+downloadHistoryColumns+` FROM DownloadHistory WHERE id = ?;`, id)
+	entry, err := scanDownloadHistoryEntry(row)
+	if err == sql.ErrNoRows {
+		return entry, false, logging.LogErrorInfo{}
+	}
+	if err != nil {
+		logAction.SetError("DB: SELECT DownloadHistory entry failed", err.Error(), map[string]any{"error": err.Error()})
+		return entry, false, *logAction.Error
+	}
+	return entry, true, logging.LogErrorInfo{}
+}
+
+const downloadHistoryColumns = `id, tmdb_id, library_title, edition, media_item_title, media_item_year,
+       set_id, set_title, set_creator, selected_types, warning_count,
+       images_succeeded, images_failed, status, failed_images, created_at`
+
+// scanDownloadHistoryEntry reads one row of downloadHistoryColumns
+func scanDownloadHistoryEntry(row interface{ Scan(dest ...any) error }) (entry DownloadHistoryEntry, err error) {
+	var failedImagesJSON, selectedTypesJSON string
+	if err := row.Scan(
+		&entry.ID, &entry.TMDB_ID, &entry.LibraryTitle, &entry.Edition, &entry.MediaItemTitle, &entry.MediaItemYear,
+		&entry.SetID, &entry.SetTitle, &entry.SetCreator, &selectedTypesJSON, &entry.WarningCount,
+		&entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.CreatedAt,
+	); err != nil {
+		return entry, err
+	}
+	_ = json.Unmarshal([]byte(failedImagesJSON), &entry.FailedImages)
+	_ = json.Unmarshal([]byte(selectedTypesJSON), &entry.SelectedTypes)
+	return entry, nil
 }
 
 func (s *SQliteDB) DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo) {

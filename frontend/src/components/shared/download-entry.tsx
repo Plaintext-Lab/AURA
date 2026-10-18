@@ -2,8 +2,9 @@
 
 import { formatImageTypeLabel } from "@/helper/format-image-type";
 import { RemoveDownloadHistoryEntry } from "@/services/downloads/history-remove";
+import { RetryDownloadHistoryEntry } from "@/services/downloads/history-retry";
 import { RemoveItemFromQueue } from "@/services/downloads/queue-remove";
-import { RefreshCcw, RefreshCwOff, Trash2 } from "lucide-react";
+import { RefreshCcw, RefreshCwOff, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import React from "react";
@@ -16,6 +17,7 @@ import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog
 import { renderTypeBadges } from "@/components/shared/saved-sets-shared";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -97,6 +99,7 @@ const hasSelectedTypes = (selected: DBPosterSetDetail["selected_types"] | undefi
 
 const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
   const { setMediaItem } = useMediaStore();
+  const [retrying, setRetrying] = React.useState(false);
 
   const isQueue = props.mode === "queue";
 
@@ -148,6 +151,23 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
     }
   };
 
+  // onRetry adds the failed set back to the Download Queue
+  const onRetry = async () => {
+    if (isQueue) return;
+    setRetrying(true);
+    try {
+      const response = await RetryDownloadHistoryEntry(props.entry.id);
+      if (response.status === "error") {
+        toast.error(`Error retrying download: ${response.error?.message || "Unknown error occurred."}`);
+      } else {
+        toast.success(response.data?.result || "Added to the Download Queue.");
+      }
+    } catch (error) {
+      toast.error(`Error retrying download: ${error instanceof Error ? error.message : "Unknown error occurred."}`);
+    }
+    setRetrying(false);
+  };
+
   return (
     <Card className="relative w-full max-w-md mx-auto">
       <CardHeader>
@@ -183,8 +203,22 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
           )}
         </div>
 
-        {/* Top Right: Delete */}
-        <div className="absolute top-2 right-2">
+        {/* Top Right: Retry and Delete */}
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          {/* Retry, only a failure with a set can be retried */}
+          {!isQueue && props.entry.set_id && (
+            <Button
+              variant="ghost"
+              className="p-1 h-auto shadow-none hover:bg-muted/50 hover:text-primary cursor-pointer"
+              disabled={retrying}
+              onClick={onRetry}
+              title="Retry"
+              aria-label="Retry"
+            >
+              <RotateCw className={cn("w-5 h-5", retrying && "animate-spin")} />
+            </Button>
+          )}
+
           <ConfirmDestructiveDialogActionButton
             variant="ghost"
             className="text-destructive p-1 shadow-none hover:bg-muted/50 hover:text-red-500 cursor-pointer"

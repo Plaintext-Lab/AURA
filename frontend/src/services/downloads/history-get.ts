@@ -11,7 +11,7 @@ export interface GetDownloadHistory_Response {
   total: number;
 }
 
-export const GetDownloadHistory = async (limit = 50, offset = 0): Promise<APIResponse<GetDownloadHistory_Response>> => {
+export const GetDownloadHistory = async (limit = -1, offset = 0): Promise<APIResponse<GetDownloadHistory_Response>> => {
   try {
     log("INFO", "API - Download History", "Fetch", "Fetching download history entries");
     const response = await apiClient.get<APIResponse<GetDownloadHistory_Response>>(`/download/history`, {

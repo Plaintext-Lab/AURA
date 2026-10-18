@@ -16,11 +16,11 @@ type GetDownloadHistory_Response struct {
 
 // GetDownloadHistory godoc
 // @Summary      Download History - Get Entries
-// @Description  Retrieve past download history entries (one per poster set per run), including success/warning/error status and per-image failure details.
+// @Description  Retrieve the failed downloads (one per poster set), with their warning/error status and per-image failure details.
 // @Tags         Download
 // @Accept       json
 // @Produce      json
-// @Param        limit   query     int  false  "Max entries to return (default 50)"
+// @Param        limit   query     int  false  "Max entries to return (default 50, -1 for all)"
 // @Param        offset  query     int  false  "Offset for pagination (default 0)"
 // @Security     SessionCookie
 // @Security     ApiKeyAuth
@@ -35,7 +35,7 @@ func GetDownloadHistory(w http.ResponseWriter, r *http.Request) {
 	var response GetDownloadHistory_Response
 
 	limit := 50
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && (v > 0 || v == -1) {
 		limit = v
 	}
 	offset := 0

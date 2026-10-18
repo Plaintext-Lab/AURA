@@ -153,11 +153,14 @@ type DB interface {
 	// Delete all Download Queue Jobs (except those currently processing)
 	DeleteAllDownloadQueueJobs(ctx context.Context) (Err logging.LogErrorInfo)
 
-	// Insert a Download History entry, applying retention cleanup
+	// Insert a Download History entry, or update the one for the same item and set
 	InsertDownloadHistoryEntry(ctx context.Context, entry DownloadHistoryEntry) (Err logging.LogErrorInfo)
 
 	// Get Download History entries
 	GetDownloadHistory(ctx context.Context, limit, offset int) (entries []DownloadHistoryEntry, total int, Err logging.LogErrorInfo)
+
+	// Get a single Download History entry by ID
+	GetDownloadHistoryEntry(ctx context.Context, id int64) (entry DownloadHistoryEntry, found bool, Err logging.LogErrorInfo)
 
 	// Delete a single Download History entry by ID
 	DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo)
@@ -578,6 +581,13 @@ func GetDownloadHistory(ctx context.Context, limit, offset int) (entries []Downl
 		return []DownloadHistoryEntry{}, 0, logging.Error_DBClientNotInitialized()
 	}
 	return Client.GetDownloadHistory(ctx, limit, offset)
+}
+
+func GetDownloadHistoryEntry(ctx context.Context, id int64) (entry DownloadHistoryEntry, found bool, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return DownloadHistoryEntry{}, false, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetDownloadHistoryEntry(ctx, id)
 }
 
 func DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo) {

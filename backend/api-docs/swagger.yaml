@@ -1906,6 +1906,16 @@ definitions:
       result:
         type: string
     type: object
+  routes_download.RetryDownloadHistoryEntry_Request:
+    properties:
+      id:
+        type: integer
+    type: object
+  routes_download.RetryDownloadHistoryEntry_Response:
+    properties:
+      result:
+        type: string
+    type: object
   routes_images.DeleteTempImages_Response:
     properties:
       message:
@@ -3130,10 +3140,10 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieve past download history entries (one per poster set per
-        run), including success/warning/error status and per-image failure details.
+      description: Retrieve the failed downloads (one per poster set), with their
+        warning/error status and per-image failure details.
       parameters:
-      - description: Max entries to return (default 50)
+      - description: Max entries to return (default 50, -1 for all)
         in: query
         name: limit
         type: integer
@@ -3203,6 +3213,45 @@ paths:
       - SessionCookie: []
       - ApiKeyAuth: []
       summary: Download History - Remove Entry
+      tags:
+      - Download
+  /api/download/history/retry:
+    post:
+      consumes:
+      - application/json
+      description: Add a failed download's set back to the Download Queue, from the
+        item's saved set. The entry is cleared once the set downloads without failures.
+      parameters:
+      - description: History Retry Item Request
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/routes_download.RetryDownloadHistoryEntry_Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_download.RetryDownloadHistoryEntry_Response'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Download History - Retry Entry
       tags:
       - Download
   /api/download/image/collection:
