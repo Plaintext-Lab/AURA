@@ -13,6 +13,7 @@ permalink: /
 [![Beta Build](https://img.shields.io/github/actions/workflow/status/mediux-team/aura/aura-beta.yml?label=Beta%20Build&logo=githubactions)](https://github.com/mediux-team/aura/actions/workflows/docker.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mmoosem13/aura?label=Docker%20Pulls&logo=docker)](https://github.com/mediux-team/aura/pkgs/container/aura)
 ![GHCR](https://img.shields.io/badge/dynamic/json?label=GitHub%20Pulls&logo=Github&url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fmediux-team%2Faura%2Faura&query=downloadCount)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/xmoosex)
 
 **aura** (Automated Utility for Retrieval of Assets) is a visual tool for managing MediUX image assets for your media server. It provides a sleek and intuitive interface to browse, preview, and apply image sets to your library content across platforms like Plex, Emby, and Jellyfin.
 
@@ -63,5 +64,13 @@ To get started with aura:
 
 - 💬 [Join our Discord](https://discord.gg/YAKzwKPwyw)
 - 🛠 [View Source on GitHub](https://github.com/mediux-team/aura)
+
+---
+
+## Support aura
+
+If aura is useful to you, you can support its development:
+
+- ☕ [Buy me a coffee](https://buymeacoffee.com/xmoosex)
 
 ---
