@@ -10,6 +10,7 @@ import (
 	"aura/utils"
 	"context"
 	"fmt"
+	"time"
 )
 
 // ProcessNextQueueJob atomically claims the next pending Download Queue Job
@@ -205,6 +206,10 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 		fileWarnings = append(fileWarnings, setWarnings...)
 	}
 
+	// The sets were just downloaded
+	for i := range queueItem.PosterSets {
+		queueItem.PosterSets[i].LastDownloaded = time.Now()
+	}
 	upsertErr := database.UpsertSavedItem(ctx, queueItem)
 	if upsertErr.Message != "" {
 		fileErrors = append(fileErrors, upsertErr.Message)

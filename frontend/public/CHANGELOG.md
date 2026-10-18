@@ -72,6 +72,7 @@
 - Fixed caching MediUX images slowing down browsing. Images are now cached in the background.
 - Fixed the media item page's set sorting and filters resetting after opening a collection.
 - Fixed the home screen icon missing when aura is added to an iPhone home screen from a page other than Home.
+- Fixed sets downloaded automatically, like those from favorite creators, showing "Never" as their Last Downloaded date.
 
 ### Updated
 

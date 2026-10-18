@@ -526,7 +526,7 @@ ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
 		boolToInt(ps.SelectedTypes.Titlecard),
 		boolToInt(ps.AutoDownload),
 		boolToInt(ps.AutoAddNewCollectionItems),
-		ps.LastDownloaded,
+		lastDownloaded(ps.LastDownloaded),
 	)
 	if err != nil {
 		return logging.LogErrorInfo{Message: "DB: UPSERT SavedItems failed", Detail: map[string]any{"error": err.Error()}}
@@ -735,4 +735,12 @@ func lenOr0[T any](s []T) int {
 		return 0
 	}
 	return len(s)
+}
+
+// lastDownloaded is when a set was downloaded, a set saved without a date was saved now
+func lastDownloaded(t time.Time) time.Time {
+	if t.IsZero() {
+		return time.Now()
+	}
+	return t
 }
