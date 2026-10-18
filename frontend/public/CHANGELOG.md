@@ -29,6 +29,13 @@
 - Added the previously hidden settings to the Settings page.
 - Added a Docker health check, so Docker, Unraid and Portainer show whether aura is healthy. `/api/health` now also reports whether aura is starting or in setup, and whether its database can be read.
 - Added daily database backups, which keep the last 7 copies in `/config/backups`. Change how many are kept, see the backups and back up now in Settings > Backups, and change the schedule on the Jobs page.
+- Added Favorite Creators to Settings > User Preferences. Creators you follow on MediUX are added automatically and marked as Following.
+- Added option to "Automatically Download Images for New Items". When a new item is added to the your Main Media Server, the best set from your Favorite Creators is added to the Download Queue with your Download Defaults. Sets are picked by creator rank, then by MediUX popularity. "Run for All Items" does the same for every item without a saved set.
+- Added the "Auto Download New Item" notification template, sent when a set is added to the Download Queue for a new item.
+- Added a "Check for New Media Items" job, which adds new items from the Main Media Server to aura every 10 minutes, without a full refresh.
+- Added support for Silo collections on the Collections page.
+- Added refresh progress to the Home, User, Collections and Saved Sets pages, similar to the Download Queue progress. It only shows when a refresh takes longer than a moment.
+- Added a load time badge to the Home and User pages in Debug Mode, showing how long the page took to load and how much data it downloaded.
 
 ### UI Tweaks
 
@@ -40,6 +47,13 @@
 - While aura is starting, and during setup, the navbar is hidden to avoid confusion.
 - Sets added to the download queue are as saved in the database on the Home Page. If they fail to be saved, a refresh is required.
 - CHANGELOG page now shows `inline` code blocks correctly for better readability.
+- The Home and User pages are now filtered, searched, sorted and paged by aura backend instead of the browser, so large libraries load faster. The browser no longer keeps its own copy of the libraries.
+- The previous and next arrows on a media item, and the same item in other libraries, now come from aura backend.
+- The Refresh button is now always on the right of the floating buttons, with Jump to Top on its left.
+- Progress bar text is shortened on mobile so it is no longer cut off.
+- The startup page now fits on mobile screens.
+- The Sonarr & Radarr settings no longer squeeze the title against the type dropdown on mobile.
+- Search results show sooner after typing stops.
 
 ### Fixed
 
@@ -52,11 +66,20 @@
 - Fixed the Silo Profile ID not updating when the media server token changed.
 - Fixed aura not shutting down cleanly when its Docker container is stopped.
 - Fixed issue where Jellyfin/Emby servers were not updating the cache. (Thanks to [mattsigal](https://github.com/mattsigal) for the PR!)
+- Fixed the MediUX Popularity sort on the media item page. Popularity is a rank where 1 is the most popular, and sets that aren't ranked yet are sorted last, newest first.
+- Fixed an item being fetched twice when loading a library that has an item without a TMDB ID.
+- Fixed seasons not loading for Jellyfin/Emby servers behind a URL subpath.
+- Fixed caching MediUX images slowing down browsing. Images are now cached in the background.
+- Fixed the media item page's set sorting and filters resetting after opening a collection.
+- Fixed the home screen icon missing when aura is added to an iPhone home screen from a page other than Home.
 
 ### Updated
 
 - Updated backend dependencies to latest versions for better security and performance.
 - Updated frontend dependencies to latest versions for better security and performance.
+- Libraries now load faster from the Media Server, and are loaded from the aura database on startup so pages are ready sooner.
+- Your MediUX follow list is now cached for 5 minutes.
+- The "Claim Next Download Queue Job" log line is no longer repeated while the Download Queue is empty.
 
 ---
 
