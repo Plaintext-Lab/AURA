@@ -32,3 +32,19 @@ func TestResetInterruptedDownloadQueueJobs(t *testing.T) {
 		t.Error("the reset job should have no start time or worker")
 	}
 }
+
+func TestClaimNextDownloadQueueJob(t *testing.T) {
+	db := openTestMediaDB(t)
+	exec(t, db.conn, `INSERT INTO DownloadQueueJobs (id, tmdb_id, library_title, media_item_title, payload, status, created_at) VALUES
+		(1, '1', 'Movies', 'First', '{}', 'pending', '2026-01-01 00:00:00'),
+		(2, '2', 'Movies', 'Second', '{}', 'pending', '2026-01-01 00:00:01')`)
+
+	// The claimed job says it's processing, the Download Queue page only shows pending and processing jobs
+	job, found, Err := db.ClaimNextDownloadQueueJob(testContext(), "worker")
+	if Err.Message != "" || !found {
+		t.Fatalf("ClaimNextDownloadQueueJob = %v %s", found, Err.Message)
+	}
+	if job.ID != 1 || job.Status != "processing" || job.StartedAt == nil {
+		t.Errorf("claimed job = %d %q %v, want job 1 processing with a start time", job.ID, job.Status, job.StartedAt)
+	}
+}

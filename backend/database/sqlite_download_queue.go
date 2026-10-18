@@ -81,12 +81,12 @@ SET status = 'processing', started_at = CURRENT_TIMESTAMP, worker_id = ?
 WHERE id = (
     SELECT id FROM DownloadQueueJobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1
 )
-RETURNING id, tmdb_id, library_title, edition, media_item_title, payload, created_at, started_at;
+RETURNING id, tmdb_id, library_title, edition, media_item_title, payload, status, created_at, started_at;
 `
 	var payload string
 	err := s.conn.QueryRowContext(ctx, q, workerID).Scan(
 		&job.ID, &job.TMDB_ID, &job.LibraryTitle, &job.Edition, &job.MediaItemTitle,
-		&payload, &job.CreatedAt, &job.StartedAt,
+		&payload, &job.Status, &job.CreatedAt, &job.StartedAt,
 	)
 	if err == sql.ErrNoRows {
 		return DownloadQueueJob{}, false, logging.LogErrorInfo{}

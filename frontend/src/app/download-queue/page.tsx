@@ -85,7 +85,11 @@ const DownloadQueuePage: React.FC = () => {
       },
       onJobStarted: (job) => {
         setProgress(null);
-        setJobs((prev) => prev.map((j) => (j.id === job.id ? job : j)));
+        // The started job is processing, and is added if it was missing
+        const started: DownloadQueueJob = { ...job, status: "processing" };
+        setJobs((prev) =>
+          prev.some((j) => j.id === job.id) ? prev.map((j) => (j.id === job.id ? started : j)) : [...prev, started]
+        );
       },
       onJobProgress: (jobProgress) => {
         setProgress(jobProgress);
