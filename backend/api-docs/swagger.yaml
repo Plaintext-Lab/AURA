@@ -26,6 +26,18 @@ definitions:
       user_created:
         type: string
     type: object
+  autodownload.FavoriteCreatorsResult:
+    properties:
+      checked:
+        description: Items without a saved set
+        type: integer
+      no_set:
+        description: Items none of the favorite creators have a set for
+        type: integer
+      queued:
+        description: Items a set was added to the Download Queue for
+        type: integer
+    type: object
   config.Config:
     properties:
       auth:
@@ -208,6 +220,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/config.Config_JobSetting'
         description: Schedule for checking rating keys and metadata changes.
+      check_for_new_media_items:
+        allOf:
+        - $ref: '#/definitions/config.Config_JobSetting'
+        description: Schedule for adding the media server's newest items.
       check_mediux_site_link:
         allOf:
         - $ref: '#/definitions/config.Config_JobSetting'
@@ -407,6 +423,11 @@ definitions:
         allOf:
         - $ref: '#/definitions/config.Config_CustomNotification'
         description: Custom notification settings for download queue events.
+      new_item_auto_download:
+        allOf:
+        - $ref: '#/definitions/config.Config_CustomNotification'
+        description: Custom notification settings for sets downloaded automatically
+          from the favorite creators.
       new_sets_available_for_ignored_items:
         allOf:
         - $ref: '#/definitions/config.Config_CustomNotification'
@@ -482,6 +503,10 @@ definitions:
     type: object
   config.Config_UserPreferences:
     properties:
+      auto_download_new_items:
+        description: Whether images are downloaded automatically for new items, from
+          the favorite creators.
+        type: boolean
       default_add_to_db_only:
         description: Whether "Add to Database Only" is checked by default in the Download
           Modal.
@@ -492,6 +517,11 @@ definitions:
         type: boolean
       download_defaults:
         description: Image types selected by default in the Download Modal.
+        items:
+          type: string
+        type: array
+      favorite_creators:
+        description: MediUX usernames ranked best first, the first is rank 1.
         items:
           type: string
         type: array
@@ -511,6 +541,110 @@ definitions:
             type: string
           type: array
         type: object
+    type: object
+  creator.Boxset:
+    properties:
+      date_created:
+        description: Creation date
+        type: string
+      date_updated:
+        description: Last updated date
+        type: string
+      id:
+        description: Set ID
+        type: string
+      popularity:
+        description: Popularity score of the set
+        type: integer
+      popularity_global:
+        description: Global popularity score of the set
+        type: integer
+      set_ids:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: IDs of sets (show, movie, collection) in this boxset
+        type: object
+      sets:
+        items:
+          $ref: '#/definitions/models.SetRef'
+        type: array
+      title:
+        description: Set Title
+        type: string
+      type:
+        description: Set Type (movie, show, collection, boxset)
+        type: string
+      user_created:
+        description: User who created the set
+        type: string
+    type: object
+  creator.LibrarySummary:
+    properties:
+      sets:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  creator.Result:
+    properties:
+      boxsets:
+        description: The page, for the boxsets tab
+        items:
+          $ref: '#/definitions/creator.Boxset'
+        type: array
+      counts:
+        allOf:
+        - $ref: '#/definitions/creator.TabCounts'
+        description: Sets of each type matching the library and filters
+      included_items:
+        additionalProperties:
+          $ref: '#/definitions/models.IncludedItem'
+        type: object
+      libraries:
+        items:
+          $ref: '#/definitions/creator.LibrarySummary'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      sets:
+        description: The page, for the set tabs
+        items:
+          $ref: '#/definitions/models.SetRef'
+        type: array
+      tab:
+        type: string
+      total:
+        type: integer
+      total_pages:
+        type: integer
+      totals:
+        allOf:
+        - $ref: '#/definitions/creator.TabCounts'
+        description: Sets of each type the creator has
+    type: object
+  creator.TabCounts:
+    properties:
+      box_sets:
+        type: integer
+      collection_sets:
+        type: integer
+      movie_sets:
+        type: integer
+      show_sets:
+        type: integer
+    type: object
+  database.CreatorSetCount:
+    properties:
+      sets:
+        type: integer
+      username:
+        type: string
     type: object
   database.DatabaseBackup:
     properties:
@@ -634,6 +768,78 @@ definitions:
       spec:
         type: string
     type: object
+  library.Item:
+    properties:
+      added_at:
+        type: integer
+      db_saved_sets:
+        items:
+          $ref: '#/definitions/models.DBSavedSet'
+        type: array
+      edition:
+        type: string
+      has_mediux_sets:
+        type: boolean
+      ignored_in_db:
+        type: boolean
+      ignored_mode:
+        type: string
+      latest_episode_added_at:
+        type: integer
+      library_title:
+        type: string
+      rating_key:
+        type: string
+      released_at:
+        type: integer
+      title:
+        type: string
+      tmdb_id:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: integer
+      year:
+        type: integer
+    type: object
+  library.LibrarySummary:
+    properties:
+      count:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  library.Result:
+    properties:
+      has_episode_added_at:
+        description: Whether the "Latest Episode Added" sort is useful
+        type: boolean
+      has_updated_at:
+        description: Whether the "Date Updated" sort is useful
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/library.Item'
+        type: array
+      last_full_update:
+        type: integer
+      libraries:
+        items:
+          $ref: '#/definitions/library.LibrarySummary'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        description: Items on every page
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   logging.LogAction:
     properties:
       elapsed_us:
@@ -738,6 +944,35 @@ definitions:
         type: string
       response_bytes:
         description: Number of bytes written in the response (middleware can capture)
+        type: integer
+    type: object
+  mediaserver.LibraryLoad:
+    properties:
+      done:
+        type: boolean
+      loaded:
+        description: Items loaded so far
+        type: integer
+      title:
+        type: string
+      total:
+        description: Items in the library, its size last time until the media server
+          says
+        type: integer
+    type: object
+  mediaserver.LibraryProgress:
+    properties:
+      failed:
+        type: boolean
+      finished_at:
+        type: integer
+      libraries:
+        items:
+          $ref: '#/definitions/mediaserver.LibraryLoad'
+        type: array
+      running:
+        type: boolean
+      started_at:
         type: integer
     type: object
   mediaserver.MediaServerSync:
@@ -874,40 +1109,6 @@ definitions:
         description: Item type (movie, show)
         type: string
     type: object
-  models.BoxsetRef:
-    properties:
-      date_created:
-        description: Creation date
-        type: string
-      date_updated:
-        description: Last updated date
-        type: string
-      id:
-        description: Set ID
-        type: string
-      popularity:
-        description: Popularity score of the set
-        type: integer
-      popularity_global:
-        description: Global popularity score of the set
-        type: integer
-      set_ids:
-        additionalProperties:
-          items:
-            type: string
-          type: array
-        description: IDs of sets (show, movie, collection) in this boxset
-        type: object
-      title:
-        description: Set Title
-        type: string
-      type:
-        description: Set Type (movie, show, collection, boxset)
-        type: string
-      user_created:
-        description: User who created the set
-        type: string
-    type: object
   models.CollectionItem:
     properties:
       child_count:
@@ -929,34 +1130,6 @@ definitions:
         type: string
       tmdb_id:
         type: string
-    type: object
-  models.CreatorSetsResponse:
-    properties:
-      boxsets:
-        description: List of boxsets
-        items:
-          $ref: '#/definitions/models.BoxsetRef'
-        type: array
-      collection_sets:
-        description: List of collection sets
-        items:
-          $ref: '#/definitions/models.SetRef'
-        type: array
-      included_items:
-        additionalProperties:
-          $ref: '#/definitions/models.IncludedItem'
-        description: Map of included items by TMDB ID
-        type: object
-      movie_sets:
-        description: List of movie sets
-        items:
-          $ref: '#/definitions/models.SetRef'
-        type: array
-      show_sets:
-        description: List of show sets
-        items:
-          $ref: '#/definitions/models.SetRef'
-        type: array
     type: object
   models.DBPosterSetDetail:
     properties:
@@ -1009,6 +1182,9 @@ definitions:
         items:
           $ref: '#/definitions/models.DBPosterSetDetail'
         type: array
+      source:
+        description: What added it to the Download Queue, empty when it was the user
+        type: string
     type: object
   models.DBSavedSet:
     properties:
@@ -1583,6 +1759,13 @@ definitions:
           type: string
         type: array
     type: object
+  routes_db.getSavedSetCreatorsResponse:
+    properties:
+      creators:
+        items:
+          $ref: '#/definitions/database.CreatorSetCount'
+        type: array
+    type: object
   routes_db.ignoreItemResponse:
     properties:
       current_sets:
@@ -1762,11 +1945,6 @@ definitions:
       section:
         type: string
     type: object
-  routes_mediux.GetAllUserSets_Response:
-    properties:
-      sets:
-        $ref: '#/definitions/models.CreatorSetsResponse'
-    type: object
   routes_mediux.GetSetByID_Response:
     properties:
       included_items:
@@ -1807,11 +1985,6 @@ definitions:
           $ref: '#/definitions/models.MediuxUserInfo'
         type: array
     type: object
-  routes_ms.GetLibrarySectionItems_Response:
-    properties:
-      library_section:
-        $ref: '#/definitions/models.LibrarySection'
-    type: object
   routes_ms.GetLibrarySections_Response:
     properties:
       sections:
@@ -1838,6 +2011,22 @@ definitions:
         items:
           $ref: '#/definitions/models.CollectionItem'
         type: array
+    type: object
+  routes_ms.GetRelatedLibraryItems_Response:
+    properties:
+      next:
+        allOf:
+        - $ref: '#/definitions/library.Item'
+        description: The item after it on the Home page
+      other_libraries:
+        description: The same item in other libraries
+        items:
+          $ref: '#/definitions/models.MediaItem'
+        type: array
+      previous:
+        allOf:
+        - $ref: '#/definitions/library.Item'
+        description: The item before it on the Home page
     type: object
   routes_ms.RateMediaItem_Response:
     properties:
@@ -2635,6 +2824,36 @@ paths:
       summary: Create Database Backup
       tags:
       - Database
+  /api/db/creators:
+    get:
+      description: The creators of the saved sets and how many of their sets are saved,
+        the most saved sets first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/routes_db.getSavedSetCreatorsResponse'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Get Saved Set Creators
+      tags:
+      - Database
   /api/db/force-recheck:
     post:
       consumes:
@@ -2778,6 +2997,37 @@ paths:
       summary: Stop Ignoring Item In Database
       tags:
       - Database
+  /api/download/favorite-creators:
+    post:
+      description: For every item of the main media server without a saved set, adds
+        the best set from the favorite creators to the Download Queue. Only runs when
+        Automatically Download Images for New Items is on.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/autodownload.FavoriteCreatorsResult'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Download Sets from Favorite Creators for All Items
+      tags:
+      - Download
   /api/download/history:
     delete:
       consumes:
@@ -3777,35 +4027,56 @@ paths:
       summary: Get Library Section Options
       tags:
       - MediaServer
-  /api/mediaserver/library/items:
+  /api/mediaserver/library/item/related:
     get:
-      consumes:
-      - application/json
-      description: Retrieve items from a specific library section in the media server.
-        This endpoint accepts query parameters to identify the library section and
-        pagination options, and returns the items contained within that library section,
-        allowing clients to display the media items available in the selected library
-        section.
+      description: The same item in the other libraries, and the items before and
+        after it on the Home page with the same filters, search and sort. Read from
+        aura's cache, not the media server.
       parameters:
-      - description: Library Section ID
+      - description: Library of the item
         in: query
-        name: section_id
+        name: item_library
         required: true
         type: string
-      - description: Library Section Title
+      - description: Rating key of the item
         in: query
-        name: section_title
+        name: rating_key
         required: true
         type: string
-      - description: Library Section Type
+      - description: TMDB ID of the item
         in: query
-        name: section_type
-        required: true
+        name: tmdb_id
         type: string
-      - description: Start Index for Pagination
+      - collectionFormat: multi
+        description: 'Home page: only these libraries'
         in: query
-        name: section_start_index
-        required: true
+        items:
+          type: string
+        name: library
+        type: array
+      - description: 'Home page: search'
+        in: query
+        name: search
+        type: string
+      - description: 'Home page: inDB or notInDB'
+        in: query
+        name: in_db
+        type: string
+      - description: 'Home page: ignored filter'
+        in: query
+        name: ignored
+        type: string
+      - description: 'Home page: hasSetsAvailable or noSetsAvailable'
+        in: query
+        name: sets_available
+        type: string
+      - description: 'Home page: sort'
+        in: query
+        name: sort
+        type: string
+      - description: 'Home page: asc or desc'
+        in: query
+        name: order
         type: string
       produces:
       - application/json
@@ -3817,20 +4088,121 @@ paths:
             - $ref: '#/definitions/httpx.JSONResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/routes_ms.GetLibrarySectionItems_Response'
+                  $ref: '#/definitions/routes_ms.GetRelatedLibraryItems_Response'
               type: object
         "401":
           description: Unauthorized (only when Auth.Enabled=true)
           schema:
             $ref: '#/definitions/httpx.UnauthorizedResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpx.JSONResponse'
       security:
       - SessionCookie: []
       - ApiKeyAuth: []
-      summary: Get Library Section Items
+      summary: Get Related Library Items
+      tags:
+      - MediaServer
+  /api/mediaserver/library/items:
+    get:
+      description: One page of the main media server's library, filtered, searched
+        and sorted like the Home page. Read from aura's cache, not the media server.
+      parameters:
+      - collectionFormat: multi
+        description: Only these libraries
+        in: query
+        items:
+          type: string
+        name: library
+        type: array
+      - description: 'Search, like the search bar, e.g. matrix Y:1999:'
+        in: query
+        name: search
+        type: string
+      - description: inDB or notInDB
+        in: query
+        name: in_db
+        type: string
+      - description: ignored, not_ignored, always, until-set-available or until-new-set-available
+        in: query
+        name: ignored
+        type: string
+      - description: hasSetsAvailable or noSetsAvailable
+        in: query
+        name: sets_available
+        type: string
+      - description: title, dateUpdated, dateAdded, dateReleased or newEpisodeAdded
+        in: query
+        name: sort
+        type: string
+      - description: asc or desc
+        in: query
+        name: order
+        type: string
+      - description: Page, from 1
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/library.Result'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Get Library Items
+      tags:
+      - MediaServer
+  /api/mediaserver/library/refresh:
+    post:
+      description: Start loading the main media server's libraries into aura's cache
+        again. It runs in the background, use GET /api/mediaserver/library/refresh/stream
+        for its progress. A refresh that is already running is not started again.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/mediaserver.LibraryProgress'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Refresh Library
+      tags:
+      - MediaServer
+  /api/mediaserver/library/refresh/stream:
+    get:
+      description: Server-Sent Events stream of how far loading the main media server's
+        libraries has got. Sends the progress now on connect, then every time it changes.
+      produces:
+      - text/event-stream
+      responses: {}
+      security:
+      - SessionCookie: []
+      summary: Refresh Library - Stream Progress
       tags:
       - MediaServer
   /api/mediaserver/rate:
@@ -4135,19 +4507,52 @@ paths:
       - Mediux
   /api/mediux/sets/user:
     get:
-      consumes:
-      - application/json
-      description: Retrieve all item sets created by the specified user in Mediux.
-        This endpoint returns an array of item sets, including details such as the
-        set name, type (show, movie, or collection), and the items contained within
-        each set. This allows clients to display the user's custom collections and
-        preferences within the Mediux ecosystem in the UI.
+      description: A creator's sets matched against one library, filtered, searched
+        and sorted like the user page, with one page of one tab and the counts of
+        every tab. The creator's sets are kept for 10 minutes.
       parameters:
-      - description: Username of the user whose sets are being retrieved
+      - description: MediUX username
         in: query
         name: username
         required: true
         type: string
+      - description: Library to match against. Without it, only the libraries are
+          listed
+        in: query
+        name: library
+        type: string
+      - description: showSets, movieSets, collectionSets or boxSets
+        in: query
+        name: tab
+        type: string
+      - description: Set title or the title of an item in the set
+        in: query
+        name: search
+        type: string
+      - description: inDB, notInDB or otherSetInDB
+        in: query
+        name: in_db
+        type: string
+      - description: title or dateLastUpdate
+        in: query
+        name: sort
+        type: string
+      - description: asc or desc
+        in: query
+        name: order
+        type: string
+      - description: Page, from 1
+        in: query
+        name: page
+        type: integer
+      - description: Sets per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Get the creator's sets from MediUX again
+        in: query
+        name: refresh
+        type: boolean
       produces:
       - application/json
       responses:
@@ -4158,7 +4563,7 @@ paths:
             - $ref: '#/definitions/httpx.JSONResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/routes_mediux.GetAllUserSets_Response'
+                  $ref: '#/definitions/creator.Result'
               type: object
         "401":
           description: Unauthorized (only when Auth.Enabled=true)
@@ -4171,9 +4576,9 @@ paths:
       security:
       - SessionCookie: []
       - ApiKeyAuth: []
-      summary: Get Mediux User Sets
+      summary: Get Creator Sets for a Library
       tags:
-      - Mediux
+      - MediUX
   /api/mediux/user:
     get:
       consumes:

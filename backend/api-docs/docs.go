@@ -1074,6 +1074,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/db/creators": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "The creators of the saved sets and how many of their sets are saved, the most saved sets first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Database"
+                ],
+                "summary": "Get Saved Set Creators",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/routes_db.getSavedSetCreatorsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/db/force-recheck": {
             "post": {
                 "security": [
@@ -1280,6 +1332,58 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/routes_db.ignoreItemResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/download/favorite-creators": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "For every item of the main media server without a saved set, adds the best set from the favorite creators to the Download Queue. Only runs when Automatically Download Images for New Items is on.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Download"
+                ],
+                "summary": "Download Sets from Favorite Creators for All Items",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/autodownload.FavoriteCreatorsResult"
                                         }
                                     }
                                 }
@@ -2909,7 +3013,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/mediaserver/library/items": {
+        "/api/mediaserver/library/item/related": {
             "get": {
                 "security": [
                     {
@@ -2919,45 +3023,80 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve items from a specific library section in the media server. This endpoint accepts query parameters to identify the library section and pagination options, and returns the items contained within that library section, allowing clients to display the media items available in the selected library section.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "The same item in the other libraries, and the items before and after it on the Home page with the same filters, search and sort. Read from aura's cache, not the media server.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "MediaServer"
                 ],
-                "summary": "Get Library Section Items",
+                "summary": "Get Related Library Items",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Library Section ID",
-                        "name": "section_id",
+                        "description": "Library of the item",
+                        "name": "item_library",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Library Section Title",
-                        "name": "section_title",
+                        "description": "Rating key of the item",
+                        "name": "rating_key",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Library Section Type",
-                        "name": "section_type",
-                        "in": "query",
-                        "required": true
+                        "description": "TMDB ID of the item",
+                        "name": "tmdb_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Home page: only these libraries",
+                        "name": "library",
+                        "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Start Index for Pagination",
-                        "name": "section_start_index",
-                        "in": "query",
-                        "required": true
+                        "description": "Home page: search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Home page: inDB or notInDB",
+                        "name": "in_db",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Home page: ignored filter",
+                        "name": "ignored",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Home page: hasSetsAvailable or noSetsAvailable",
+                        "name": "sets_available",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Home page: sort",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Home page: asc or desc",
+                        "name": "order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2972,7 +3111,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/routes_ms.GetLibrarySectionItems_Response"
+                                            "$ref": "#/definitions/routes_ms.GetRelatedLibraryItems_Response"
                                         }
                                     }
                                 }
@@ -2984,14 +3123,178 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/httpx.UnauthorizedResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/api/mediaserver/library/items": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "One page of the main media server's library, filtered, searched and sorted like the Home page. Read from aura's cache, not the media server.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Get Library Items",
+                "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Only these libraries",
+                        "name": "library",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search, like the search bar, e.g. matrix Y:1999:",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "inDB or notInDB",
+                        "name": "in_db",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ignored, not_ignored, always, until-set-available or until-new-set-available",
+                        "name": "ignored",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "hasSetsAvailable or noSetsAvailable",
+                        "name": "sets_available",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "title, dateUpdated, dateAdded, dateReleased or newEpisodeAdded",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc or desc",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page, from 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "per_page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httpx.JSONResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/library.Result"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
                         }
                     }
                 }
+            }
+        },
+        "/api/mediaserver/library/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Start loading the main media server's libraries into aura's cache again. It runs in the background, use GET /api/mediaserver/library/refresh/stream for its progress. A refresh that is already running is not started again.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Refresh Library",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/mediaserver.LibraryProgress"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mediaserver/library/refresh/stream": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Server-Sent Events stream of how far loading the main media server's libraries has got. Sends the progress now on connect, then every time it changes.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "MediaServer"
+                ],
+                "summary": "Refresh Library - Stream Progress",
+                "responses": {}
             }
         },
         "/api/mediaserver/rate": {
@@ -3474,24 +3777,75 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve all item sets created by the specified user in Mediux. This endpoint returns an array of item sets, including details such as the set name, type (show, movie, or collection), and the items contained within each set. This allows clients to display the user's custom collections and preferences within the Mediux ecosystem in the UI.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "A creator's sets matched against one library, filtered, searched and sorted like the user page, with one page of one tab and the counts of every tab. The creator's sets are kept for 10 minutes.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Mediux"
+                    "MediUX"
                 ],
-                "summary": "Get Mediux User Sets",
+                "summary": "Get Creator Sets for a Library",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Username of the user whose sets are being retrieved",
+                        "description": "MediUX username",
                         "name": "username",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Library to match against. Without it, only the libraries are listed",
+                        "name": "library",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "showSets, movieSets, collectionSets or boxSets",
+                        "name": "tab",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set title or the title of an item in the set",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "inDB, notInDB or otherSetInDB",
+                        "name": "in_db",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "title or dateLastUpdate",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc or desc",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page, from 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Sets per page",
+                        "name": "per_page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get the creator's sets from MediUX again",
+                        "name": "refresh",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3506,7 +3860,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/routes_mediux.GetAllUserSets_Response"
+                                            "$ref": "#/definitions/creator.Result"
                                         }
                                     }
                                 }
@@ -4229,6 +4583,23 @@ const docTemplate = `{
                 }
             }
         },
+        "autodownload.FavoriteCreatorsResult": {
+            "type": "object",
+            "properties": {
+                "checked": {
+                    "description": "Items without a saved set",
+                    "type": "integer"
+                },
+                "no_set": {
+                    "description": "Items none of the favorite creators have a set for",
+                    "type": "integer"
+                },
+                "queued": {
+                    "description": "Items a set was added to the Download Queue for",
+                    "type": "integer"
+                }
+            }
+        },
         "config.Config": {
             "type": "object",
             "properties": {
@@ -4515,6 +4886,14 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "check_for_new_media_items": {
+                    "description": "Schedule for adding the media server's newest items.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_JobSetting"
+                        }
+                    ]
+                },
                 "check_mediux_site_link": {
                     "description": "Schedule for checking MediUX site link availability.",
                     "allOf": [
@@ -4708,6 +5087,14 @@ const docTemplate = `{
                 },
                 "download_queue": {
                     "description": "Custom notification settings for download queue events.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_CustomNotification"
+                        }
+                    ]
+                },
+                "new_item_auto_download": {
+                    "description": "Custom notification settings for sets downloaded automatically from the favorite creators.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/config.Config_CustomNotification"
@@ -4920,6 +5307,10 @@ const docTemplate = `{
         "config.Config_UserPreferences": {
             "type": "object",
             "properties": {
+                "auto_download_new_items": {
+                    "description": "Whether images are downloaded automatically for new items, from the favorite creators.",
+                    "type": "boolean"
+                },
                 "default_add_to_db_only": {
                     "description": "Whether \"Add to Database Only\" is checked by default in the Download Modal.",
                     "type": "boolean"
@@ -4930,6 +5321,13 @@ const docTemplate = `{
                 },
                 "download_defaults": {
                     "description": "Image types selected by default in the Download Modal.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "favorite_creators": {
+                    "description": "MediUX usernames ranked best first, the first is rank 1.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4956,6 +5354,163 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "creator.Boxset": {
+            "type": "object",
+            "properties": {
+                "date_created": {
+                    "description": "Creation date",
+                    "type": "string"
+                },
+                "date_updated": {
+                    "description": "Last updated date",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Set ID",
+                    "type": "string"
+                },
+                "popularity": {
+                    "description": "Popularity score of the set",
+                    "type": "integer"
+                },
+                "popularity_global": {
+                    "description": "Global popularity score of the set",
+                    "type": "integer"
+                },
+                "set_ids": {
+                    "description": "IDs of sets (show, movie, collection) in this boxset",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "sets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SetRef"
+                    }
+                },
+                "title": {
+                    "description": "Set Title",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Set Type (movie, show, collection, boxset)",
+                    "type": "string"
+                },
+                "user_created": {
+                    "description": "User who created the set",
+                    "type": "string"
+                }
+            }
+        },
+        "creator.LibrarySummary": {
+            "type": "object",
+            "properties": {
+                "sets": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "creator.Result": {
+            "type": "object",
+            "properties": {
+                "boxsets": {
+                    "description": "The page, for the boxsets tab",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/creator.Boxset"
+                    }
+                },
+                "counts": {
+                    "description": "Sets of each type matching the library and filters",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/creator.TabCounts"
+                        }
+                    ]
+                },
+                "included_items": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.IncludedItem"
+                    }
+                },
+                "libraries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/creator.LibrarySummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "sets": {
+                    "description": "The page, for the set tabs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SetRef"
+                    }
+                },
+                "tab": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                },
+                "totals": {
+                    "description": "Sets of each type the creator has",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/creator.TabCounts"
+                        }
+                    ]
+                }
+            }
+        },
+        "creator.TabCounts": {
+            "type": "object",
+            "properties": {
+                "box_sets": {
+                    "type": "integer"
+                },
+                "collection_sets": {
+                    "type": "integer"
+                },
+                "movie_sets": {
+                    "type": "integer"
+                },
+                "show_sets": {
+                    "type": "integer"
+                }
+            }
+        },
+        "database.CreatorSetCount": {
+            "type": "object",
+            "properties": {
+                "sets": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -5139,6 +5694,114 @@ const docTemplate = `{
                 }
             }
         },
+        "library.Item": {
+            "type": "object",
+            "properties": {
+                "added_at": {
+                    "type": "integer"
+                },
+                "db_saved_sets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DBSavedSet"
+                    }
+                },
+                "edition": {
+                    "type": "string"
+                },
+                "has_mediux_sets": {
+                    "type": "boolean"
+                },
+                "ignored_in_db": {
+                    "type": "boolean"
+                },
+                "ignored_mode": {
+                    "type": "string"
+                },
+                "latest_episode_added_at": {
+                    "type": "integer"
+                },
+                "library_title": {
+                    "type": "string"
+                },
+                "rating_key": {
+                    "type": "string"
+                },
+                "released_at": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "tmdb_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "library.LibrarySummary": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "library.Result": {
+            "type": "object",
+            "properties": {
+                "has_episode_added_at": {
+                    "description": "Whether the \"Latest Episode Added\" sort is useful",
+                    "type": "boolean"
+                },
+                "has_updated_at": {
+                    "description": "Whether the \"Date Updated\" sort is useful",
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/library.Item"
+                    }
+                },
+                "last_full_update": {
+                    "type": "integer"
+                },
+                "libraries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/library.LibrarySummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "Items on every page",
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "logging.LogAction": {
             "type": "object",
             "properties": {
@@ -5284,6 +5947,48 @@ const docTemplate = `{
                 },
                 "response_bytes": {
                     "description": "Number of bytes written in the response (middleware can capture)",
+                    "type": "integer"
+                }
+            }
+        },
+        "mediaserver.LibraryLoad": {
+            "type": "object",
+            "properties": {
+                "done": {
+                    "type": "boolean"
+                },
+                "loaded": {
+                    "description": "Items loaded so far",
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total": {
+                    "description": "Items in the library, its size last time until the media server says",
+                    "type": "integer"
+                }
+            }
+        },
+        "mediaserver.LibraryProgress": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "boolean"
+                },
+                "finished_at": {
+                    "type": "integer"
+                },
+                "libraries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mediaserver.LibraryLoad"
+                    }
+                },
+                "running": {
+                    "type": "boolean"
+                },
+                "started_at": {
                     "type": "integer"
                 }
             }
@@ -5476,53 +6181,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.BoxsetRef": {
-            "type": "object",
-            "properties": {
-                "date_created": {
-                    "description": "Creation date",
-                    "type": "string"
-                },
-                "date_updated": {
-                    "description": "Last updated date",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Set ID",
-                    "type": "string"
-                },
-                "popularity": {
-                    "description": "Popularity score of the set",
-                    "type": "integer"
-                },
-                "popularity_global": {
-                    "description": "Global popularity score of the set",
-                    "type": "integer"
-                },
-                "set_ids": {
-                    "description": "IDs of sets (show, movie, collection) in this boxset",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "title": {
-                    "description": "Set Title",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "Set Type (movie, show, collection, boxset)",
-                    "type": "string"
-                },
-                "user_created": {
-                    "description": "User who created the set",
-                    "type": "string"
-                }
-            }
-        },
         "models.CollectionItem": {
             "type": "object",
             "properties": {
@@ -5553,46 +6211,6 @@ const docTemplate = `{
                 },
                 "tmdb_id": {
                     "type": "string"
-                }
-            }
-        },
-        "models.CreatorSetsResponse": {
-            "type": "object",
-            "properties": {
-                "boxsets": {
-                    "description": "List of boxsets",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.BoxsetRef"
-                    }
-                },
-                "collection_sets": {
-                    "description": "List of collection sets",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.SetRef"
-                    }
-                },
-                "included_items": {
-                    "description": "Map of included items by TMDB ID",
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/models.IncludedItem"
-                    }
-                },
-                "movie_sets": {
-                    "description": "List of movie sets",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.SetRef"
-                    }
-                },
-                "show_sets": {
-                    "description": "List of show sets",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.SetRef"
-                    }
                 }
             }
         },
@@ -5666,6 +6284,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.DBPosterSetDetail"
                     }
+                },
+                "source": {
+                    "description": "What added it to the Download Queue, empty when it was the user",
+                    "type": "string"
                 }
             }
         },
@@ -6516,6 +7138,17 @@ const docTemplate = `{
                 }
             }
         },
+        "routes_db.getSavedSetCreatorsResponse": {
+            "type": "object",
+            "properties": {
+                "creators": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/database.CreatorSetCount"
+                    }
+                }
+            }
+        },
         "routes_db.ignoreItemResponse": {
             "type": "object",
             "properties": {
@@ -6795,14 +7428,6 @@ const docTemplate = `{
                 }
             }
         },
-        "routes_mediux.GetAllUserSets_Response": {
-            "type": "object",
-            "properties": {
-                "sets": {
-                    "$ref": "#/definitions/models.CreatorSetsResponse"
-                }
-            }
-        },
         "routes_mediux.GetSetByID_Response": {
             "type": "object",
             "properties": {
@@ -6865,14 +7490,6 @@ const docTemplate = `{
                 }
             }
         },
-        "routes_ms.GetLibrarySectionItems_Response": {
-            "type": "object",
-            "properties": {
-                "library_section": {
-                    "$ref": "#/definitions/models.LibrarySection"
-                }
-            }
-        },
         "routes_ms.GetLibrarySections_Response": {
             "type": "object",
             "properties": {
@@ -6912,6 +7529,34 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.CollectionItem"
                     }
+                }
+            }
+        },
+        "routes_ms.GetRelatedLibraryItems_Response": {
+            "type": "object",
+            "properties": {
+                "next": {
+                    "description": "The item after it on the Home page",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/library.Item"
+                        }
+                    ]
+                },
+                "other_libraries": {
+                    "description": "The same item in other libraries",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MediaItem"
+                    }
+                },
+                "previous": {
+                    "description": "The item before it on the Home page",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/library.Item"
+                        }
+                    ]
                 }
             }
         },

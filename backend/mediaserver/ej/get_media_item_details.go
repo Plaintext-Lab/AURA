@@ -187,7 +187,7 @@ func fetchSeasonsForShow(ctx context.Context, msConfig config.Config_MediaServer
 		logAction.SetError(logging.Error_BaseUrlParsing(err))
 		return *logAction.Error
 	}
-	u.Path = path.Join("Shows", itemInfo.RatingKey, "Seasons")
+	u.Path = path.Join(u.Path, "Shows", itemInfo.RatingKey, "Seasons")
 	query := u.Query()
 	query.Set("Fields", "BasicSyncInfo,CanDelete,CanDownload,PrimaryImageAspectRatio,Overview")
 	u.RawQuery = query.Encode()
