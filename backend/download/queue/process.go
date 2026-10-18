@@ -30,7 +30,6 @@ func ProcessNextQueueJob(ctx context.Context) (processed bool) {
 		return false
 	}
 	if !found {
-		ld.Log()
 		return false
 	}
 
