@@ -9,6 +9,7 @@ import type { DownloadHistoryEntry } from "@/types/database/download-queue";
 export interface GetDownloadHistory_Response {
   entries: DownloadHistoryEntry[];
   total: number;
+  max_retries: number; // How many times a failed download is retried automatically
 }
 
 export const GetDownloadHistory = async (limit = -1, offset = 0): Promise<APIResponse<GetDownloadHistory_Response>> => {

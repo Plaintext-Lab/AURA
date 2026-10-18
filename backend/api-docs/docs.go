@@ -1423,7 +1423,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve the failed downloads (one per poster set), with their warning/error status and per-image failure details.",
+                "description": "Retrieve the failed downloads (one per poster set), with their warning/error status, per-image failure details, and how many times each was retried. A failed set is retried automatically after 5 minutes, 30 minutes and 2 hours.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5819,8 +5819,16 @@ const docTemplate = `{
                 "media_item_year": {
                     "type": "integer"
                 },
+                "next_retry_at": {
+                    "description": "When it's retried automatically, nil when it isn't",
+                    "type": "string"
+                },
                 "rating_key": {
                     "type": "string"
+                },
+                "retry_count": {
+                    "description": "Times the set was retried, automatically or with Retry",
+                    "type": "integer"
                 },
                 "selected_types": {
                     "$ref": "#/definitions/models.SelectedTypes"
@@ -7529,6 +7537,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/database.DownloadHistoryEntry"
                     }
+                },
+                "max_retries": {
+                    "description": "How many times a failed download is retried automatically",
+                    "type": "integer"
                 },
                 "total": {
                     "type": "integer"

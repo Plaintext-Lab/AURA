@@ -36,24 +36,30 @@ const DownloadQueuePage: React.FC = () => {
   const [historyEntries, setHistoryEntries] = useState<DownloadHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<APIResponse<unknown> | null>(null);
+  const [maxRetries, setMaxRetries] = useState(0);
 
   const setFailedCount = useFailedDownloadsStore((state) => state.setFailedCount);
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      setHistoryLoading(true);
-      const response = await GetDownloadHistory();
-      if (response.status === "error") {
-        setHistoryError(response);
-        return;
+  // A quiet fetch updates the list without the loader, for changes while the page is open
+  const fetchHistory = useCallback(
+    async (quiet = false) => {
+      try {
+        if (!quiet) setHistoryLoading(true);
+        const response = await GetDownloadHistory();
+        if (response.status === "error") {
+          setHistoryError(response);
+          return;
+        }
+        setHistoryEntries(response.data?.entries || []);
+        setMaxRetries(response.data?.max_retries ?? 0);
+        setHistoryError(null);
+        setFailedCount(response.data?.total ?? response.data?.entries?.length ?? 0);
+      } finally {
+        setHistoryLoading(false);
       }
-      setHistoryEntries(response.data?.entries || []);
-      setHistoryError(null);
-      setFailedCount(response.data?.total ?? response.data?.entries?.length ?? 0);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [setFailedCount]);
+    },
+    [setFailedCount]
+  );
 
   // Initial queue load (SSE also sends a snapshot on connect, but this avoids a loading flash on slow connections)
   const fetchQueueEntries = useCallback(async () => {
@@ -89,6 +95,8 @@ const DownloadQueuePage: React.FC = () => {
         // The snapshot query can race a real add, so the job may already be
         // in state by the time this event arrives - don't append a duplicate.
         setJobs((prev) => (prev.some((j) => j.id === job.id) ? prev : [...prev, job]));
+        // A retried failure counts its retry
+        fetchHistory(true);
       },
       onJobStarted: (job) => {
         setProgress(null);
@@ -106,7 +114,7 @@ const DownloadQueuePage: React.FC = () => {
         setProgress((prev) => (prev?.job_id === job.id ? null : prev));
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
         // A job finishing means a new history entry may exist.
-        fetchHistory();
+        fetchHistory(true);
       },
       onJobRemoved: (job) => {
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
@@ -237,7 +245,13 @@ const DownloadQueuePage: React.FC = () => {
               ) : (
                 <ResponsiveGrid size="larger">
                   {historyEntries.map((entry) => (
-                    <DownloadEntryCard key={entry.id} mode="history" entry={entry} fetchHistory={fetchHistory} />
+                    <DownloadEntryCard
+                      key={entry.id}
+                      mode="history"
+                      entry={entry}
+                      maxRetries={maxRetries}
+                      fetchHistory={() => fetchHistory(true)}
+                    />
                   ))}
                 </ResponsiveGrid>
               )}

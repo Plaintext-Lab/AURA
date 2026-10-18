@@ -10,13 +10,14 @@ import (
 )
 
 type GetDownloadHistory_Response struct {
-	Entries []database.DownloadHistoryEntry `json:"entries"`
-	Total   int                             `json:"total"`
+	Entries    []database.DownloadHistoryEntry `json:"entries"`
+	Total      int                             `json:"total"`
+	MaxRetries int                             `json:"max_retries"` // How many times a failed download is retried automatically
 }
 
 // GetDownloadHistory godoc
 // @Summary      Download History - Get Entries
-// @Description  Retrieve the failed downloads (one per poster set), with their warning/error status and per-image failure details.
+// @Description  Retrieve the failed downloads (one per poster set), with their warning/error status, per-image failure details, and how many times each was retried. A failed set is retried automatically after 5 minutes, 30 minutes and 2 hours.
 // @Tags         Download
 // @Accept       json
 // @Produce      json
@@ -57,5 +58,6 @@ func GetDownloadHistory(w http.ResponseWriter, r *http.Request) {
 
 	response.Entries = entries
 	response.Total = total
+	response.MaxRetries = len(database.DownloadRetryDelays)
 	httpx.SendResponse(w, ld, response)
 }

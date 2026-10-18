@@ -11,6 +11,9 @@ import (
 // Set in tests
 var (
 	getHistoryEntry = database.GetDownloadHistoryEntry
+	getDueRetries   = database.GetDueDownloadRetries
+	markRetried     = database.MarkDownloadHistoryRetried
+	stopRetries     = database.StopDownloadRetries
 	getSavedSets    = database.GetAllSavedSets
 	getQueueJobs    = database.GetAllDownloadQueueJobs
 	addToQueue      = AddToQueue
@@ -29,23 +32,63 @@ func RetryFailedDownload(ctx context.Context, historyID int64) (title string, Er
 		logAction.SetError("This failed download no longer exists", "Refresh the page", map[string]any{"id": historyID})
 		return "", *logAction.Error
 	}
-	title = entry.MediaItemTitle
+
+	alreadyQueued, Err := retryEntry(ctx, entry)
+	if alreadyQueued {
+		logAction.SetError(fmt.Sprintf("%s is already in the Download Queue", entry.MediaItemTitle), "Wait for it to finish", map[string]any{"id": historyID})
+		return entry.MediaItemTitle, *logAction.Error
+	}
+	return entry.MediaItemTitle, Err
+}
+
+// retryDueDownloads adds the failed downloads due for an automatic retry back to the Download Queue
+func retryDueDownloads(ctx context.Context) {
+	ctx, ld := logging.CreateLoggingContext(ctx, "Download Queue Worker")
+	logAction := ld.AddAction("Retry Failed Downloads", logging.LevelInfo)
+	ctx = logging.WithCurrentAction(ctx, logAction)
+
+	entries, Err := getDueRetries(ctx)
+	if Err.Message == "" && len(entries) == 0 {
+		return
+	}
+	defer ld.Log()
+	defer logAction.Complete()
+
+	for _, entry := range entries {
+		key := fmt.Sprintf("%s (set %s)", entry.MediaItemTitle, entry.SetID)
+		alreadyQueued, Err := retryEntry(ctx, entry)
+		switch {
+		case alreadyQueued:
+			// Tried again on the next check
+			logAction.AppendResult(key, "already in the Download Queue")
+		case Err.Message != "":
+			// It can't be retried, like a set that isn't saved anymore
+			_ = stopRetries(ctx, entry.ID)
+		default:
+			logAction.AppendResult(key, fmt.Sprintf("retry %d of %d", entry.RetryCount+1, len(database.DownloadRetryDelays)))
+		}
+	}
+}
+
+// retryEntry queues the failed set again and counts the retry, alreadyQueued is whether the item is waiting in the Download Queue
+func retryEntry(ctx context.Context, entry database.DownloadHistoryEntry) (alreadyQueued bool, Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf("Retry %s", entry.MediaItemTitle), logging.LevelDebug)
+	defer logAction.Complete()
 
 	// A failure from before a set was downloaded has nothing to retry
 	if entry.SetID == "" {
-		logAction.SetError(fmt.Sprintf("%s has no set to retry", title), "Download a set from the item's page", map[string]any{"id": historyID})
-		return title, *logAction.Error
+		logAction.SetError(fmt.Sprintf("%s has no set to retry", entry.MediaItemTitle), "Download a set from the item's page", map[string]any{"id": entry.ID})
+		return false, *logAction.Error
 	}
 
 	jobs, Err := getQueueJobs(ctx)
 	if Err.Message != "" {
-		return title, Err
+		return false, Err
 	}
 	for _, job := range jobs {
 		if job.TMDB_ID == entry.TMDB_ID && job.LibraryTitle == entry.LibraryTitle && job.Edition == entry.Edition &&
 			(job.Status == "pending" || job.Status == "processing") {
-			logAction.SetError(fmt.Sprintf("%s is already in the Download Queue", title), "Wait for it to finish", map[string]any{"job_id": job.ID})
-			return title, *logAction.Error
+			return true, logging.LogErrorInfo{}
 		}
 	}
 
@@ -56,7 +99,7 @@ func RetryFailedDownload(ctx context.Context, historyID int64) (title string, Er
 		ItemsPerPage:     -1,
 	})
 	if Err.Message != "" {
-		return title, Err
+		return false, Err
 	}
 	for _, item := range saved.Items {
 		if item.MediaItem.Edition != entry.Edition {
@@ -69,13 +112,16 @@ func RetryFailedDownload(ctx context.Context, historyID int64) (title string, Er
 			// Only the failed set, the item's other saved sets downloaded fine
 			Err = addToQueue(ctx, models.DBSavedItem{MediaItem: item.MediaItem, PosterSets: []models.DBPosterSetDetail{set}})
 			if Err.Message != "" {
-				return title, Err
+				return false, Err
 			}
-			logAction.AppendResult("queued", fmt.Sprintf("%s set %s", title, set.ID))
-			return title, logging.LogErrorInfo{}
+			if Err = markRetried(ctx, entry.ID); Err.Message != "" {
+				return false, Err
+			}
+			logAction.AppendResult("queued", fmt.Sprintf("%s set %s", entry.MediaItemTitle, set.ID))
+			return false, logging.LogErrorInfo{}
 		}
 	}
 
-	logAction.SetError(fmt.Sprintf("Set %s isn't saved for %s", entry.SetID, title), "Download the set again from the item's page", map[string]any{"id": historyID})
-	return title, *logAction.Error
+	logAction.SetError(fmt.Sprintf("Set %s isn't saved for %s", entry.SetID, entry.MediaItemTitle), "Download the set again from the item's page", map[string]any{"id": entry.ID})
+	return false, *logAction.Error
 }

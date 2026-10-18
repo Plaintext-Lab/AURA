@@ -45,6 +45,7 @@ func StartWorker(ctx context.Context) {
 
 		// Jobs that were processing when aura last stopped run again, then the queue starts
 		resetInterruptedJobs(ctx)
+		retryDueDownloads(ctx)
 		drainQueue(ctx)
 
 		for {
@@ -55,6 +56,8 @@ func StartWorker(ctx context.Context) {
 				return
 			case <-wakeCh:
 			case <-ticker.C:
+				// Failed downloads are retried automatically after a wait
+				retryDueDownloads(ctx)
 			}
 			drainQueue(ctx)
 		}

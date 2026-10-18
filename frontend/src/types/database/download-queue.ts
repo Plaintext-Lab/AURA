@@ -66,6 +66,8 @@ export interface DownloadHistoryEntry {
   images_failed: number;
   status: DownloadHistoryStatus;
   failed_images: ImageDownloadResult[];
+  retry_count: number; // Times the set was retried, automatically or with Retry
+  next_retry_at: string | null; // When it's retried automatically, null when it isn't
   created_at: string;
   rating_key?: string;
 }

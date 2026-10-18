@@ -406,6 +406,8 @@ CREATE TABLE DownloadHistory (
     images_failed INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL CHECK (status IN ('success','warning','error')),
     failed_images TEXT NOT NULL DEFAULT '[]',
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    next_retry_at DATETIME,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_downloadhistory_status_created ON DownloadHistory(status, created_at);

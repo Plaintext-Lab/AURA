@@ -27,8 +27,21 @@ type DownloadHistoryEntry struct {
 	ImagesFailed    int                          `json:"images_failed"`
 	Status          string                       `json:"status"`
 	FailedImages    []models.ImageDownloadResult `json:"failed_images"`
+	RetryCount      int                          `json:"retry_count"`   // Times the set was retried, automatically or with Retry
+	NextRetryAt     *time.Time                   `json:"next_retry_at"` // When it's retried automatically, nil when it isn't
 	CreatedAt       time.Time                    `json:"created_at"`
 	RatingKey       string                       `json:"rating_key,omitempty"`
+}
+
+// DownloadRetryDelays is how long a failed download waits before each automatic retry, it's retried this many times
+var DownloadRetryDelays = []time.Duration{5 * time.Minute, 30 * time.Minute, 2 * time.Hour}
+
+// nextRetryModifier is the SQLite datetime modifier for the next automatic retry, nil when there's none left
+func nextRetryModifier(setID string, retryCount int) any {
+	if setID == "" || retryCount >= len(DownloadRetryDelays) {
+		return nil
+	}
+	return fmt.Sprintf("+%d seconds", int(DownloadRetryDelays[retryCount].Seconds()))
 }
 
 func (s *SQliteDB) InsertDownloadHistoryEntry(ctx context.Context, entry DownloadHistoryEntry) (Err logging.LogErrorInfo) {
@@ -77,10 +90,13 @@ func (s *SQliteDB) InsertDownloadHistoryEntry(ctx context.Context, entry Downloa
 
 	// Same media item + edition + set overwrites its existing entry instead of piling up duplicates.
 	var existingID int64
+	var retryCount int
 	findErr := tx.QueryRowContext(ctx, `
-SELECT id FROM DownloadHistory
+SELECT id, retry_count FROM DownloadHistory
 WHERE tmdb_id = ? AND library_title = ? AND edition = ? AND set_id = ?;
-`, entry.TMDB_ID, entry.LibraryTitle, entry.Edition, entry.SetID).Scan(&existingID)
+`, entry.TMDB_ID, entry.LibraryTitle, entry.Edition, entry.SetID).Scan(&existingID, &retryCount)
+	// The failure is retried automatically after a wait, while it has retries left
+	nextRetry := nextRetryModifier(entry.SetID, retryCount)
 
 	if findErr != nil && findErr != sql.ErrNoRows {
 		logAction.SetError("DB: SELECT existing DownloadHistory entry failed", findErr.Error(), map[string]any{"error": findErr.Error()})
@@ -91,11 +107,12 @@ WHERE tmdb_id = ? AND library_title = ? AND edition = ? AND set_id = ?;
 		_, err = tx.ExecContext(ctx, `
 UPDATE DownloadHistory
 SET media_item_title = ?, media_item_year = ?, set_title = ?, set_creator = ?, selected_types = ?, warning_count = ?,
-    images_succeeded = ?, images_failed = ?, status = ?, failed_images = ?, created_at = CURRENT_TIMESTAMP
+    images_succeeded = ?, images_failed = ?, status = ?, failed_images = ?, created_at = CURRENT_TIMESTAMP,
+    next_retry_at = CASE WHEN ? IS NULL THEN NULL ELSE datetime('now', ?) END
 WHERE id = ?;
 `,
 			entry.MediaItemTitle, entry.MediaItemYear, entry.SetTitle, entry.SetCreator, string(selectedTypesJSON), entry.WarningCount,
-			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON), existingID,
+			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON), nextRetry, nextRetry, existingID,
 		)
 		if err != nil {
 			logAction.SetError("DB: UPDATE DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
@@ -106,13 +123,13 @@ WHERE id = ?;
 INSERT INTO DownloadHistory (
   tmdb_id, library_title, edition, media_item_title, media_item_year,
   set_id, set_title, set_creator, selected_types, warning_count,
-  images_succeeded, images_failed, status, failed_images
+  images_succeeded, images_failed, status, failed_images, next_retry_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN NULL ELSE datetime('now', ?) END);
 `,
 			entry.TMDB_ID, entry.LibraryTitle, entry.Edition, entry.MediaItemTitle, entry.MediaItemYear,
 			entry.SetID, entry.SetTitle, entry.SetCreator, string(selectedTypesJSON), entry.WarningCount,
-			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON),
+			entry.ImagesSucceeded, entry.ImagesFailed, status, string(failedImagesJSON), nextRetry, nextRetry,
 		)
 		if err != nil {
 			logAction.SetError("DB: INSERT DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
@@ -197,21 +214,87 @@ func (s *SQliteDB) GetDownloadHistoryEntry(ctx context.Context, id int64) (entry
 
 const downloadHistoryColumns = `id, tmdb_id, library_title, edition, media_item_title, media_item_year,
        set_id, set_title, set_creator, selected_types, warning_count,
-       images_succeeded, images_failed, status, failed_images, created_at`
+       images_succeeded, images_failed, status, failed_images, retry_count, next_retry_at, created_at`
 
 // scanDownloadHistoryEntry reads one row of downloadHistoryColumns
 func scanDownloadHistoryEntry(row interface{ Scan(dest ...any) error }) (entry DownloadHistoryEntry, err error) {
 	var failedImagesJSON, selectedTypesJSON string
+	var nextRetryAt sql.NullTime
 	if err := row.Scan(
 		&entry.ID, &entry.TMDB_ID, &entry.LibraryTitle, &entry.Edition, &entry.MediaItemTitle, &entry.MediaItemYear,
 		&entry.SetID, &entry.SetTitle, &entry.SetCreator, &selectedTypesJSON, &entry.WarningCount,
-		&entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.CreatedAt,
+		&entry.ImagesSucceeded, &entry.ImagesFailed, &entry.Status, &failedImagesJSON, &entry.RetryCount, &nextRetryAt, &entry.CreatedAt,
 	); err != nil {
 		return entry, err
+	}
+	if nextRetryAt.Valid {
+		entry.NextRetryAt = &nextRetryAt.Time
 	}
 	_ = json.Unmarshal([]byte(failedImagesJSON), &entry.FailedImages)
 	_ = json.Unmarshal([]byte(selectedTypesJSON), &entry.SelectedTypes)
 	return entry, nil
+}
+
+// GetDueDownloadRetries returns the failed downloads due to be retried automatically
+func (s *SQliteDB) GetDueDownloadRetries(ctx context.Context) (entries []DownloadHistoryEntry, Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, "Get Due Download Retries", logging.LevelTrace)
+	defer logAction.Complete()
+
+	entries = []DownloadHistoryEntry{}
+	if s == nil || s.conn == nil {
+		logAction.SetError("DB: connection is nil", "", map[string]any{})
+		return entries, *logAction.Error
+	}
+
+	rows, err := s.conn.QueryContext(ctx, `SELECT `+downloadHistoryColumns+`
+FROM DownloadHistory
+WHERE set_id != '' AND next_retry_at IS NOT NULL AND next_retry_at <= datetime('now')
+ORDER BY next_retry_at ASC;`)
+	if err != nil {
+		logAction.SetError("DB: SELECT due DownloadHistory retries failed", err.Error(), map[string]any{"error": err.Error()})
+		return entries, *logAction.Error
+	}
+	defer rows.Close()
+	for rows.Next() {
+		entry, err := scanDownloadHistoryEntry(rows)
+		if err != nil {
+			logAction.SetError("DB: scan DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
+			return entries, *logAction.Error
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		logAction.SetError("DB: iterate DownloadHistory rows failed", err.Error(), map[string]any{"error": err.Error()})
+		return entries, *logAction.Error
+	}
+	return entries, logging.LogErrorInfo{}
+}
+
+// MarkDownloadHistoryRetried counts a retry of a failed download, it isn't retried automatically until it fails again
+func (s *SQliteDB) MarkDownloadHistoryRetried(ctx context.Context, id int64) (Err logging.LogErrorInfo) {
+	return s.execDownloadHistory(ctx, fmt.Sprintf("Mark Download History Entry %d Retried", id),
+		`UPDATE DownloadHistory SET retry_count = retry_count + 1, next_retry_at = NULL WHERE id = ?;`, id)
+}
+
+// StopDownloadRetries stops the automatic retries of a failed download that can't be retried
+func (s *SQliteDB) StopDownloadRetries(ctx context.Context, id int64) (Err logging.LogErrorInfo) {
+	return s.execDownloadHistory(ctx, fmt.Sprintf("Stop Download History Entry %d Retries", id),
+		`UPDATE DownloadHistory SET next_retry_at = NULL WHERE id = ?;`, id)
+}
+
+func (s *SQliteDB) execDownloadHistory(ctx context.Context, name, query string, args ...any) (Err logging.LogErrorInfo) {
+	ctx, logAction := logging.AddSubActionToContext(ctx, name, logging.LevelDebug)
+	defer logAction.Complete()
+
+	if s == nil || s.conn == nil {
+		logAction.SetError("DB: connection is nil", "", map[string]any{})
+		return *logAction.Error
+	}
+	if _, err := s.conn.ExecContext(ctx, query, args...); err != nil {
+		logAction.SetError("DB: UPDATE DownloadHistory failed", err.Error(), map[string]any{"error": err.Error()})
+		return *logAction.Error
+	}
+	return logging.LogErrorInfo{}
 }
 
 func (s *SQliteDB) DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo) {

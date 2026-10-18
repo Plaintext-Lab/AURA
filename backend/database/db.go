@@ -10,7 +10,7 @@ import (
 	"errors"
 )
 
-const LATEST_DB_VERSION = 10
+const LATEST_DB_VERSION = 11
 
 var Client DB
 
@@ -161,6 +161,15 @@ type DB interface {
 
 	// Get a single Download History entry by ID
 	GetDownloadHistoryEntry(ctx context.Context, id int64) (entry DownloadHistoryEntry, found bool, Err logging.LogErrorInfo)
+
+	// Get the failed downloads due to be retried automatically
+	GetDueDownloadRetries(ctx context.Context) (entries []DownloadHistoryEntry, Err logging.LogErrorInfo)
+
+	// Count a retry of a failed download
+	MarkDownloadHistoryRetried(ctx context.Context, id int64) (Err logging.LogErrorInfo)
+
+	// Stop the automatic retries of a failed download
+	StopDownloadRetries(ctx context.Context, id int64) (Err logging.LogErrorInfo)
 
 	// Delete a single Download History entry by ID
 	DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo)
@@ -588,6 +597,27 @@ func GetDownloadHistoryEntry(ctx context.Context, id int64) (entry DownloadHisto
 		return DownloadHistoryEntry{}, false, logging.Error_DBClientNotInitialized()
 	}
 	return Client.GetDownloadHistoryEntry(ctx, id)
+}
+
+func GetDueDownloadRetries(ctx context.Context) (entries []DownloadHistoryEntry, Err logging.LogErrorInfo) {
+	if Client == nil {
+		return []DownloadHistoryEntry{}, logging.Error_DBClientNotInitialized()
+	}
+	return Client.GetDueDownloadRetries(ctx)
+}
+
+func MarkDownloadHistoryRetried(ctx context.Context, id int64) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.MarkDownloadHistoryRetried(ctx, id)
+}
+
+func StopDownloadRetries(ctx context.Context, id int64) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.StopDownloadRetries(ctx, id)
 }
 
 func DeleteDownloadHistoryEntry(ctx context.Context, id int64) (Err logging.LogErrorInfo) {

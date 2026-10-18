@@ -45,6 +45,7 @@ type DownloadEntryCardProps =
   | {
       mode: "history";
       entry: DownloadHistoryEntry;
+      maxRetries: number;
       fetchHistory?: () => Promise<void>;
     };
 
@@ -88,6 +89,23 @@ const SetDetails: React.FC<{ title: string; id: string; creator: string }> = ({ 
     </div>
   </div>
 );
+
+// retryStatus says how many times a failure was retried, and when it's retried next
+const retryStatus = (entry: DownloadHistoryEntry, maxRetries: number) => {
+  if (!entry.set_id) return "";
+  if (entry.next_retry_at) {
+    const next = new Date(entry.next_retry_at);
+    const time = next.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const day =
+      next.toDateString() === new Date().toDateString() ? time : `${next.toLocaleDateString("en-US")} at ${time}`;
+    return `Retry ${entry.retry_count + 1} of ${maxRetries} at ${day}`;
+  }
+  if (entry.retry_count >= maxRetries) {
+    return `Retried ${entry.retry_count} ${entry.retry_count === 1 ? "time" : "times"}, no more automatic retries`;
+  }
+  if (entry.retry_count > 0) return `Retried ${entry.retry_count} of ${maxRetries} times`;
+  return "";
+};
 
 const hasSelectedTypes = (selected: DBPosterSetDetail["selected_types"] | undefined) =>
   !!selected &&
@@ -161,6 +179,7 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
         toast.error(`Error retrying download: ${response.error?.message || "Unknown error occurred."}`);
       } else {
         toast.success(response.data?.result || "Added to the Download Queue.");
+        if (props.fetchHistory) await props.fetchHistory();
       }
     } catch (error) {
       toast.error(`Error retrying download: ${error instanceof Error ? error.message : "Unknown error occurred."}`);
@@ -336,6 +355,13 @@ const DownloadEntryCard: React.FC<DownloadEntryCardProps> = (props) => {
                 </Badge>
               )}
             </div>
+
+            {retryStatus(props.entry, props.maxRetries) && (
+              <p className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+                <RotateCw className="h-3 w-3 shrink-0" />
+                {retryStatus(props.entry, props.maxRetries)}
+              </p>
+            )}
 
             {props.entry.failed_images.length > 0 && (
               <Accordion type="single" collapsible className="mt-3">
