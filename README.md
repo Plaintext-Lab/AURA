@@ -64,7 +64,9 @@ To get started with aura:
 
 If aura is useful to you, you can support its development:
 
-- ☕ [Buy me a coffee](https://buymeacoffee.com/xmoosex)
+<a href="https://buymeacoffee.com/xmoosex" target="_blank">
+    <img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?style=for-the-badge&amp;logo=buy-me-a-coffee&amp;logoColor=000000">
+</a>
 
 ---
 

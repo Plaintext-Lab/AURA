@@ -11,7 +11,7 @@ permalink: /
 [![Version](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mediux-team/aura/master/version.json)](https://github.com/mediux-team/aura/pkgs/container/aura)
 [![Build](https://img.shields.io/github/actions/workflow/status/mediux-team/aura/aura.yml?label=Latest%20Build&logo=githubactions)](https://github.com/mediux-team/aura/actions/workflows/docker.yml)
 [![Beta Build](https://img.shields.io/github/actions/workflow/status/mediux-team/aura/aura-beta.yml?label=Beta%20Build&logo=githubactions)](https://github.com/mediux-team/aura/actions/workflows/docker.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/mmoosem13/aura?label=Docker%20Pulls&logo=docker)](https://github.com/mediux-team/aura/pkgs/container/aura)
+[![Docker Pulls](https://img.shields.io/docker/pulls/mediux/aura?label=Docker%20Pulls&logo=docker)](https://hub.docker.com/r/mediux/aura/tags)
 ![GHCR](https://img.shields.io/badge/dynamic/json?label=GitHub%20Pulls&logo=Github&url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fmediux-team%2Faura%2Faura&query=downloadCount)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/xmoosex)
 
@@ -50,13 +50,14 @@ Series being processed and the results in Plex
 To get started with aura:
 
 1. Install using Docker or docker-compose.
-2. Configure your `config.yaml` file. You can use [configuration guide](/config.md) as a reference.
-3. Visit the web UI at `http://localhost:3000`.
+2. Visit the web UI at `http://localhost:3000`.
+3. Configure the application during the onboarding setup.
 4. Browse your media server's contents.
 5. Choose and apply MediUX image sets.
 6. Optionally save selections for automatic updates.
 
 > Visit the [Installation](installation) and [Usage](how-to-use) sections in the sidebar for detailed steps.
+> **Note:** In order to get an API token for testing, please join the Discord below. Once you have joined, make your way to repo-chats > mediux-team/aura. There is a pinned message that contains a shared token you can use for testing. Once the new MediUX site is live, you will be able to have your own token.
 
 ---
 
@@ -71,6 +72,11 @@ To get started with aura:
 
 If aura is useful to you, you can support its development:
 
-- ☕ [Buy me a coffee](https://buymeacoffee.com/xmoosex)
+<a href="https://buymeacoffee.com/xmoosex" target="_blank">
+    <img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?style=for-the-badge&amp;logo=buy-me-a-coffee&amp;logoColor=000000">
+</a>
 
 ---
+
+AI Disclaimer:
+While most of the code in this repository was written by hand, some of the PR's have been generated with the help of AI tools.
