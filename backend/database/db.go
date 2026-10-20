@@ -10,7 +10,7 @@ import (
 	"errors"
 )
 
-const LATEST_DB_VERSION = 13
+const LATEST_DB_VERSION = 14
 
 var Client DB
 
@@ -69,6 +69,9 @@ type DB interface {
 
 	// Check Media Item Exists
 	CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition string) (ignored bool, ignoredMode string, sets []models.DBSavedSet, logErr logging.LogErrorInfo)
+
+	// Line stored rows up with a scanned library's current title and ID
+	SyncLibraryRows(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo)
 
 	// Get All Media Items
 	GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo)
@@ -360,6 +363,13 @@ func CheckIfMediaItemExists(ctx context.Context, TMDB_ID, libraryTitle, edition 
 		return false, "", []models.DBSavedSet{}, logging.Error_DBClientNotInitialized()
 	}
 	return Client.CheckIfMediaItemExists(ctx, TMDB_ID, libraryTitle, edition)
+}
+
+func SyncLibraryRows(ctx context.Context, libraryTitle, libraryID string) (Err logging.LogErrorInfo) {
+	if Client == nil {
+		return logging.Error_DBClientNotInitialized()
+	}
+	return Client.SyncLibraryRows(ctx, libraryTitle, libraryID)
 }
 
 func GetAllMediaItems(ctx context.Context) (items []models.MediaItem, logErr logging.LogErrorInfo) {

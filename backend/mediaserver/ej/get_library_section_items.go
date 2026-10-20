@@ -100,7 +100,7 @@ func (e *EJ) getLibrarySectionItems(ctx context.Context, section models.LibraryS
 		// If Type is Boxset, then split them up
 		if ejItem.Type == "BoxSet" {
 			// Split the BoxSet into individual items
-			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, e.Config, ejItem.Name, ejItem.ID, section.Title, dbStates)
+			boxSetItems, boxSetErr := splitCollectionIntoIndividualItems(ctx, e.Config, ejItem.Name, ejItem.ID, section, dbStates)
 			if boxSetErr.Message != "" {
 				return nil, 0, 0, boxSetErr
 			}
@@ -127,6 +127,7 @@ func (e *EJ) getLibrarySectionItems(ctx context.Context, section models.LibraryS
 		item.Title = ejItem.Name
 		item.Year = ejItem.ProductionYear
 		item.LibraryTitle = section.Title
+		item.LibraryID = section.ID
 		if ejItem.ProviderIds.Tmdb != "" {
 			item.Guids = append(item.Guids, models.MediaItemGuid{Provider: "tmdb", ID: ejItem.ProviderIds.Tmdb})
 			item.Guids = append(item.Guids, models.MediaItemGuid{Provider: "tvdb", ID: ejItem.ProviderIds.Tvdb})
@@ -176,9 +177,9 @@ func (e *EJ) getLibrarySectionItems(ctx context.Context, section models.LibraryS
 	return items, totalSize, fetched, logging.LogErrorInfo{}
 }
 
-func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Config_MediaServer, collectionName, parentID, sectionTitle string, dbStates map[string]database.MediaItemDBState) (items []models.MediaItem, Err logging.LogErrorInfo) {
+func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Config_MediaServer, collectionName, parentID string, section models.LibrarySection, dbStates map[string]database.MediaItemDBState) (items []models.MediaItem, Err logging.LogErrorInfo) {
 	ctx, logAction := logging.AddSubActionToContext(ctx, fmt.Sprintf(
-		"Splitting BoxSet Collection: %s in Section: %s into Individual Items", collectionName, sectionTitle,
+		"Splitting BoxSet Collection: %s in Section: %s into Individual Items", collectionName, section.Title,
 	), logging.LevelInfo)
 	defer logAction.Complete()
 
@@ -273,7 +274,8 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 
 		itemInfo.Title = item.Name
 		itemInfo.Year = item.ProductionYear
-		itemInfo.LibraryTitle = sectionTitle
+		itemInfo.LibraryTitle = section.Title
+		itemInfo.LibraryID = section.ID
 		if item.ProviderIds.Tmdb != "" {
 			itemInfo.Guids = append(itemInfo.Guids, models.MediaItemGuid{Provider: "tmdb", ID: item.ProviderIds.Tmdb})
 			itemInfo.Guids = append(itemInfo.Guids, models.MediaItemGuid{Provider: "tvdb", ID: item.ProviderIds.Tvdb})
@@ -298,7 +300,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 			}
 		}
 		if itemInfo.TMDB_ID == "" {
-			logging.LOGGER.Warn().Timestamp().Str("item_title", itemInfo.Title).Str("library_section", sectionTitle).Msg("Skipping item in BoxSet collection because it does not have a TMDB ID")
+			logging.LOGGER.Warn().Timestamp().Str("item_title", itemInfo.Title).Str("library_section", section.Title).Msg("Skipping item in BoxSet collection because it does not have a TMDB ID")
 			continue // Skip items without TMDB ID
 		}
 
@@ -312,7 +314,7 @@ func splitCollectionIntoIndividualItems(ctx context.Context, msConfig config.Con
 
 		// Only the main media server's items go in the main library cache
 		if msConfig.IsMain() {
-			cache.LibraryStore.UpdateMediaItem(sectionTitle, &itemInfo)
+			cache.LibraryStore.UpdateMediaItem(section.Title, &itemInfo)
 		}
 		items = append(items, itemInfo)
 	}

@@ -106,6 +106,12 @@ func loadLibrariesIntoCache(ctx context.Context, server config.Config_MediaServe
 			continue
 		}
 
+		if isMain {
+			if syncErr := database.SyncLibraryRows(ctx, section.Title, section.ID); syncErr.Message != "" {
+				logAction.AppendWarning("sync_library_rows_error", syncErr.Message)
+			}
+		}
+
 		// Update the collections cache for this section
 		if isMain && (section.Type == "movie" || section.Type == "mixed") && !ejRanCollections {
 			GetMovieCollections(ctx, section)
