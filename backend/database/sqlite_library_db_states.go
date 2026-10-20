@@ -125,12 +125,13 @@ func (s *SQliteDB) SaveLibraryItems(ctx context.Context, items []models.MediaIte
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO MediaItems (
-			tmdb_id, library_title, edition, rating_key, type, title, year, on_server,
+			tmdb_id, library_title, library_id, edition, rating_key, type, title, year, on_server,
 			added_at, updated_at, released_at, latest_episode_added_at, content_rating, summary, guids,
 			first_seen_at, last_seen_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(tmdb_id, library_title, edition) DO UPDATE SET
+			library_id              = CASE WHEN excluded.library_id <> '' THEN excluded.library_id ELSE MediaItems.library_id END,
 			rating_key              = excluded.rating_key,
 			type                    = excluded.type,
 			title                   = excluded.title,
@@ -159,7 +160,7 @@ func (s *SQliteDB) SaveLibraryItems(ctx context.Context, items []models.MediaIte
 			guids = []byte("[]")
 		}
 		if _, err := stmt.ExecContext(ctx,
-			item.TMDB_ID, item.LibraryTitle, item.Edition, item.RatingKey, item.Type, item.Title, item.Year,
+			item.TMDB_ID, item.LibraryTitle, libraryIDForTitle(item.LibraryTitle, item.LibraryID), item.Edition, item.RatingKey, item.Type, item.Title, item.Year,
 			item.AddedAt, item.UpdatedAt, item.ReleasedAt, item.LatestEpisodeAddedAt, item.ContentRating, item.Summary, string(guids),
 			seenAt, seenAt,
 		); err != nil {

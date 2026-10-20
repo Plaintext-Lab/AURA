@@ -17,7 +17,7 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 	// Query the saved and ignored MediaItems
 	// A single read does not need a transaction, which would take the write lock (immediate transactions)
 	rows, err := s.conn.QueryContext(ctx, `
-		SELECT tmdb_id, library_title, edition, rating_key, type, title, year
+		SELECT tmdb_id, library_title, library_id, edition, rating_key, type, title, year
 		FROM MediaItems mi
 		WHERE NOT (`+notSavedOrIgnored+`);
 	`)
@@ -30,7 +30,7 @@ func (s *SQliteDB) GetAllMediaItems(ctx context.Context) (items []models.MediaIt
 	// Iterate through the rows
 	for rows.Next() {
 		var item models.MediaItem
-		if err := rows.Scan(&item.TMDB_ID, &item.LibraryTitle, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year); err != nil {
+		if err := rows.Scan(&item.TMDB_ID, &item.LibraryTitle, &item.LibraryID, &item.Edition, &item.RatingKey, &item.Type, &item.Title, &item.Year); err != nil {
 			logAction.SetError("Failed to scan MediaItem row", "", map[string]any{"error": err.Error()})
 			return items, *logAction.Error
 		}

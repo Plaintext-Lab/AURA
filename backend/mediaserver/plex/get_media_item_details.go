@@ -66,6 +66,10 @@ func (p *Plex) GetMediaItemDetails(ctx context.Context, item *models.MediaItem) 
 	}
 	*item = *extracted
 
+	if item.LibraryID == "" && plexResp.MediaContainer.LibrarySectionID != 0 {
+		item.LibraryID = strconv.Itoa(plexResp.MediaContainer.LibrarySectionID)
+	}
+
 	// If no TMDB ID found, return an error
 	if item.TMDB_ID == "" {
 		logAction.SetError("No TMDB ID found for the media item", "Ensure the media item has a valid TMDB GUID in Plex",
@@ -125,6 +129,9 @@ func extractMediaItemFromResponse(ctx context.Context, msConfig config.Config_Me
 	item.Title = metadata.Title
 	item.Year = metadata.Year
 	item.LibraryTitle = metadata.LibrarySectionTitle
+	if metadata.LibrarySectionID != 0 {
+		item.LibraryID = strconv.Itoa(metadata.LibrarySectionID)
+	}
 	item.UpdatedAt = metadata.UpdatedAt
 	item.AddedAt = metadata.AddedAt
 	item.ContentRating = metadata.ContentRating

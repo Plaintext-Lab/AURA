@@ -109,12 +109,13 @@ func (s *SQliteDB) IgnoreMediaItem(ctx context.Context, tmdbID, libraryTitle, ed
 	}
 
 	_, err := s.conn.ExecContext(ctx, `
-        INSERT INTO IgnoredItems (tmdb_id, library_title, edition, mode, current_sets)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO IgnoredItems (tmdb_id, library_title, library_id, edition, mode, current_sets)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(tmdb_id, library_title, edition) DO UPDATE SET
+            library_id = CASE WHEN excluded.library_id <> '' THEN excluded.library_id ELSE IgnoredItems.library_id END,
             mode = excluded.mode,
             current_sets = excluded.current_sets;
-    `, tmdbID, libraryTitle, edition, mode, currentSets)
+    `, tmdbID, libraryTitle, libraryIDForTitle(libraryTitle, ""), edition, mode, currentSets)
 	if err != nil {
 		return logging.LogErrorInfo{
 			Message: "Failed to ignore media item",

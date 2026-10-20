@@ -102,6 +102,7 @@ WITH base AS (
     mi.id,
     mi.tmdb_id,
     mi.library_title,
+    mi.library_id,
     mi.edition,
     mi.rating_key,
     mi.type,
@@ -140,6 +141,7 @@ SELECT
   json_object(
     'tmdb_id', mi.tmdb_id,
     'library_title', mi.library_title,
+    'library_id', mi.library_id,
     'edition', mi.edition,
     'rating_key', mi.rating_key,
     'type', mi.type,
