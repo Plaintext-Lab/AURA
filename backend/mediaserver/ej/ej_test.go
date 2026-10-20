@@ -209,3 +209,41 @@ func TestEJDatesAreInSeconds(t *testing.T) {
 		t.Errorf("a date that isn't set should be 0, got %d", got)
 	}
 }
+
+func TestEJSpecialsStayInTheSpecialsSeason(t *testing.T) {
+	// With "Display specials within seasons", Season 2 lists S00E02 as well as S02E02
+	episode := func(id string, season, number int, file string) map[string]any {
+		return map[string]any{"Id": id, "ParentIndexNumber": season, "IndexNumber": number, "Path": file, "MediaSources": []map[string]any{{"Size": 1}}}
+	}
+	special := episode("s0e2", 0, 2, "/tv/Show/Specials/S00E02.mkv")
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /Shows/show/Seasons", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"Items": []map[string]any{{"Id": "season0", "IndexNumber": 0}, {"Id": "season2", "IndexNumber": 2}}})
+	})
+	mux.HandleFunc("GET /Shows/show/Episodes", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("SeasonId") == "season0" {
+			writeJSON(w, map[string]any{"Items": []map[string]any{special}})
+			return
+		}
+		writeJSON(w, map[string]any{"Items": []map[string]any{episode("s2e1", 2, 1, "/tv/Show/Season 02/S02E01.mkv"), special, episode("s2e2", 2, 2, "/tv/Show/Season 02/S02E02.mkv")}})
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	item := models.MediaItem{RatingKey: "show", Title: "Show"}
+	if Err := fetchSeasonsForShow(testContext(), config.Config_MediaServer{Type: "Jellyfin", URL: server.URL}, &item); Err.Message != "" {
+		t.Fatalf("fetchSeasonsForShow: %s", Err.Message)
+	}
+	got := map[int][]string{}
+	for _, season := range item.Series.Seasons {
+		for _, ep := range season.Episodes {
+			if ep.SeasonNumber != season.SeasonNumber {
+				t.Errorf("season %d has episode %s from season %d", season.SeasonNumber, ep.RatingKey, ep.SeasonNumber)
+			}
+			got[season.SeasonNumber] = append(got[season.SeasonNumber], ep.RatingKey)
+		}
+	}
+	if !slices.Equal(got[0], []string{"s0e2"}) || !slices.Equal(got[2], []string{"s2e1", "s2e2"}) {
+		t.Errorf("episodes by season = %v", got)
+	}
+}

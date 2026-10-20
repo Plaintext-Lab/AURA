@@ -388,8 +388,8 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, msConfig config.Config_
 		}
 
 		for _, siloEpisode := range episodesResp.Items {
-			// Skip episodes that do not have a file
-			if len(siloEpisode.Files) == 0 {
+			// Skip episodes that do not have a file, or are from another season
+			if len(siloEpisode.Files) == 0 || siloEpisode.SeasonNumber != siloSeason.SeasonNumber {
 				continue
 			}
 

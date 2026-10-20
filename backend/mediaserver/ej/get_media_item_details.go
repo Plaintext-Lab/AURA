@@ -276,6 +276,11 @@ func fetchEpisodesForSeason(ctx context.Context, msConfig config.Config_MediaSer
 	}
 
 	for _, episode := range ejResp.Items {
+		// Skip specials listed in this season by "Display specials within seasons"
+		if episode.ParentIndexNumber != season.SeasonNumber {
+			continue
+		}
+
 		episode := models.MediaItemEpisode{
 			RatingKey:     episode.ID,
 			Title:         episode.Name,

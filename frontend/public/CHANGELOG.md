@@ -1,3 +1,11 @@
+## [0.9.111] - 2026-10-20
+
+### Fixed
+
+- Fixed Jellyfin/Emby specials being saved as regular season episodes when "Display Specials within seasons" is enabled, which caused false Episode Changed autodownloads.
+
+---
+
 ## [0.9.110] - 2026-10-19
 
 ### Added

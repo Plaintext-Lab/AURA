@@ -2836,6 +2836,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/logs/debug-bundle": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Download a zip to share when reporting a problem. It has the versions and media servers, the redacted config and the recent logs. Passwords, tokens, API keys, emails and addresses are replaced in the config and the logs.",
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "Logging"
+                ],
+                "summary": "Download Debug Bundle",
+                "responses": {
+                    "200": {
+                        "description": "The debug bundle as a zip",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/mediaserver/collections": {
             "get": {
                 "security": [
