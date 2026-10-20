@@ -1,5 +1,9 @@
 ## [0.9.110] - 2026-10-19
 
+### Added
+
+- Added pagination to the Download Queue/Failed page.
+
 ### UI Tweaks
 
 - Settings sections now have the same padding and layout, and notification templates use the same + button to add variables as the image file names.

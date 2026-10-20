@@ -11,12 +11,15 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import Link from "next/link";
 
+import { CustomPagination } from "@/components/shared/custom-pagination";
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import DownloadEntryCard from "@/components/shared/download-entry";
 import { DownloadQueueProgressPanel } from "@/components/shared/download-queue-progress";
 import { ErrorMessage } from "@/components/shared/error-message";
 import Loader from "@/components/shared/loader";
 import { ResponsiveGrid } from "@/components/shared/responsive-grid";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { H2 } from "@/components/ui/typography";
 
@@ -24,6 +27,32 @@ import { useFailedDownloadsStore } from "@/lib/stores/global-store-failed-downlo
 
 import type { APIResponse } from "@/types/api/api-response";
 import type { DownloadHistoryEntry, DownloadQueueJob, DownloadQueueProgress } from "@/types/database/download-queue";
+import { ITEMS_PER_PAGE_OPTIONS } from "@/types/ui-options";
+
+// PerPageSelect picks how many cards each page shows
+const PerPageSelect: React.FC<{ value: number; onChange: (value: number) => void }> = ({ value, onChange }) => (
+  <div className="flex items-center gap-2">
+    <Label className="text-sm text-muted-foreground whitespace-nowrap">Per page</Label>
+    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+      <SelectTrigger className="h-8 w-20">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+          <SelectItem key={option} value={String(option)}>
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+// pageOf returns one page of the list, and the number of pages
+const pageOf = <T,>(list: T[], page: number, perPage: number) => ({
+  items: list.slice((page - 1) * perPage, page * perPage),
+  totalPages: Math.max(1, Math.ceil(list.length / perPage)),
+});
 
 const DownloadQueuePage: React.FC = () => {
   // States - Queue
@@ -37,6 +66,12 @@ const DownloadQueuePage: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<APIResponse<unknown> | null>(null);
   const [maxRetries, setMaxRetries] = useState(0);
+
+  // States - Pages, each tab has its own
+  const [queuePage, setQueuePage] = useState(1);
+  const [queuePerPage, setQueuePerPage] = useState(20);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPerPage, setHistoryPerPage] = useState(20);
 
   const setFailedCount = useFailedDownloadsStore((state) => state.setFailedCount);
 
@@ -154,6 +189,17 @@ const DownloadQueuePage: React.FC = () => {
 
   const processingJob = activeJobs.find((j) => j.status === "processing");
 
+  const queuePageItems = pageOf(activeJobs, queuePage, queuePerPage);
+  const historyPageItems = pageOf(historyEntries, historyPage, historyPerPage);
+
+  // A page that's gone, after jobs finish or entries are removed, shows the last page
+  useEffect(() => {
+    if (queuePage > queuePageItems.totalPages) setQueuePage(queuePageItems.totalPages);
+  }, [queuePage, queuePageItems.totalPages]);
+  useEffect(() => {
+    if (historyPage > historyPageItems.totalPages) setHistoryPage(historyPageItems.totalPages);
+  }, [historyPage, historyPageItems.totalPages]);
+
   return (
     <div className="container mx-auto p-4 min-h-screen flex flex-col items-center">
       <H2 className="text-3xl font-bold mb-4">Download Queue</H2>
@@ -173,7 +219,16 @@ const DownloadQueuePage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="w-full flex justify-end mb-2">
+              <div className="w-full flex items-center justify-end gap-2 mb-2">
+                {activeJobs.length > 0 && (
+                  <PerPageSelect
+                    value={queuePerPage}
+                    onChange={(value) => {
+                      setQueuePerPage(value);
+                      setQueuePage(1);
+                    }}
+                  />
+                )}
                 <ConfirmDestructiveDialogActionButton
                   variant="outline"
                   className="text-destructive border-1 shadow-none hover:text-red-500 cursor-pointer"
@@ -200,11 +255,21 @@ const DownloadQueuePage: React.FC = () => {
                   No download queue entries found. Add some items to the queue to get started.
                 </p>
               ) : (
-                <ResponsiveGrid size="larger">
-                  {activeJobs.map((job) => (
-                    <DownloadEntryCard key={job.id} mode="queue" job={job} fetchQueueEntries={fetchQueueEntries} />
-                  ))}
-                </ResponsiveGrid>
+                <>
+                  <ResponsiveGrid size="larger">
+                    {queuePageItems.items.map((job) => (
+                      <DownloadEntryCard key={job.id} mode="queue" job={job} fetchQueueEntries={fetchQueueEntries} />
+                    ))}
+                  </ResponsiveGrid>
+                  <CustomPagination
+                    currentPage={queuePage}
+                    totalPages={queuePageItems.totalPages}
+                    setCurrentPage={setQueuePage}
+                    scrollToTop={true}
+                    filterItemsLength={activeJobs.length}
+                    itemsPerPage={queuePerPage}
+                  />
+                </>
               )}
             </>
           )}
@@ -219,7 +284,7 @@ const DownloadQueuePage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="w-full flex items-center justify-between gap-2 mb-2">
+              <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2">
                 <p className="text-sm text-muted-foreground">
                   Successful downloads show on the{" "}
                   <Link href="/saved-sets" className="text-primary hover:underline">
@@ -227,33 +292,54 @@ const DownloadQueuePage: React.FC = () => {
                   </Link>{" "}
                   page.
                 </p>
-                <ConfirmDestructiveDialogActionButton
-                  variant="outline"
-                  className="text-destructive border-1 shadow-none hover:text-red-500 cursor-pointer"
-                  confirmText="Clear Failed"
-                  title="Clear Failed Downloads?"
-                  description="Are you sure you want to remove all failed downloads from this list? This action cannot be undone."
-                  onConfirm={onClearHistory}
-                  disabled={historyEntries.length === 0}
-                >
-                  Clear Failed
-                </ConfirmDestructiveDialogActionButton>
+                <div className="flex items-center gap-2 ml-auto">
+                  {historyEntries.length > 0 && (
+                    <PerPageSelect
+                      value={historyPerPage}
+                      onChange={(value) => {
+                        setHistoryPerPage(value);
+                        setHistoryPage(1);
+                      }}
+                    />
+                  )}
+                  <ConfirmDestructiveDialogActionButton
+                    variant="outline"
+                    className="text-destructive border-1 shadow-none hover:text-red-500 cursor-pointer"
+                    confirmText="Clear Failed"
+                    title="Clear Failed Downloads?"
+                    description="Are you sure you want to remove all failed downloads from this list? This action cannot be undone."
+                    onConfirm={onClearHistory}
+                    disabled={historyEntries.length === 0}
+                  >
+                    Clear Failed
+                  </ConfirmDestructiveDialogActionButton>
+                </div>
               </div>
 
               {historyEntries.length === 0 ? (
                 <p className="text-gray-500">No failed downloads.</p>
               ) : (
-                <ResponsiveGrid size="larger">
-                  {historyEntries.map((entry) => (
-                    <DownloadEntryCard
-                      key={entry.id}
-                      mode="history"
-                      entry={entry}
-                      maxRetries={maxRetries}
-                      fetchHistory={() => fetchHistory(true)}
-                    />
-                  ))}
-                </ResponsiveGrid>
+                <>
+                  <ResponsiveGrid size="larger">
+                    {historyPageItems.items.map((entry) => (
+                      <DownloadEntryCard
+                        key={entry.id}
+                        mode="history"
+                        entry={entry}
+                        maxRetries={maxRetries}
+                        fetchHistory={() => fetchHistory(true)}
+                      />
+                    ))}
+                  </ResponsiveGrid>
+                  <CustomPagination
+                    currentPage={historyPage}
+                    totalPages={historyPageItems.totalPages}
+                    setCurrentPage={setHistoryPage}
+                    scrollToTop={true}
+                    filterItemsLength={historyEntries.length}
+                    itemsPerPage={historyPerPage}
+                  />
+                </>
               )}
             </>
           )}
