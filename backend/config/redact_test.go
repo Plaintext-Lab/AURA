@@ -1,6 +1,7 @@
 package config
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -64,4 +65,47 @@ func TestRedactConfigYAML(t *testing.T) {
 		got.Logging.Level != cfg.Logging.Level || got.Backups.Keep != cfg.Backups.Keep || !got.Notifications.Providers[0].Enabled {
 		t.Errorf("redacted config lost settings: %+v", got)
 	}
+}
+
+func TestRedactorText(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.MediaServers = []Config_MediaServer{
+		{ID: "1", Type: "Jellyfin", URL: "https://jellyfin.home.lan", ApiToken: "jellyfin-token"},
+		{ID: "2", Type: "Plex", URL: "http://10.1.1.100:32400", ApiToken: "abc"},
+	}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewRedactor()
+	redactedConfig, err := r.ConfigYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	line := `{"msg":"GET https://jellyfin.home.lan/Items?api_key=x failed","host":"jellyfin.home.lan","token":"jellyfin-token",` +
+		`"plex":"10.1.1.100:32400","user":"me@example.com","mediux":"https://api.mediux.io/graphql","short":"abc"}`
+	got := r.Text(line)
+	for _, secret := range []string{"home.lan", "jellyfin-token", "10.1.1.100", "me@example.com", "api_key"} {
+		if strings.Contains(got, secret) {
+			t.Errorf("redacted text still has %q: %s", secret, got)
+		}
+	}
+	// The addresses get the same names as in the config, public services and short values are kept
+	jellyfinHost := strings.TrimPrefix(regexpFind(t, `https://host-\d+`, string(redactedConfig)), "https://")
+	if !strings.Contains(got, `"host":"`+jellyfinHost+`"`) || !strings.Contains(got, "https://"+jellyfinHost+"/Items?redacted") {
+		t.Errorf("jellyfin should be %s in the text: %s", jellyfinHost, got)
+	}
+	if !strings.Contains(got, "https://api.mediux.io/graphql") || !strings.Contains(got, `"short":"abc"`) {
+		t.Errorf("public services and short values should be kept: %s", got)
+	}
+}
+
+func regexpFind(t *testing.T, pattern, text string) string {
+	t.Helper()
+	match := regexp.MustCompile(pattern).FindString(text)
+	if match == "" {
+		t.Fatalf("%s not found in %s", pattern, text)
+	}
+	return match
 }

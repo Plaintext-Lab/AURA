@@ -156,6 +156,7 @@ func AddRoutes(r *chi.Mux) {
 		r.Route("/logs", func(r chi.Router) {
 			r.Get("/", routes_logging.GetLogContents)
 			r.Delete("/", routes_logging.ClearLogFiles)
+			r.Get("/debug-bundle", routes_logging.GetDebugBundle)
 		})
 
 		// Plex OAuth Routes
@@ -243,6 +244,7 @@ func addOnboardingRoutes(r *chi.Mux) {
 		r.Route("/logs", func(r chi.Router) {
 			r.Get("/", routes_logging.GetLogContents)
 			r.Delete("/", routes_logging.ClearLogFiles)
+			r.Get("/debug-bundle", routes_logging.GetDebugBundle)
 		})
 
 		r.Post("/mediaserver/libraries/options", routes_ms.GetLibrarySectionOptions)

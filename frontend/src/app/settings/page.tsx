@@ -6,8 +6,10 @@ import { ExportAppConfig, ImportAppConfig } from "@/services/config/export-impor
 import { GetAppConfigStatus } from "@/services/config/status";
 import { GetNotificationTemplateVariables } from "@/services/config/template-variables";
 import type { AppConfigSection } from "@/services/config/update-section";
+import { DownloadDebugBundle } from "@/services/logs/debug-bundle";
 import {
   Bell,
+  Bug,
   Clapperboard,
   DatabaseBackup,
   Download,
@@ -244,6 +246,7 @@ function SettingsPageContent() {
 
   // Export / Import
   const [exporting, setExporting] = useState(false);
+  const [creatingBundle, setCreatingBundle] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<{ name: string; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -432,6 +435,17 @@ function SettingsPageContent() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success(redacted ? "Redacted configuration exported" : "Configuration exported");
+  };
+
+  const handleDebugBundle = async () => {
+    setCreatingBundle(true);
+    const result = await DownloadDebugBundle();
+    setCreatingBundle(false);
+    if (!result.ok) {
+      toast.error(`Failed to download the debug bundle: ${result.error}`);
+      return;
+    }
+    toast.success("Debug bundle downloaded");
   };
 
   const handleImportFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -656,6 +670,25 @@ function SettingsPageContent() {
               >
                 <Upload className="h-4 w-4" />
                 Import
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-3 border rounded-md p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label>Debug Bundle</Label>
+                <p className="text-sm text-muted-foreground">
+                  Download a zip with your versions, media servers, redacted configuration and recent logs, to attach
+                  when reporting a problem. Passwords, tokens, API keys, emails and addresses are replaced.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleDebugBundle}
+                disabled={creatingBundle}
+                className="cursor-pointer shrink-0"
+              >
+                {creatingBundle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bug className="h-4 w-4" />}
+                Download
               </Button>
             </div>
 

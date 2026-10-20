@@ -1,5 +1,9 @@
 ## [0.9.111] - 2026-10-20
 
+### Added
+
+- Added a Debug Bundle download for easier debugging of issues. It downloads a zip with the version and media server details, a redacted config.yaml and the redacted log files.
+
 ### Fixed
 
 - Fixed Jellyfin/Emby specials being saved as regular season episodes when "Display Specials within seasons" is enabled, which caused false Episode Changed autodownloads.
