@@ -7,6 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { ChangelogMarkdown } from "@/components/shared/changelog-markdown";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
+import { BUILD_COMMIT_DIRTY, BUILD_COMMIT_SHORT, BUILD_COMMIT_URL, BUILD_INFO, IS_DEV_BUILD } from "@/lib/build-info";
+
 export default function Changelog() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -87,6 +89,8 @@ function ChangelogContent() {
       <div className="w-full max-w-4xl rounded-lg shadow-md p-2">
         <h1 className="text-3xl font-bold mb-6 text-center">Change Log</h1>
 
+        <BuildDetails />
+
         {latestVersion && currentVersion && (
           <>
             <div className="my-6 flex items-center gap-3">
@@ -136,6 +140,63 @@ function ChangelogContent() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// The build details, to check this is an official image
+function BuildDetails() {
+  const builtAt = BUILD_INFO.buildDate ? new Date(BUILD_INFO.buildDate) : null;
+  const details = [
+    { label: "Version", value: BUILD_INFO.version },
+    { label: "Build", value: BUILD_INFO.buildNumber },
+    {
+      label: "Commit",
+      value: BUILD_COMMIT_SHORT && (
+        <span className="flex items-center gap-2">
+          <a
+            href={BUILD_COMMIT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono underline underline-offset-2 hover:text-primary"
+            title={BUILD_INFO.commit}
+          >
+            {BUILD_COMMIT_SHORT}
+          </a>
+          {BUILD_COMMIT_DIRTY && <span className="text-xs text-muted-foreground">(with uncommitted changes)</span>}
+        </span>
+      ),
+    },
+    {
+      label: "Built",
+      value: builtAt && !isNaN(builtAt.getTime()) ? builtAt.toLocaleString() : BUILD_INFO.buildDate,
+    },
+  ];
+
+  return (
+    <div className="mb-6 rounded-md border p-3 sm:p-4">
+      <h2 className="mb-2 font-semibold">Build Details</h2>
+      {BUILD_INFO.commit ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {details.map(
+            (detail) =>
+              detail.value && (
+                <div key={detail.label} className="contents">
+                  <dt className="text-muted-foreground">{detail.label}</dt>
+                  <dd className="min-w-0 break-all">{detail.value}</dd>
+                </div>
+              )
+          )}
+        </dl>
+      ) : IS_DEV_BUILD ? (
+        <p className="text-sm text-muted-foreground">Version {BUILD_INFO.version}, development build.</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Version {BUILD_INFO.version}, built without build details.</p>
+      )}
+      <p className="mt-2 text-xs text-muted-foreground">
+        Official images from ghcr.io/mediux-team/aura and docker.io/mediux/aura show a build number and a commit from
+        the mediux-team/aura repository on GitHub.
+      </p>
     </div>
   );
 }

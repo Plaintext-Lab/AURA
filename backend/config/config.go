@@ -22,6 +22,10 @@ var (
 	AppLicense string = ""
 	AppPort    int    = 0
 	AppVersion string = ""
+	// The commit, build number and build date of the image, empty for local builds
+	AppCommit      string = ""
+	AppBuildNumber string = ""
+	AppBuildDate   string = ""
 )
 
 // Adding a new config field:

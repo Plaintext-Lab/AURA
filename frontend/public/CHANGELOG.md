@@ -3,6 +3,7 @@
 ### Added
 
 - Added a Debug Bundle download for easier debugging of issues. It downloads a zip with the version and media server details, a redacted config.yaml and the redacted log files.
+- Added the build number, commit and build date to the footer and the Change Log page.
 
 ### Fixed
 

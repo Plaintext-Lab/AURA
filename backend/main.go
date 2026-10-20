@@ -34,6 +34,13 @@ var (
 	APP_PORT    = 8888
 )
 
+// Set by the image build, empty for local builds
+var (
+	APP_COMMIT       = ""
+	APP_BUILD_NUMBER = ""
+	APP_BUILD_DATE   = ""
+)
+
 var activeHandler atomic.Value
 
 func init() {
@@ -50,6 +57,7 @@ func main() {
 	// Serve immediately with onboarding/public routes first.
 	config.AppFullyLoaded = false
 	config.AppVersion = APP_VERSION
+	config.AppCommit, config.AppBuildNumber, config.AppBuildDate = APP_COMMIT, APP_BUILD_NUMBER, APP_BUILD_DATE
 	config.SetAppLoadingStep("Initializing Application")
 	activeHandler.Store(routing.NewRouter())
 

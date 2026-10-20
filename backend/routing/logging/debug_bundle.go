@@ -145,6 +145,14 @@ func debugBundleInfo(ctx context.Context, cfg *config.Config, redactor *config.R
 	var b strings.Builder
 	fmt.Fprintf(&b, "aura debug bundle, created %s\n\n", now.Format(time.RFC3339))
 	fmt.Fprintf(&b, "aura version: %s\n", config.AppVersion)
+	switch {
+	case config.AppCommit != "":
+		fmt.Fprintf(&b, "Build: %s, commit %s, built %s\n", config.AppBuildNumber, config.AppCommit, config.AppBuildDate)
+	case config.AppBuildNumber != "":
+		fmt.Fprintf(&b, "Build: %s\n", config.AppBuildNumber)
+	default:
+		b.WriteString("Build: none, built without the build details\n")
+	}
 	if version, Err := database.GetCurrentVersion(ctx); Err.Message != "" {
 		fmt.Fprintf(&b, "Database version: unknown (%s), latest %d\n", Err.Message, database.LATEST_DB_VERSION)
 	} else {

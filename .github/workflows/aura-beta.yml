@@ -59,6 +59,9 @@ jobs:
                   docker buildx build . \
                     --platform linux/amd64,linux/arm64 \
                     --build-arg APP_VERSION=${{ env.APP_VERSION }} \
+                    --build-arg APP_COMMIT=${{ github.sha }} \
+                    --build-arg APP_BUILD_NUMBER=${{ github.run_number }} \
+                    --build-arg APP_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
                     --tag ghcr.io/mediux-team/aura:beta \
                     --tag docker.io/mediux/aura:beta \
                     --tag docker.io/${{ secrets.DOCKERHUB_USERNAME }}/aura:beta \

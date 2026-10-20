@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+import { IS_DEV_BUILD } from "@/lib/build-info";
 import { redactLogData } from "@/lib/redact";
 
 // Log to the browser console. data is redacted first, so secrets are never logged.
 export function log(level: "INFO" | "WARN" | "ERROR", page: string, action: string, message: string, data?: unknown) {
-  const debugMode =
-    (typeof window !== "undefined" && localStorage.getItem("debugMode") === "true") ||
-    process.env.NEXT_PUBLIC_APP_VERSION?.endsWith("dev");
+  const debugMode = (typeof window !== "undefined" && localStorage.getItem("debugMode") === "true") || IS_DEV_BUILD;
 
   if (!debugMode && level !== "ERROR" && level !== "WARN") return;
 
