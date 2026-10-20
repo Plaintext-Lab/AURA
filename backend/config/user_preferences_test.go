@@ -4,6 +4,7 @@ import (
 	"aura/logging"
 	"context"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -21,39 +22,22 @@ func TestValidateUserPreferencesFavoriteCreators(t *testing.T) {
 	}
 }
 
-func TestValidateUserPreferencesHomeDefaults(t *testing.T) {
+func TestValidateUserPreferencesPageViews(t *testing.T) {
 	ctx, ld := logging.CreateLoggingContext(context.Background(), "test")
 	ctx = logging.WithCurrentAction(ctx, ld.AddAction("test", logging.LevelInfo))
 
-	prefs := Config_UserPreferences{
-		DefaultSort:                   "",
-		DefaultSortOrder:              "invalid",
-		DefaultItemsPerPage:           -5,
-		DefaultFilterInDB:             "bad_filter",
-		DefaultFilterIgnored:          "bad_ignored",
-		DefaultHasSetsAvailableFilter: "bad_sets",
-	}
-
+	home := map[string]any{"sortOption": "title", "sortOrder": "asc", "filteredLibraries": []any{"Movies"}}
+	prefs := Config_UserPreferences{PageViews: map[string]map[string]any{
+		"home":     home,
+		"unknown":  {"sortOption": "title"},
+		"logs":     {"levelsFilter": strings.Repeat("x", maxPageViewSize)},
+		"user_set": {"sortOption": "title"},
+	}}
 	if !ValidateUserPreferences(ctx, &prefs) {
 		t.Fatal("the preferences should be valid")
 	}
-
-	if prefs.DefaultSort != "dateAdded" {
-		t.Errorf("DefaultSort = %q, want dateAdded", prefs.DefaultSort)
-	}
-	if prefs.DefaultSortOrder != "desc" {
-		t.Errorf("DefaultSortOrder = %q, want desc", prefs.DefaultSortOrder)
-	}
-	if prefs.DefaultItemsPerPage != 20 {
-		t.Errorf("DefaultItemsPerPage = %d, want 20", prefs.DefaultItemsPerPage)
-	}
-	if prefs.DefaultFilterInDB != "" {
-		t.Errorf("DefaultFilterInDB = %q, want empty", prefs.DefaultFilterInDB)
-	}
-	if prefs.DefaultFilterIgnored != "" {
-		t.Errorf("DefaultFilterIgnored = %q, want empty", prefs.DefaultFilterIgnored)
-	}
-	if prefs.DefaultHasSetsAvailableFilter != "" {
-		t.Errorf("DefaultHasSetsAvailableFilter = %q, want empty", prefs.DefaultHasSetsAvailableFilter)
+	// Known pages are kept, unknown pages and views that are too large are removed
+	if len(prefs.PageViews) != 1 || prefs.PageViews["home"]["sortOption"] != "title" {
+		t.Errorf("page views = %v", prefs.PageViews)
 	}
 }

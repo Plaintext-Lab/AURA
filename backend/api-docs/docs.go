@@ -5696,37 +5696,6 @@ const docTemplate = `{
                     "description": "Whether \"Add to Queue\" is checked by default in the Download Modal.",
                     "type": "boolean"
                 },
-                "default_filter_ignored": {
-                    "description": "Default filter for ignored items (\"\", \"ignored\", \"notIgnored\").",
-                    "type": "string"
-                },
-                "default_filter_in_db": {
-                    "description": "Default filter for saved items in database (\"\", \"inDB\", \"notInDB\").",
-                    "type": "string"
-                },
-                "default_has_sets_available_filter": {
-                    "description": "Default filter for available sets (\"\", \"hasSetsAvailable\", \"noSetsAvailable\").",
-                    "type": "string"
-                },
-                "default_items_per_page": {
-                    "description": "Default number of items per page on the Home page.",
-                    "type": "integer"
-                },
-                "default_libraries": {
-                    "description": "Default library sections filtered on the Home page.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "default_sort": {
-                    "description": "Default sort option on the Home page (e.g. dateAdded, title, releaseDate).",
-                    "type": "string"
-                },
-                "default_sort_order": {
-                    "description": "Default sort order on the Home page (\"asc\" or \"desc\").",
-                    "type": "string"
-                },
                 "download_defaults": {
                     "description": "Image types selected by default in the Download Modal.",
                     "type": "array",
@@ -5735,10 +5704,17 @@ const docTemplate = `{
                     }
                 },
                 "favorite_creators": {
-                    "description": "MediUX usernames ranked best first, the first is rank 1.",
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "page_views": {
+                    "description": "Each page's sort and filter options, by page, so they're the same on every device.                                                  // MediUX usernames ranked best first, the first is rank 1.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {}
                     }
                 },
                 "show_date_modified": {

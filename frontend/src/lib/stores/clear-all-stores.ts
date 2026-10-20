@@ -8,11 +8,13 @@ import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 // Page Stores
 import { useCollectionItemPageStore } from "@/lib/stores/page-store-collection-item";
 import { useCollectionsPageStore } from "@/lib/stores/page-store-collections";
+import { useDownloadQueuePageStore } from "@/lib/stores/page-store-download-queue";
 import { useHomePageStore } from "@/lib/stores/page-store-home";
 import { useLogsPageStore } from "@/lib/stores/page-store-logs";
 import { useMediaPageStore } from "@/lib/stores/page-store-media";
 import { useSavedSetsPageStore } from "@/lib/stores/page-store-saved-sets";
 import { useUserPageStore } from "@/lib/stores/page-store-user";
+import { withoutPageViewSync } from "@/lib/stores/page-view-sync";
 import { GlobalStore, PageStore } from "@/lib/stores/stores";
 
 /**
@@ -22,14 +24,17 @@ import { GlobalStore, PageStore } from "@/lib/stores/stores";
  */
 export const ClearAllStores = async (options?: { deep?: boolean }) => {
   // 1. Clear each store's state (in memory + persisted slice contents).
-  // Page stores
-  useHomePageStore.getState().clear();
-  useMediaPageStore.getState().clear();
-  useSavedSetsPageStore.getState().clear();
-  useUserPageStore.getState().clear();
-  useCollectionsPageStore.getState().clear();
-  useCollectionItemPageStore.getState().clear();
-  useLogsPageStore.getState().clear();
+  // Page stores, the sort and filter options saved in aura are kept
+  withoutPageViewSync(() => {
+    useHomePageStore.getState().clear();
+    useMediaPageStore.getState().clear();
+    useSavedSetsPageStore.getState().clear();
+    useUserPageStore.getState().clear();
+    useCollectionsPageStore.getState().clear();
+    useCollectionItemPageStore.getState().clear();
+    useLogsPageStore.getState().clear();
+    useDownloadQueuePageStore.getState().clear();
+  });
 
   // Global stores
   useSearchQueryStore.getState().clear();

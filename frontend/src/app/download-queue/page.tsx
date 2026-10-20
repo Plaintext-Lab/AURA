@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { H2 } from "@/components/ui/typography";
 
 import { useFailedDownloadsStore } from "@/lib/stores/global-store-failed-downloads";
+import { useDownloadQueuePageStore } from "@/lib/stores/page-store-download-queue";
 
 import type { APIResponse } from "@/types/api/api-response";
 import type { DownloadHistoryEntry, DownloadQueueJob, DownloadQueueProgress } from "@/types/database/download-queue";
@@ -69,9 +70,11 @@ const DownloadQueuePage: React.FC = () => {
 
   // States - Pages, each tab has its own
   const [queuePage, setQueuePage] = useState(1);
-  const [queuePerPage, setQueuePerPage] = useState(20);
+  const queuePerPage = useDownloadQueuePageStore((state) => state.queuePerPage);
+  const setQueuePerPage = useDownloadQueuePageStore((state) => state.setQueuePerPage);
   const [historyPage, setHistoryPage] = useState(1);
-  const [historyPerPage, setHistoryPerPage] = useState(20);
+  const historyPerPage = useDownloadQueuePageStore((state) => state.failedPerPage);
+  const setHistoryPerPage = useDownloadQueuePageStore((state) => state.setFailedPerPage);
 
   const setFailedCount = useFailedDownloadsStore((state) => state.setFailedCount);
 

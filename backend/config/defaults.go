@@ -98,21 +98,15 @@ var DownloadImageTypes = []string{"poster", "backdrop", "season_poster", "specia
 
 func DefaultUserPreferences() Config_UserPreferences {
 	return Config_UserPreferences{
-		DownloadDefaults:              append([]string{}, DownloadImageTypes...),
-		ShowOnlyDownloadDefaults:      false,
-		ShowDateModified:              false,
-		DefaultAddToQueue:             false,
-		DefaultAddToDBOnly:            false,
-		AutoDownloadNewItems:          false,
-		AutoUpgradeSets:               false,
-		FavoriteCreators:              []string{},
-		DefaultSort:                   "dateAdded",
-		DefaultSortOrder:              "desc",
-		DefaultItemsPerPage:           20,
-		DefaultLibraries:              []string{},
-		DefaultFilterInDB:             "",
-		DefaultFilterIgnored:          "",
-		DefaultHasSetsAvailableFilter: "",
+		DownloadDefaults:         append([]string{}, DownloadImageTypes...),
+		ShowOnlyDownloadDefaults: false,
+		ShowDateModified:         false,
+		DefaultAddToQueue:        false,
+		DefaultAddToDBOnly:       false,
+		AutoDownloadNewItems:     false,
+		AutoUpgradeSets:          false,
+		FavoriteCreators:         []string{},
+		PageViews:                map[string]map[string]any{},
 	}
 }
 

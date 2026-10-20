@@ -2,6 +2,7 @@ import type { CollectionItem } from "@/app/collections/page";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { syncPageView } from "@/lib/stores/page-view-sync";
 import { PageStore } from "@/lib/stores/stores";
 
 import type { PaginationStore, SortStore } from "@/types/store-interfaces";
@@ -108,3 +109,6 @@ export const useCollectionsPageStore = create<CollectionsHome_PageStore>()(
     }
   )
 );
+
+// The sort and filter options are the same on every device
+syncPageView("collections", useCollectionsPageStore, ["sortOption", "sortOrder", "itemsPerPage", "filteredLibraries"]);

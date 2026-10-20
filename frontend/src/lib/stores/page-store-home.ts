@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 
+import { syncPageView } from "@/lib/stores/page-view-sync";
 import { PageStore } from "@/lib/stores/stores";
-import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 
 import type { MediaItem } from "@/types/media-and-posters/media-item-and-library";
 import type { PaginationStore, SortStore } from "@/types/store-interfaces";
@@ -13,15 +13,7 @@ import type {
 } from "@/types/ui-options";
 import type { TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS } from "@/types/ui-options";
 
-// Clean up legacy IndexedDB entry if previously persisted there
-if (typeof window !== "undefined") {
-  PageStore.removeItem("Home").catch(() => {});
-}
-
 interface Home_PageStore extends SortStore<string, TYPE_SORT_ORDER_OPTIONS>, PaginationStore<number, number> {
-  // Session tracking
-  sessionModified: boolean;
-
   // Filters
   filteredLibraries: string[];
   setFilteredLibraries: (libraries: string[]) => void;
@@ -42,38 +34,46 @@ interface Home_PageStore extends SortStore<string, TYPE_SORT_ORDER_OPTIONS>, Pag
   hasHydrated: boolean;
   hydrate: () => void;
   clear: () => void;
-  resetToFactoryDefaults: () => void;
-  resetToSavedDefaults: () => void;
+  resetToDefaults: () => void;
 }
+
+// The Home page's default sort and filter options
+const homeDefaults = {
+  sortOption: "dateAdded",
+  sortOrder: "desc" as TYPE_SORT_ORDER_OPTIONS,
+  itemsPerPage: 20,
+  filteredLibraries: [] as string[],
+  filterInDB: "" as TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS,
+  filterIgnored: "" as TYPE_FILTER_IGNORED_OPTIONS,
+  hasSetsAvailableFilter: "" as TYPE_HOME_PAGE_FILTER_HAS_SETS_AVAILABLE_OPTIONS,
+};
 
 export const useHomePageStore = create<Home_PageStore>()(
   persist(
     (set) => ({
-      sessionModified: false,
-
       sortOption: "dateAdded",
-      setSortOption: (option) => set({ sortOption: option, sessionModified: true }),
+      setSortOption: (option) => set({ sortOption: option }),
 
       sortOrder: "desc",
-      setSortOrder: (order) => set({ sortOrder: order, sessionModified: true }),
+      setSortOrder: (order) => set({ sortOrder: order }),
 
       currentPage: 1,
       setCurrentPage: (page) => set({ currentPage: page }),
 
       itemsPerPage: 20,
-      setItemsPerPage: (itemsPerPage) => set({ itemsPerPage, sessionModified: true }),
+      setItemsPerPage: (itemsPerPage) => set({ itemsPerPage }),
 
       filteredLibraries: [],
-      setFilteredLibraries: (libraries) => set({ filteredLibraries: libraries, sessionModified: true }),
+      setFilteredLibraries: (libraries) => set({ filteredLibraries: libraries }),
 
       filterInDB: "",
-      setFilterInDB: (filter) => set({ filterInDB: filter, sessionModified: true }),
+      setFilterInDB: (filter) => set({ filterInDB: filter }),
 
       filterIgnored: "",
-      setFilterIgnored: (ignored) => set({ filterIgnored: ignored, sessionModified: true }),
+      setFilterIgnored: (ignored) => set({ filterIgnored: ignored }),
 
       hasSetsAvailableFilter: "",
-      setHasSetsAvailableFilter: (filter) => set({ hasSetsAvailableFilter: filter, sessionModified: true }),
+      setHasSetsAvailableFilter: (filter) => set({ hasSetsAvailableFilter: filter }),
 
       previousMediaItem: null,
       setPreviousMediaItem: (mediaItem) => set({ previousMediaItem: mediaItem }),
@@ -84,34 +84,7 @@ export const useHomePageStore = create<Home_PageStore>()(
       hasHydrated: false,
       hydrate: () => set({ hasHydrated: true }),
 
-      resetToFactoryDefaults: () =>
-        set({
-          sortOption: "dateAdded",
-          sortOrder: "desc",
-          currentPage: 1,
-          itemsPerPage: 20,
-          filteredLibraries: [],
-          filterInDB: "",
-          filterIgnored: "",
-          hasSetsAvailableFilter: "",
-          sessionModified: false,
-        }),
-
-      resetToSavedDefaults: () => {
-        const prefs = useUserPreferencesStore.getState();
-        set({
-          sortOption: prefs.defaultSort || "dateAdded",
-          sortOrder: (prefs.defaultSortOrder as TYPE_SORT_ORDER_OPTIONS) || "desc",
-          currentPage: 1,
-          itemsPerPage: prefs.defaultItemsPerPage || 20,
-          filteredLibraries: prefs.defaultLibraries || [],
-          filterInDB: (prefs.defaultFilterInDB as TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS) || "",
-          filterIgnored: (prefs.defaultFilterIgnored as TYPE_FILTER_IGNORED_OPTIONS) || "",
-          hasSetsAvailableFilter:
-            (prefs.defaultHasSetsAvailableFilter as TYPE_HOME_PAGE_FILTER_HAS_SETS_AVAILABLE_OPTIONS) || "",
-          sessionModified: false,
-        });
-      },
+      resetToDefaults: () => set({ ...homeDefaults, currentPage: 1 }),
 
       clear: () =>
         set({
@@ -126,14 +99,12 @@ export const useHomePageStore = create<Home_PageStore>()(
           previousMediaItem: null,
           nextMediaItem: null,
           hasHydrated: false,
-          sessionModified: false,
         }),
     }),
     {
       name: "Home",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: PageStore,
       partialize: (state) => ({
-        sessionModified: state.sessionModified,
         sortOption: state.sortOption,
         sortOrder: state.sortOrder,
         currentPage: state.currentPage,
@@ -145,30 +116,18 @@ export const useHomePageStore = create<Home_PageStore>()(
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
-        if (state && !state.sessionModified) {
-          state.resetToSavedDefaults();
-        }
       },
     }
   )
 );
 
-// Sync saved server preferences when user preferences load or change, if this session hasn't been modified
-useUserPreferencesStore.subscribe((state, prev) => {
-  if (typeof window === "undefined") return;
-  const homeStore = useHomePageStore.getState();
-  if (!homeStore.sessionModified) {
-    if (
-      state.defaultSort !== prev.defaultSort ||
-      state.defaultSortOrder !== prev.defaultSortOrder ||
-      state.defaultItemsPerPage !== prev.defaultItemsPerPage ||
-      state.defaultLibraries !== prev.defaultLibraries ||
-      state.defaultFilterInDB !== prev.defaultFilterInDB ||
-      state.defaultFilterIgnored !== prev.defaultFilterIgnored ||
-      state.defaultHasSetsAvailableFilter !== prev.defaultHasSetsAvailableFilter ||
-      (state.hasHydrated && !prev.hasHydrated)
-    ) {
-      homeStore.resetToSavedDefaults();
-    }
-  }
-});
+// The sort and filter options are the same on every device
+syncPageView("home", useHomePageStore, [
+  "sortOption",
+  "sortOrder",
+  "itemsPerPage",
+  "filteredLibraries",
+  "filterInDB",
+  "filterIgnored",
+  "hasSetsAvailableFilter",
+]);

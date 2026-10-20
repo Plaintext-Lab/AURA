@@ -3,14 +3,12 @@
 import {
   ArrowDownAZ,
   ArrowDownZA,
-  BookmarkCheck,
   Check,
   ClockArrowDown,
   ClockArrowUp,
   Filter,
   RotateCcw,
   SortDescIcon,
-  Undo2,
 } from "lucide-react";
 
 import { useMemo, useState } from "react";
@@ -34,7 +32,6 @@ import { ToggleGroup } from "@/components/ui/toggle-group";
 
 import { cn } from "@/lib/cn";
 import { useSearchQueryStore } from "@/lib/stores/global-store-search-query";
-import { useUserPreferencesStore } from "@/lib/stores/global-user-preferences";
 import { useHomePageStore } from "@/lib/stores/page-store-home";
 
 import { extractInfoFromSearchQuery } from "@/hooks/search-query";
@@ -428,7 +425,6 @@ export function FilterHome({
 }: HomeFilterProps) {
   // State - Open/Close Modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [savedDefault, setSavedDefault] = useState(false);
   const [resetDefaultsFeedback, setResetDefaultsFeedback] = useState(false);
 
   // Calculate number of active filters
@@ -441,59 +437,12 @@ export function FilterHome({
     return count;
   }, [filteredLibraries.length, filterInDB, filterIgnored, hasSetsAvailableFilter]);
 
-  const handleClearSession = () => {
-    useHomePageStore.getState().resetToSavedDefaults();
-    const prefs = useUserPreferencesStore.getState();
-    const defaultSort = prefs.defaultSort || "dateAdded";
-    const defaultSortOrder = (prefs.defaultSortOrder as "asc" | "desc") || "desc";
-    const defaultItemsPerPage = prefs.defaultItemsPerPage || 20;
-    const defaultLibraries = prefs.defaultLibraries || [];
-    const defaultFilterInDB = (prefs.defaultFilterInDB as TYPE_HOME_PAGE_FILTER_IN_DB_OPTIONS) || "";
-    const defaultFilterIgnored = (prefs.defaultFilterIgnored as TYPE_FILTER_IGNORED_OPTIONS) || "";
-    const defaultHasSetsAvailableFilter =
-      (prefs.defaultHasSetsAvailableFilter as TYPE_HOME_PAGE_FILTER_HAS_SETS_AVAILABLE_OPTIONS) || "";
-
-    setSortOption(defaultSort);
-    setSortOrder(defaultSortOrder);
-    setItemsPerPage(defaultItemsPerPage);
-    setFilteredLibraries(defaultLibraries);
-    setFilterInDB(defaultFilterInDB);
-    setFilterIgnored(defaultFilterIgnored);
-    setHasSetsAvailableFilter(defaultHasSetsAvailableFilter);
-    setCurrentPage(1);
-  };
-
-  const handleResetDefaults = () => {
-    useUserPreferencesStore.getState().resetHomeDefaults();
-    useHomePageStore.getState().resetToFactoryDefaults();
-    setSortOption("dateAdded");
-    setSortOrder("desc");
-    setItemsPerPage(20);
-    setFilteredLibraries([]);
-    setFilterInDB("");
-    setFilterIgnored("");
-    setHasSetsAvailableFilter("");
-    setCurrentPage(1);
+  // Back to the default sort and filter options, saved for every device like any other change
+  const handleResetToDefaults = () => {
+    useHomePageStore.getState().resetToDefaults();
     setResetDefaultsFeedback(true);
     setTimeout(() => {
       setResetDefaultsFeedback(false);
-    }, 2000);
-  };
-
-  const handleSetAsDefault = () => {
-    useUserPreferencesStore.getState().setHomeDefaults({
-      sortOption,
-      sortOrder,
-      itemsPerPage,
-      filteredLibraries,
-      filterInDB,
-      filterIgnored,
-      hasSetsAvailableFilter,
-    });
-    useHomePageStore.setState({ sessionModified: false });
-    setSavedDefault(true);
-    setTimeout(() => {
-      setSavedDefault(false);
     }, 2000);
   };
 
@@ -535,65 +484,28 @@ export function FilterHome({
           setItemsPerPage={setItemsPerPage}
         />
         <Separator className="my-1 w-full" />
-        <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 pt-2">
-          <div className="w-full sm:w-auto flex justify-start">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleClearSession}
-              className="text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Temporarily clear all active filters and sort options for this session"
-            >
-              <RotateCcw className="h-4 w-4 mr-1.5" />
-              Clear Session
-            </Button>
-          </div>
-          <div className="w-full sm:w-auto flex flex-row items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleResetDefaults}
-              className="text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Reset your saved server defaults back to original factory defaults"
-            >
-              {resetDefaultsFeedback ? (
-                <>
-                  <Check className="h-4 w-4 mr-1.5 text-green-400" />
-                  Defaults Reset!
-                </>
-              ) : (
-                <>
-                  <Undo2 className="h-4 w-4 mr-1.5" />
-                  Reset Defaults
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleSetAsDefault}
-              className="cursor-pointer"
-              title="Save current filters and sort options as your default"
-            >
-              {savedDefault ? (
-                <>
-                  <Check className="h-4 w-4 mr-1.5 text-green-400" />
-                  Default Saved!
-                </>
-              ) : (
-                <>
-                  <BookmarkCheck className="h-4 w-4 mr-1.5" />
-                  Set as Default
-                </>
-              )}
-            </Button>
-          </div>
+        <DialogFooter className="flex flex-row items-center justify-end gap-2 px-4 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleResetToDefaults}
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            {resetDefaultsFeedback ? (
+              <>
+                <Check className="h-4 w-4 mr-1.5 text-green-400" />
+                Reset
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4 mr-1.5" />
+                Reset to Defaults
+              </>
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

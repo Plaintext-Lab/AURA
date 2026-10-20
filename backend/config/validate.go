@@ -3,6 +3,7 @@ package config
 import (
 	"aura/logging"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"slices"
@@ -599,27 +600,20 @@ func ValidateUserPreferences(ctx context.Context, UserPreferences *Config_UserPr
 	}
 	UserPreferences.FavoriteCreators = favoriteCreators
 
-	// Validate and sanitize home view defaults
-	if UserPreferences.DefaultSort == "" {
-		UserPreferences.DefaultSort = "dateAdded"
+	// Each page's saved sort and filter options, only for known pages and not too large
+	pageViews := map[string]map[string]any{}
+	for page, view := range UserPreferences.PageViews {
+		if !slices.Contains(PageViewPages, page) {
+			logAction.AppendWarning("message", fmt.Sprintf("UserPreferences.PageViews has an unknown page %q, removing it", page))
+			continue
+		}
+		if encoded, err := json.Marshal(view); err != nil || len(encoded) > maxPageViewSize {
+			logAction.AppendWarning("message", fmt.Sprintf("UserPreferences.PageViews.%s is too large, removing it", page))
+			continue
+		}
+		pageViews[page] = view
 	}
-	if UserPreferences.DefaultSortOrder != "asc" && UserPreferences.DefaultSortOrder != "desc" {
-		UserPreferences.DefaultSortOrder = "desc"
-	}
-	if UserPreferences.DefaultItemsPerPage <= 0 {
-		UserPreferences.DefaultItemsPerPage = 20
-	} else if UserPreferences.DefaultItemsPerPage > 250 {
-		UserPreferences.DefaultItemsPerPage = 250
-	}
-	if UserPreferences.DefaultFilterInDB != "" && UserPreferences.DefaultFilterInDB != "inDB" && UserPreferences.DefaultFilterInDB != "notInDB" {
-		UserPreferences.DefaultFilterInDB = ""
-	}
-	if UserPreferences.DefaultFilterIgnored != "" && UserPreferences.DefaultFilterIgnored != "ignored" && UserPreferences.DefaultFilterIgnored != "notIgnored" {
-		UserPreferences.DefaultFilterIgnored = ""
-	}
-	if UserPreferences.DefaultHasSetsAvailableFilter != "" && UserPreferences.DefaultHasSetsAvailableFilter != "hasSetsAvailable" && UserPreferences.DefaultHasSetsAvailableFilter != "noSetsAvailable" {
-		UserPreferences.DefaultHasSetsAvailableFilter = ""
-	}
+	UserPreferences.PageViews = pageViews
 
 	return isValid
 }

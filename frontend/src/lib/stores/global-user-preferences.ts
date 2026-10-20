@@ -6,7 +6,7 @@ import { log } from "@/lib/logger";
 import { useOnboardingStore } from "@/lib/stores/global-store-onboarding";
 import { GlobalStore } from "@/lib/stores/stores";
 
-import type { AppConfigUserPreferences } from "@/types/config/config";
+import type { AppConfigUserPreferences, PageView } from "@/types/config/config";
 import { DOWNLOAD_IMAGE_TYPE_OPTIONS, type TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS } from "@/types/ui-options";
 
 // User Preferences are saved in the aura config, so they're the same on every device.
@@ -21,14 +21,11 @@ interface UserPreferences {
   autoDownloadNewItems: boolean;
   autoUpgradeSets: boolean;
   favoriteCreators: string[]; // MediUX usernames ranked best first
-  defaultSort: string;
-  defaultSortOrder: "asc" | "desc";
-  defaultItemsPerPage: number;
-  defaultLibraries: string[];
-  defaultFilterInDB: string;
-  defaultFilterIgnored: string;
-  defaultHasSetsAvailableFilter: string;
+  pageViews: Record<string, PageView>; // Each page's sort and filter options, by page
 }
+
+// The pages whose sort and filter options are saved, the same as PageViewPages in aura
+export type PageViewPage = "home" | "saved_sets" | "collections" | "logs" | "media_item" | "download_queue";
 
 export type UserPreferencesSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -46,16 +43,7 @@ interface UserPreferencesStore extends UserPreferences {
   setAutoDownloadNewItems: (autoDownloadNewItems: boolean) => void;
   setAutoUpgradeSets: (autoUpgradeSets: boolean) => void;
   setFavoriteCreators: (favoriteCreators: string[]) => void;
-  setHomeDefaults: (defaults: {
-    sortOption: string;
-    sortOrder: "asc" | "desc";
-    itemsPerPage: number;
-    filteredLibraries: string[];
-    filterInDB: string;
-    filterIgnored: string;
-    hasSetsAvailableFilter: string;
-  }) => void;
-  resetHomeDefaults: () => void;
+  setPageView: (page: PageViewPage, view: PageView) => void;
   // Apply the preferences from the aura config, without saving them again
   applyServerPreferences: (preferences: UserPreferences) => void;
   hasHydrated: boolean;
@@ -72,13 +60,7 @@ const defaultPreferences = (): UserPreferences => ({
   autoDownloadNewItems: false,
   autoUpgradeSets: false,
   favoriteCreators: [],
-  defaultSort: "dateAdded",
-  defaultSortOrder: "desc",
-  defaultItemsPerPage: 20,
-  defaultLibraries: [],
-  defaultFilterInDB: "",
-  defaultFilterIgnored: "",
-  defaultHasSetsAvailableFilter: "",
+  pageViews: {},
 });
 
 const toServerPreferences = (preferences: UserPreferences): AppConfigUserPreferences => ({
@@ -90,13 +72,7 @@ const toServerPreferences = (preferences: UserPreferences): AppConfigUserPrefere
   auto_download_new_items: preferences.autoDownloadNewItems,
   auto_upgrade_sets: preferences.autoUpgradeSets,
   favorite_creators: preferences.favoriteCreators,
-  default_sort: preferences.defaultSort,
-  default_sort_order: preferences.defaultSortOrder,
-  default_items_per_page: preferences.defaultItemsPerPage,
-  default_libraries: preferences.defaultLibraries,
-  default_filter_in_db: preferences.defaultFilterInDB,
-  default_filter_ignored: preferences.defaultFilterIgnored,
-  default_has_sets_available_filter: preferences.defaultHasSetsAvailableFilter,
+  page_views: preferences.pageViews,
 });
 
 const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPreferences => ({
@@ -108,13 +84,7 @@ const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPrefe
   autoDownloadNewItems: preferences.auto_download_new_items ?? false,
   autoUpgradeSets: preferences.auto_upgrade_sets ?? false,
   favoriteCreators: preferences.favorite_creators ?? [],
-  defaultSort: preferences.default_sort ?? "dateAdded",
-  defaultSortOrder: (preferences.default_sort_order as "asc" | "desc") ?? "desc",
-  defaultItemsPerPage: preferences.default_items_per_page ?? 20,
-  defaultLibraries: preferences.default_libraries ?? [],
-  defaultFilterInDB: preferences.default_filter_in_db ?? "",
-  defaultFilterIgnored: preferences.default_filter_ignored ?? "",
-  defaultHasSetsAvailableFilter: preferences.default_has_sets_available_filter ?? "",
+  pageViews: preferences.page_views ?? {},
 });
 
 const preferencesEqual = (a: UserPreferences, b: UserPreferences) =>
@@ -198,28 +168,8 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         set({ favoriteCreators });
         queueServerSave();
       },
-      setHomeDefaults: (defaults) => {
-        set({
-          defaultSort: defaults.sortOption,
-          defaultSortOrder: defaults.sortOrder,
-          defaultItemsPerPage: defaults.itemsPerPage,
-          defaultLibraries: defaults.filteredLibraries,
-          defaultFilterInDB: defaults.filterInDB,
-          defaultFilterIgnored: defaults.filterIgnored,
-          defaultHasSetsAvailableFilter: defaults.hasSetsAvailableFilter,
-        });
-        queueServerSave();
-      },
-      resetHomeDefaults: () => {
-        set({
-          defaultSort: "dateAdded",
-          defaultSortOrder: "desc",
-          defaultItemsPerPage: 20,
-          defaultLibraries: [],
-          defaultFilterInDB: "",
-          defaultFilterIgnored: "",
-          defaultHasSetsAvailableFilter: "",
-        });
+      setPageView: (page, view) => {
+        set((state) => ({ pageViews: { ...state.pageViews, [page]: view } }));
         queueServerSave();
       },
       applyServerPreferences: (preferences: UserPreferences) => set(preferences),
@@ -241,14 +191,9 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         defaultAddToQueue: state.defaultAddToQueue,
         defaultAddToDBOnly: state.defaultAddToDBOnly,
         autoDownloadNewItems: state.autoDownloadNewItems,
+        autoUpgradeSets: state.autoUpgradeSets,
         favoriteCreators: state.favoriteCreators,
-        defaultSort: state.defaultSort,
-        defaultSortOrder: state.defaultSortOrder,
-        defaultItemsPerPage: state.defaultItemsPerPage,
-        defaultLibraries: state.defaultLibraries,
-        defaultFilterInDB: state.defaultFilterInDB,
-        defaultFilterIgnored: state.defaultFilterIgnored,
-        defaultHasSetsAvailableFilter: state.defaultHasSetsAvailableFilter,
+        pageViews: state.pageViews,
       }),
       onRehydrateStorage: () => (state) => {
         state?.hydrate();
@@ -280,13 +225,7 @@ const syncFromServer = () => {
     autoDownloadNewItems: store.autoDownloadNewItems ?? false,
     autoUpgradeSets: store.autoUpgradeSets ?? false,
     favoriteCreators: store.favoriteCreators ?? [],
-    defaultSort: store.defaultSort ?? "dateAdded",
-    defaultSortOrder: store.defaultSortOrder ?? "desc",
-    defaultItemsPerPage: store.defaultItemsPerPage ?? 20,
-    defaultLibraries: store.defaultLibraries ?? [],
-    defaultFilterInDB: store.defaultFilterInDB ?? "",
-    defaultFilterIgnored: store.defaultFilterIgnored ?? "",
-    defaultHasSetsAvailableFilter: store.defaultHasSetsAvailableFilter ?? "",
+    pageViews: store.pageViews ?? {},
   };
 
   let synced = false;

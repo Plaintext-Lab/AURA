@@ -5,6 +5,7 @@
 - Added pagination to the Download Queue and Failed tabs.
 - Added new option to "Automatically Upgrade Sets", which replaces a saved set with a higher-ranked favorite creator set when available.
 - Added new option to turn off "Automatic Upgrade" in the Download Modal.
+- Added new database saving for every page filter/sort setting so that it's the same for every browser and on every device. (Thanks to [mattsigal](https://github.com/mattsigal) for the [PR](https://github.com/mediux-team/AURA/pull/152)!)
 
 ### Fixed
 

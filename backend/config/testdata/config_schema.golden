@@ -125,14 +125,8 @@ UserPreferences.AutoDownloadNewItems: bool
 UserPreferences.AutoUpgradeSets: bool
 UserPreferences.DefaultAddToDBOnly: bool
 UserPreferences.DefaultAddToQueue: bool
-UserPreferences.DefaultFilterIgnored: string
-UserPreferences.DefaultFilterInDB: string
-UserPreferences.DefaultHasSetsAvailableFilter: string
-UserPreferences.DefaultItemsPerPage: int
-UserPreferences.DefaultLibraries: []string
-UserPreferences.DefaultSort: string
-UserPreferences.DefaultSortOrder: string
 UserPreferences.DownloadDefaults: []string
 UserPreferences.FavoriteCreators: []string
+UserPreferences.PageViews: map[string]map[string]interface {}
 UserPreferences.ShowDateModified: bool
 UserPreferences.ShowOnlyDownloadDefaults: bool
