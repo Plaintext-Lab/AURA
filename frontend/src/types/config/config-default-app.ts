@@ -82,5 +82,13 @@ export const defaultAppConfig = (): AppConfig =>
       auto_download_new_items: false,
       auto_upgrade_sets: false,
       favorite_creators: [],
+      default_sort: "dateAdded",
+      default_sort_order: "desc",
+      default_items_per_page: 20,
+      default_libraries: [],
+      default_filter_in_db: "",
+      default_filter_ignored: "",
+      default_has_sets_available_filter: "",
     },
   }) satisfies AppConfig;
+
