@@ -52,32 +52,8 @@ func DownloadFromFavoriteCreators(ctx context.Context, items []models.MediaItem,
 		return result, logging.LogErrorInfo{}
 	}
 
-	// Each favorite creator's sets, by the TMDB ID of the items, in rank order
-	setsByRank := make([]map[string][]models.SetRef, 0, len(favorites))
-	for _, username := range favorites {
-		sets, Err := getCreatorSets(ctx, username)
-		if Err.Message != "" {
-			logAction.AppendWarning(fmt.Sprintf("%s_sets", username), Err.Message)
-			setsByRank = append(setsByRank, nil)
-			continue
-		}
-		byItem := map[string][]models.SetRef{}
-		for _, set := range append(slices.Clone(sets.MovieSets), sets.ShowSets...) {
-			for _, id := range set.ItemIDs {
-				byItem[id] = append(byItem[id], set)
-			}
-		}
-		setsByRank = append(setsByRank, byItem)
-	}
-
-	// Items already waiting in the Download Queue
-	queued := map[string]bool{}
-	jobs, _ := getQueueJobs(ctx)
-	for _, job := range jobs {
-		if job.Status == "pending" || job.Status == "processing" {
-			queued[job.TMDB_ID+"|"+job.LibraryTitle+"|"+job.Edition] = true
-		}
-	}
+	setsByRank := favoriteSetsByRank(ctx, logAction, favorites)
+	queued := queuedItems(ctx)
 
 	selected := selectedTypes(prefs.DownloadDefaults)
 	for _, item := range items {
@@ -86,7 +62,7 @@ func DownloadFromFavoriteCreators(ctx context.Context, items []models.MediaItem,
 		}
 		result.Checked++
 
-		set, found := bestSet(item, setsByRank)
+		set, _, found := bestSet(item, setsByRank)
 		if !found {
 			result.NoSet++
 			continue
@@ -140,9 +116,42 @@ func favoriteCreators(ctx context.Context, ranked []string) []string {
 	return slices.DeleteFunc(favorites, func(name string) bool { return hidden[strings.ToLower(name)] })
 }
 
-// bestSet returns the best ranked creator's most popular set for the item, unranked sets last
-func bestSet(item models.MediaItem, setsByRank []map[string][]models.SetRef) (models.SetRef, bool) {
-	for _, byItem := range setsByRank {
+// favoriteSetsByRank is each favorite creator's sets, by the TMDB ID of the items, in rank order
+func favoriteSetsByRank(ctx context.Context, logAction *logging.LogAction, favorites []string) []map[string][]models.SetRef {
+	setsByRank := make([]map[string][]models.SetRef, 0, len(favorites))
+	for _, username := range favorites {
+		sets, Err := getCreatorSets(ctx, username)
+		if Err.Message != "" {
+			logAction.AppendWarning(fmt.Sprintf("%s_sets", username), Err.Message)
+			setsByRank = append(setsByRank, nil)
+			continue
+		}
+		byItem := map[string][]models.SetRef{}
+		for _, set := range append(slices.Clone(sets.MovieSets), sets.ShowSets...) {
+			for _, id := range set.ItemIDs {
+				byItem[id] = append(byItem[id], set)
+			}
+		}
+		setsByRank = append(setsByRank, byItem)
+	}
+	return setsByRank
+}
+
+// queuedItems is the items waiting in the Download Queue
+func queuedItems(ctx context.Context) map[string]bool {
+	queued := map[string]bool{}
+	jobs, _ := getQueueJobs(ctx)
+	for _, job := range jobs {
+		if job.Status == "pending" || job.Status == "processing" {
+			queued[job.TMDB_ID+"|"+job.LibraryTitle+"|"+job.Edition] = true
+		}
+	}
+	return queued
+}
+
+// bestSet returns the best ranked creator's most popular set for the item, unranked sets last, and the creator's rank from 0
+func bestSet(item models.MediaItem, setsByRank []map[string][]models.SetRef) (models.SetRef, int, bool) {
+	for rank, byItem := range setsByRank {
 		candidates := []models.SetRef{}
 		for _, set := range byItem[item.TMDB_ID] {
 			if set.Type == item.Type {
@@ -158,9 +167,9 @@ func bestSet(item models.MediaItem, setsByRank []map[string][]models.SetRef) (mo
 			}
 			return b.DateUpdated.Compare(a.DateUpdated)
 		})
-		return candidates[0], true
+		return candidates[0], rank, true
 	}
-	return models.SetRef{}, false
+	return models.SetRef{}, 0, false
 }
 
 // comparePopularity puts the most popular first and the sets that aren't ranked last

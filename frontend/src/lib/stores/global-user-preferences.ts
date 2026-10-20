@@ -19,6 +19,7 @@ interface UserPreferences {
   defaultAddToQueue: boolean;
   defaultAddToDBOnly: boolean;
   autoDownloadNewItems: boolean;
+  autoUpgradeSets: boolean;
   favoriteCreators: string[]; // MediUX usernames ranked best first
 }
 
@@ -36,6 +37,7 @@ interface UserPreferencesStore extends UserPreferences {
   setDefaultAddToQueue: (defaultAddToQueue: boolean) => void;
   setDefaultAddToDBOnly: (defaultAddToDBOnly: boolean) => void;
   setAutoDownloadNewItems: (autoDownloadNewItems: boolean) => void;
+  setAutoUpgradeSets: (autoUpgradeSets: boolean) => void;
   setFavoriteCreators: (favoriteCreators: string[]) => void;
   // Apply the preferences from the aura config, without saving them again
   applyServerPreferences: (preferences: UserPreferences) => void;
@@ -51,6 +53,7 @@ const defaultPreferences = (): UserPreferences => ({
   defaultAddToQueue: false,
   defaultAddToDBOnly: false,
   autoDownloadNewItems: false,
+  autoUpgradeSets: false,
   favoriteCreators: [],
 });
 
@@ -61,6 +64,7 @@ const toServerPreferences = (preferences: UserPreferences): AppConfigUserPrefere
   default_add_to_queue: preferences.defaultAddToQueue,
   default_add_to_db_only: preferences.defaultAddToDBOnly,
   auto_download_new_items: preferences.autoDownloadNewItems,
+  auto_upgrade_sets: preferences.autoUpgradeSets,
   favorite_creators: preferences.favoriteCreators,
 });
 
@@ -71,6 +75,7 @@ const fromServerPreferences = (preferences: AppConfigUserPreferences): UserPrefe
   defaultAddToQueue: preferences.default_add_to_queue ?? false,
   defaultAddToDBOnly: preferences.default_add_to_db_only ?? false,
   autoDownloadNewItems: preferences.auto_download_new_items ?? false,
+  autoUpgradeSets: preferences.auto_upgrade_sets ?? false,
   favoriteCreators: preferences.favorite_creators ?? [],
 });
 
@@ -147,6 +152,10 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
         set({ autoDownloadNewItems });
         queueServerSave();
       },
+      setAutoUpgradeSets: (autoUpgradeSets: boolean) => {
+        set({ autoUpgradeSets });
+        queueServerSave();
+      },
       setFavoriteCreators: (favoriteCreators: string[]) => {
         set({ favoriteCreators });
         queueServerSave();
@@ -200,6 +209,7 @@ const syncFromServer = () => {
     defaultAddToQueue: store.defaultAddToQueue,
     defaultAddToDBOnly: store.defaultAddToDBOnly,
     autoDownloadNewItems: store.autoDownloadNewItems ?? false,
+    autoUpgradeSets: store.autoUpgradeSets ?? false,
     favoriteCreators: store.favoriteCreators ?? [],
   };
 

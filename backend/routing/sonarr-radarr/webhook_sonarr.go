@@ -411,10 +411,12 @@ func processSonarrDownloadEvent(ctx context.Context, payload SonarrWebHookOnUpgr
 					},
 					Images: mediuxSet.Images,
 				},
-				LastDownloaded: time.Now(),
-				SelectedTypes:  dbSet.SelectedTypes,
-				AutoDownload:   dbSet.AutoDownload,
-				ToDelete:       false,
+				LastDownloaded:            time.Now(),
+				SelectedTypes:             dbSet.SelectedTypes,
+				AutoDownload:              dbSet.AutoDownload,
+				AutoAddNewCollectionItems: dbSet.AutoAddNewCollectionItems,
+				NoAutoUpgrade:             dbSet.NoAutoUpgrade,
+				ToDelete:                  false,
 			}
 			found, dbItem.PosterSets = utils.UpdatePosterSetInDBItem(dbItem.PosterSets, newSetInfo)
 			if !found {

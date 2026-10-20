@@ -77,6 +77,7 @@ export interface AppConfigJobs {
   refresh_mediux_users: AppConfigJobSetting; // Schedule for refreshing tracked MediUX users/creators
   check_mediux_site_link: AppConfigJobSetting; // Schedule for checking MediUX site link availability
   backup_database: AppConfigJobSetting; // Schedule for backing up the database
+  upgrade_saved_sets: AppConfigJobSetting; // Schedule for upgrading saved sets to higher ranked favorite creators
 }
 
 export interface AppConfigBackups {
@@ -208,5 +209,6 @@ export interface AppConfigUserPreferences {
   default_add_to_queue: boolean; // Whether "Add to Queue" is checked by default in the Download Modal
   default_add_to_db_only: boolean; // Whether "Add to Database Only" is checked by default in the Download Modal
   auto_download_new_items: boolean; // Whether new items get images from the favorite creators automatically
+  auto_upgrade_sets: boolean; // Whether to automatically upgrade sets to a better version when available
   favorite_creators: string[]; // MediUX usernames ranked best first
 }

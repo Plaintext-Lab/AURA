@@ -2108,6 +2108,71 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/api/download/upgrade-sets": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Replaces saved sets with a set from a higher ranked favorite creator, for the items given or every saved item. Runs even when Automatically Upgrade Sets is off. Sets with Auto Upgrade off are kept. The new sets are added to the Download Queue.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Download"
+                ],
+                "summary": "Upgrade Saved Sets",
+                "parameters": [
+                    {
+                        "description": "The saved items to upgrade",
+                        "name": "req",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/routes_download.UpgradeSets_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpx.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/autodownload.UpgradeSavedSetsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (only when Auth.Enabled=true)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/health": {
             "get": {
                 "description": "Check that aura is running and its database can be read. Returns 500 if the database can't be read. Used by the Docker health check.",
@@ -4841,6 +4906,33 @@ const docTemplate = `{
                 }
             }
         },
+        "autodownload.UpgradeItem": {
+            "type": "object",
+            "properties": {
+                "edition": {
+                    "type": "string"
+                },
+                "library_title": {
+                    "type": "string"
+                },
+                "tmdb_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "autodownload.UpgradeSavedSetsResult": {
+            "type": "object",
+            "properties": {
+                "checked": {
+                    "description": "Saved items that can be upgraded",
+                    "type": "integer"
+                },
+                "upgraded": {
+                    "description": "Items a better set was added to the Download Queue for",
+                    "type": "integer"
+                }
+            }
+        },
         "config.Config": {
             "type": "object",
             "properties": {
@@ -5181,6 +5273,14 @@ const docTemplate = `{
                 },
                 "refresh_mediux_users": {
                     "description": "Schedule for refreshing tracked MediUX users/creators.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.Config_JobSetting"
+                        }
+                    ]
+                },
+                "upgrade_saved_sets": {
+                    "description": "Schedule for upgrading saved sets to higher ranked favorite creators.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/config.Config_JobSetting"
@@ -6546,6 +6646,10 @@ const docTemplate = `{
                 "last_downloaded": {
                     "type": "string"
                 },
+                "no_auto_upgrade": {
+                    "description": "Keep this set, Automatically Upgrade Sets doesn't replace it",
+                    "type": "boolean"
+                },
                 "popularity": {
                     "description": "Popularity score of the set",
                     "type": "integer"
@@ -6585,6 +6689,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.DBPosterSetDetail"
+                    }
+                },
+                "replace_set_ids": {
+                    "description": "Saved sets of the item this replaces, they're removed once the new sets are saved",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 },
                 "source": {
@@ -7677,6 +7788,18 @@ const docTemplate = `{
             "properties": {
                 "result": {
                     "type": "string"
+                }
+            }
+        },
+        "routes_download.UpgradeSets_Request": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "The saved items to upgrade, empty upgrades every saved item",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/autodownload.UpgradeItem"
+                    }
                 }
             }
         },

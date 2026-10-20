@@ -259,6 +259,7 @@ func insertRedownloadedSetIntoDB(ctx context.Context, newMediaItem models.MediaI
 		SelectedTypes:             dbSet.SelectedTypes,
 		AutoDownload:              dbSet.AutoDownload,
 		AutoAddNewCollectionItems: dbSet.AutoAddNewCollectionItems,
+		NoAutoUpgrade:             dbSet.NoAutoUpgrade,
 		ToDelete:                  false,
 	}
 	var found bool

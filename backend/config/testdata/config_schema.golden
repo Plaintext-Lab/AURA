@@ -37,6 +37,8 @@ Jobs.RefreshMediaItemsAndCollections.Cron: string
 Jobs.RefreshMediaItemsAndCollections.Enabled: *bool
 Jobs.RefreshMediuxUsers.Cron: string
 Jobs.RefreshMediuxUsers.Enabled: *bool
+Jobs.UpgradeSavedSets.Cron: string
+Jobs.UpgradeSavedSets.Enabled: *bool
 LabelsAndTags.Applications: list
 LabelsAndTags.Applications[].Add: []string
 LabelsAndTags.Applications[].AddLabelTagForSelectedTypes: bool
@@ -120,6 +122,7 @@ SonarrRadarr.Applications[].Type: string
 SonarrRadarr.Applications[].URL: string
 TMDB.ApiToken: string
 UserPreferences.AutoDownloadNewItems: bool
+UserPreferences.AutoUpgradeSets: bool
 UserPreferences.DefaultAddToDBOnly: bool
 UserPreferences.DefaultAddToQueue: bool
 UserPreferences.DownloadDefaults: []string

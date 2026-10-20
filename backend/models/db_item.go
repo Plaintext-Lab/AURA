@@ -8,6 +8,8 @@ type DBSavedItem struct {
 	MediaItem  MediaItem           `json:"media_item"`
 	PosterSets []DBPosterSetDetail `json:"poster_sets,omitempty"`
 	Source     string              `json:"source,omitempty"` // What added it to the Download Queue, empty when it was the user
+	// Saved sets of the item this replaces, they're removed once the new sets are saved
+	ReplaceSetIDs []string `json:"replace_set_ids,omitempty"`
 }
 
 // WithSetImageTypes returns the item with each set's selected types limited to the image types the set can have
@@ -26,6 +28,7 @@ const (
 	SourceFavoriteCreatorsNewItem  = "favorite_creators_new_item"  // A new item, from a favorite creator
 	SourceFavoriteCreatorsAllItems = "favorite_creators_all_items" // Run for All Items, from a favorite creator
 	SourceSiloPlugin               = "silo_plugin"                 // Silo used an image from the aura plugin
+	SourceAutoUpgrade              = "auto_upgrade"                // A higher ranked favorite creator's set replaces a saved set
 )
 
 // PosterSetDetail groups poster set details per media item.
@@ -35,7 +38,8 @@ type DBPosterSetDetail struct {
 	SelectedTypes             SelectedTypes `json:"selected_types"`
 	AutoDownload              bool          `json:"auto_download"`
 	AutoAddNewCollectionItems bool          `json:"auto_add_new_collection_items"`
-	ToDelete                  bool          `json:"to_delete"` // Flag to indicate if the poster set should be deleted (Not used in DB)
+	NoAutoUpgrade             bool          `json:"no_auto_upgrade"` // Keep this set, Automatically Upgrade Sets doesn't replace it
+	ToDelete                  bool          `json:"to_delete"`       // Flag to indicate if the poster set should be deleted (Not used in DB)
 }
 
 type PosterSet struct {

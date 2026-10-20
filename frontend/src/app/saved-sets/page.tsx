@@ -7,10 +7,12 @@ import { AutoDownloadForceCheck } from "@/services/database/autodownload-force-c
 import { DeleteItemFromDB } from "@/services/database/delete";
 import { getAllItemsFromDB } from "@/services/database/get-all";
 import { UpdateItemInDB } from "@/services/database/update";
+import { UpgradeSavedSets, upgradeSetsMessage } from "@/services/downloads/favorite-creators";
 import { AddItemToDownloadQueue } from "@/services/downloads/queue-add";
 import { ApplyLabelsAndTagsToItem } from "@/services/labels-tags/apply";
 import { GetLibrarySummaries } from "@/services/mediaserver/library-items";
 import {
+  ArrowBigUpDash,
   ArrowDownAZ,
   ArrowDownZA,
   BookmarkIcon,
@@ -89,7 +91,10 @@ const SavedSetsPage: React.FC = () => {
     },
     {
       group: "Downloads",
-      actions: [{ value: "force-redownload", label: "Force Redownload" }],
+      actions: [
+        { value: "force-redownload", label: "Force Redownload" },
+        { value: "upgrade-sets", label: "Upgrade to Favorite Creators" },
+      ],
     },
     {
       group: "Metadata",
@@ -484,6 +489,25 @@ const SavedSetsPage: React.FC = () => {
     });
   };
 
+  // actionUpgradeSets replaces the selected sets with a set from a higher ranked favorite creator
+  const actionUpgradeSets = async (setsToUpgrade: DBSavedItem[]) => {
+    toast.loading(`Checking ${setsToUpgrade.length} ${setsToUpgrade.length === 1 ? "item" : "items"} for upgrades...`, {
+      id: "upgrade-sets",
+    });
+    const response = await UpgradeSavedSets(
+      setsToUpgrade.map((set) => ({
+        tmdb_id: set.media_item.tmdb_id,
+        library_title: set.media_item.library_title,
+        edition: set.media_item.edition ?? "",
+      }))
+    );
+    if (response.status === "error" || !response.data) {
+      toast.error(response.error?.message || "Could not upgrade the selected sets", { id: "upgrade-sets" });
+      return;
+    }
+    toast.success(upgradeSetsMessage(response.data), { id: "upgrade-sets", duration: 5000 });
+  };
+
   const actionDeleteSelectedSets = async (setsToDelete: DBSavedItem[]) => {
     log("INFO", "Saved Sets Page", "Delete Selected Sets", `Deleting ${setsToDelete.length} sets`, {
       setsToDelete,
@@ -556,6 +580,8 @@ const SavedSetsPage: React.FC = () => {
       actionDeleteSelectedSets(selectedSavedItems as DBSavedItem[]);
     } else if (bulkEditSelectedAction === "force-redownload") {
       actionForceRedownload(selectedSavedItems as DBSavedItem[]);
+    } else if (bulkEditSelectedAction === "upgrade-sets") {
+      actionUpgradeSets(selectedSavedItems as DBSavedItem[]);
     }
 
     // Set the Selected Action back to empty
@@ -1054,6 +1080,7 @@ const SavedSetsPage: React.FC = () => {
                 {bulkEditSelectedAction === "apply-label-tag" && <Tag className="h-4 w-4" />}
                 {bulkEditSelectedAction === "force-recheck" && <RefreshIcon className="h-4 w-4" />}
                 {bulkEditSelectedAction === "force-redownload" && <CloudDownload className="h-4 w-4" />}
+                {bulkEditSelectedAction === "upgrade-sets" && <ArrowBigUpDash className="h-4 w-4" />}
                 {bulkEditSelectedAction === "enable-autodownload" && <CloudCheck className="h-4 w-4" />}
                 {bulkEditSelectedAction === "disable-autodownload" && <CloudOff className="h-4 w-4" />}
               </Button>

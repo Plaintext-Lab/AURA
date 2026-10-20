@@ -113,6 +113,7 @@ func AddRoutes(r *chi.Mux) {
 			r.Post("/image/item", routes_download.DownloadImageFileForMediaItem)
 			r.Post("/image/collection", routes_download.DownloadImageFileForCollectionItem)
 			r.Post("/favorite-creators", routes_download.DownloadFromFavoriteCreators)
+			r.Post("/upgrade-sets", routes_download.UpgradeSets)
 
 			// Download Queue Routes
 			r.Route("/queue", func(r chi.Router) {

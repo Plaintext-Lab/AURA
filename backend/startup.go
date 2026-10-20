@@ -241,6 +241,12 @@ func runWarmup() (success bool) {
 		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Check for New Media Items cron job")
 	}
 
+	// Cronjob: Start Upgrade Saved Sets Job
+	err = jobs.StartUpgradeSavedSetsJob()
+	if err != nil {
+		logging.LOGGER.Error().Timestamp().Err(err).Msg("Failed to schedule Upgrade Saved Sets cron job")
+	}
+
 	// Cronjob: Start Handle Temp Ignored Items Job
 	err = jobs.StartHandleTempIgnoredItemsJob()
 	if err != nil {

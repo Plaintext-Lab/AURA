@@ -23,6 +23,7 @@ const (
 	JobKeyRefreshMediuxUsers              JobKey = "refresh_mediux_users"
 	JobKeyCheckMediuxSiteLink             JobKey = "check_mediux_site_link"
 	JobKeyBackupDatabase                  JobKey = "backup_database"
+	JobKeyUpgradeSavedSets                JobKey = "upgrade_saved_sets"
 )
 
 type jobDefinition struct {
@@ -107,6 +108,15 @@ var jobDefinitions = []jobDefinition{
 		Default:     config.JobDefaults.BackupDatabase,
 		Start:       StartBackupDatabaseJob,
 		RunNow:      RunBackupDatabaseJobNow,
+	},
+	{
+		Key:         JobKeyUpgradeSavedSets,
+		Name:        "Upgrade Saved Sets Job",
+		Description: "When Automatically Upgrade Sets is on in User Preferences, replaces saved sets with a set from a higher ranked favorite creator. Sets with Auto Upgrade off are kept.",
+		Setting:     func() config.Config_JobSetting { return config.Current.Jobs.UpgradeSavedSets },
+		Default:     config.JobDefaults.UpgradeSavedSets,
+		Start:       StartUpgradeSavedSetsJob,
+		RunNow:      RunUpgradeSavedSetsJobNow,
 	},
 }
 

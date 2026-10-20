@@ -45,6 +45,7 @@ export const defaultAppConfig = (): AppConfig =>
       refresh_mediux_users: { enabled: true, cron: "0 */12 * * *" },
       check_mediux_site_link: { enabled: true, cron: "0 */1 * * *" },
       backup_database: { enabled: true, cron: "0 3 * * *" },
+      upgrade_saved_sets: { enabled: true, cron: "0 4 * * *" },
     },
     backups: {
       keep: 7,
@@ -79,6 +80,7 @@ export const defaultAppConfig = (): AppConfig =>
       default_add_to_queue: false,
       default_add_to_db_only: false,
       auto_download_new_items: false,
+      auto_upgrade_sets: false,
       favorite_creators: [],
     },
   }) satisfies AppConfig;

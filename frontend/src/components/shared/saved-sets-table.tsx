@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  ArrowBigUpDash,
   Badge,
   Delete,
   DownloadCloudIcon,
@@ -28,6 +29,7 @@ import {
   renderTypeBadges,
   savedSetsConfirmDelete,
   savedSetsConfirmEdit,
+  upgradeSavedItem,
 } from "@/components/shared/saved-sets-shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -298,6 +300,10 @@ const SavedSetsTableRow: React.FC<{
               >
                 <DownloadCloudIcon className="ml-2" />
                 Redownload
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => upgradeSavedItem(normalizedSavedSet)} className="cursor-pointer">
+                <ArrowBigUpDash className="ml-2" />
+                Upgrade to Favorite Creators
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-destructive cursor-pointer">
                 <Delete className="ml-2" />

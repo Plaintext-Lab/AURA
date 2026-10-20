@@ -344,6 +344,30 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
     keywords: ["date", "modified", "updated"],
     configPath: "show_date_modified",
   },
+  {
+    sectionId: "user-preferences",
+    sectionLabel: "User Preferences",
+    label: "Automatically Download Images for New Items",
+    description: "Automatically download images for new items",
+    keywords: ["download", "new items", "auto download"],
+    configPath: "auto_download_new_items",
+  },
+  {
+    sectionId: "user-preferences",
+    sectionLabel: "User Preferences",
+    label: "Automatically Upgrade Sets",
+    description: "Automatically upgrade sets to a better version when available",
+    keywords: ["upgrade", "better version", "auto upgrade"],
+    configPath: "auto_upgrade_sets",
+  },
+  {
+    sectionId: "user-preferences",
+    sectionLabel: "User Preferences",
+    label: "Your Favorite Creators",
+    description: "List of your favorite MediUX creators",
+    keywords: ["favorite", "creators", "mediux"],
+    configPath: "favorite_creators",
+  },
 
   // Advanced
   {

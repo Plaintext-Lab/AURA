@@ -504,9 +504,9 @@ func upsertSavedItemEntry(ctx context.Context, tx *sql.Tx, mediaItem models.Medi
 INSERT INTO SavedItems (
   tmdb_id, library_title, edition, poster_set_id,
   poster_selected, backdrop_selected, season_poster_selected, special_season_poster_selected, titlecard_selected,
-	autodownload, auto_add_new_collection_items, last_downloaded
+	autodownload, auto_add_new_collection_items, no_auto_upgrade, last_downloaded
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
   poster_selected               = excluded.poster_selected,
   backdrop_selected             = excluded.backdrop_selected,
@@ -515,6 +515,7 @@ ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
   titlecard_selected            = excluded.titlecard_selected,
   autodownload                  = excluded.autodownload,
 	auto_add_new_collection_items = excluded.auto_add_new_collection_items,
+  no_auto_upgrade               = excluded.no_auto_upgrade,
   last_downloaded               = excluded.last_downloaded;
 `
 	_, err := tx.ExecContext(ctx, q,
@@ -529,6 +530,7 @@ ON CONFLICT(tmdb_id, library_title, edition, poster_set_id) DO UPDATE SET
 		boolToInt(ps.SelectedTypes.Titlecard),
 		boolToInt(ps.AutoDownload),
 		boolToInt(ps.AutoAddNewCollectionItems),
+		boolToInt(ps.NoAutoUpgrade),
 		lastDownloaded(ps.LastDownloaded),
 	)
 	if err != nil {

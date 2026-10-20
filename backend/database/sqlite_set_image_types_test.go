@@ -65,3 +65,44 @@ FROM SavedItems si JOIN PosterSets ps ON ps.id = si.poster_set_id`)
 		t.Error("queueing changed the caller's selected types")
 	}
 }
+
+func TestSavedSetAutoUpgradeSetting(t *testing.T) {
+	db := openTestMediaDB(t)
+	ctx := testContext()
+	// Each set owns its own image type, a set without one isn't saved
+	set := func(id string, keep bool, types models.SelectedTypes) models.DBPosterSetDetail {
+		return models.DBPosterSetDetail{PosterSet: models.PosterSet{BaseSetInfo: models.BaseSetInfo{ID: id, Type: "movie", Title: id, UserCreated: "creator"}},
+			SelectedTypes: types, NoAutoUpgrade: keep}
+	}
+	item := models.DBSavedItem{
+		MediaItem: models.MediaItem{TMDB_ID: "1", LibraryTitle: "Movies", RatingKey: "1", Type: "movie", Title: "Movie", Year: 2020,
+			Movie: &models.MediaItemMovie{File: models.MediaItemFile{Path: "/movies/Movie.mkv"}}},
+		PosterSets: []models.DBPosterSetDetail{set("kept", true, models.SelectedTypes{Poster: true}), set("upgradable", false, models.SelectedTypes{Backdrop: true})},
+	}
+	if Err := db.UpsertSavedItem(ctx, item); Err.Message != "" {
+		t.Fatal(Err.Message)
+	}
+	keep := func() map[string]bool {
+		t.Helper()
+		out, Err := db.GetAllSavedSets(ctx, models.DBFilter{ItemsPerPage: -1})
+		if Err.Message != "" || len(out.Items) != 1 {
+			t.Fatalf("saved = %d %s", len(out.Items), Err.Message)
+		}
+		got := map[string]bool{}
+		for _, set := range out.Items[0].PosterSets {
+			got[set.ID] = set.NoAutoUpgrade
+		}
+		return got
+	}
+	if got := keep(); len(got) != 2 || !got["kept"] || got["upgradable"] {
+		t.Errorf("auto upgrade off = %v", got)
+	}
+
+	// A replaced set is removed and the item keeps its other sets
+	if Err := db.DeletePosterSetForMediaItem(ctx, "1", "Movies", "", "upgradable"); Err.Message != "" {
+		t.Fatal(Err.Message)
+	}
+	if got := keep(); len(got) != 1 || !got["kept"] {
+		t.Errorf("after removing a set = %v", got)
+	}
+}

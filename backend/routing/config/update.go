@@ -670,6 +670,7 @@ func checkConfigDifferences_Jobs(ctx context.Context, oldJobs config.Config_Jobs
 		{jobs.JobKeyRefreshMediuxUsers, "RefreshMediuxUsers", oldJobs.RefreshMediuxUsers, &newJobs.RefreshMediuxUsers, config.JobDefaults.RefreshMediuxUsers},
 		{jobs.JobKeyCheckMediuxSiteLink, "CheckMediuxSiteLink", oldJobs.CheckMediuxSiteLink, &newJobs.CheckMediuxSiteLink, config.JobDefaults.CheckMediuxSiteLink},
 		{jobs.JobKeyBackupDatabase, "BackupDatabase", oldJobs.BackupDatabase, &newJobs.BackupDatabase, config.JobDefaults.BackupDatabase},
+		{jobs.JobKeyUpgradeSavedSets, "UpgradeSavedSets", oldJobs.UpgradeSavedSets, &newJobs.UpgradeSavedSets, config.JobDefaults.UpgradeSavedSets},
 	}
 
 	for _, f := range fields {

@@ -403,6 +403,7 @@ func handleCollectionAutoAddNewItems(ctx context.Context, dbSet models.DBPosterS
 					SelectedTypes:             dbSet.SelectedTypes,
 					AutoDownload:              dbSet.AutoDownload,
 					AutoAddNewCollectionItems: dbSet.AutoAddNewCollectionItems,
+					NoAutoUpgrade:             dbSet.NoAutoUpgrade,
 					ToDelete:                  false,
 				},
 			},

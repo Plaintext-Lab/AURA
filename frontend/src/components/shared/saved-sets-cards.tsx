@@ -1,7 +1,16 @@
 "use client";
 
 import { formatDateAndTime } from "@/helper/format-date-last-updates";
-import { AlertTriangle, Delete, DownloadCloudIcon, Edit, MoreHorizontal, RefreshCcw, RefreshCwOff } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowBigUpDash,
+  Delete,
+  DownloadCloudIcon,
+  Edit,
+  MoreHorizontal,
+  RefreshCcw,
+  RefreshCwOff,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import React, { useMemo, useState } from "react";
@@ -19,6 +28,7 @@ import {
   renderTypeBadges,
   savedSetsConfirmDelete,
   savedSetsConfirmEdit,
+  upgradeSavedItem,
 } from "@/components/shared/saved-sets-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -254,6 +264,10 @@ const SavedSetsCard: React.FC<{
               >
                 <DownloadCloudIcon className="ml-2" />
                 Redownload
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => upgradeSavedItem(normalizedSavedSet)} className="cursor-pointer">
+                <ArrowBigUpDash className="ml-2" />
+                Upgrade to Favorite Creators
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-destructive cursor-pointer">
                 <Delete className="ml-2" />

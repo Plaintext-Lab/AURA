@@ -288,6 +288,9 @@ func ValidateJobs(ctx context.Context, Jobs *Config_Jobs) bool {
 	if !ValidateJobSetting(ctx, &Jobs.BackupDatabase, JobDefaults.BackupDatabase) {
 		isValid = false
 	}
+	if !ValidateJobSetting(ctx, &Jobs.UpgradeSavedSets, JobDefaults.UpgradeSavedSets) {
+		isValid = false
+	}
 
 	return isValid
 }

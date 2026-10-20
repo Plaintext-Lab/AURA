@@ -287,6 +287,7 @@ CREATE TABLE SavedItems (
 
     autodownload INTEGER NOT NULL DEFAULT 0 CHECK (autodownload IN (0,1)),
 	auto_add_new_collection_items INTEGER NOT NULL DEFAULT 0 CHECK (auto_add_new_collection_items IN (0,1)),
+    no_auto_upgrade INTEGER NOT NULL DEFAULT 0 CHECK (no_auto_upgrade IN (0,1)),
     last_downloaded DATETIME NOT NULL,
 
     PRIMARY KEY (tmdb_id, library_title, edition, poster_set_id),

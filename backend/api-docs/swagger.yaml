@@ -38,6 +38,24 @@ definitions:
         description: Items a set was added to the Download Queue for
         type: integer
     type: object
+  autodownload.UpgradeItem:
+    properties:
+      edition:
+        type: string
+      library_title:
+        type: string
+      tmdb_id:
+        type: string
+    type: object
+  autodownload.UpgradeSavedSetsResult:
+    properties:
+      checked:
+        description: Saved items that can be upgraded
+        type: integer
+      upgraded:
+        description: Items a better set was added to the Download Queue for
+        type: integer
+    type: object
   config.Config:
     properties:
       auth:
@@ -255,6 +273,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/config.Config_JobSetting'
         description: Schedule for refreshing tracked MediUX users/creators.
+      upgrade_saved_sets:
+        allOf:
+        - $ref: '#/definitions/config.Config_JobSetting'
+        description: Schedule for upgrading saved sets to higher ranked favorite creators.
     type: object
   config.Config_LabelsAndTags:
     properties:
@@ -1189,6 +1211,9 @@ definitions:
         type: array
       last_downloaded:
         type: string
+      no_auto_upgrade:
+        description: Keep this set, Automatically Upgrade Sets doesn't replace it
+        type: boolean
       popularity:
         description: Popularity score of the set
         type: integer
@@ -1218,6 +1243,12 @@ definitions:
       poster_sets:
         items:
           $ref: '#/definitions/models.DBPosterSetDetail'
+        type: array
+      replace_set_ids:
+        description: Saved sets of the item this replaces, they're removed once the
+          new sets are saved
+        items:
+          type: string
         type: array
       source:
         description: What added it to the Download Queue, empty when it was the user
@@ -1949,6 +1980,14 @@ definitions:
     properties:
       result:
         type: string
+    type: object
+  routes_download.UpgradeSets_Request:
+    properties:
+      items:
+        description: The saved items to upgrade, empty upgrades every saved item
+        items:
+          $ref: '#/definitions/autodownload.UpgradeItem'
+        type: array
     type: object
   routes_images.DeleteTempImages_Response:
     properties:
@@ -3562,6 +3601,46 @@ paths:
       security:
       - SessionCookie: []
       summary: Download Queue - Stream Events
+      tags:
+      - Download
+  /api/download/upgrade-sets:
+    post:
+      consumes:
+      - application/json
+      description: Replaces saved sets with a set from a higher ranked favorite creator,
+        for the items given or every saved item. Runs even when Automatically Upgrade
+        Sets is off. Sets with Auto Upgrade off are kept. The new sets are added to
+        the Download Queue.
+      parameters:
+      - description: The saved items to upgrade
+        in: body
+        name: req
+        schema:
+          $ref: '#/definitions/routes_download.UpgradeSets_Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpx.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/autodownload.UpgradeSavedSetsResult'
+              type: object
+        "401":
+          description: Unauthorized (only when Auth.Enabled=true)
+          schema:
+            $ref: '#/definitions/httpx.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.JSONResponse'
+      security:
+      - SessionCookie: []
+      - ApiKeyAuth: []
+      summary: Upgrade Saved Sets
       tags:
       - Download
   /api/health:

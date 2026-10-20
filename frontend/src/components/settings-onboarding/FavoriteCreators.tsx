@@ -1,10 +1,14 @@
 "use client";
 
 import { type CreatorSetCount, GetSavedSetCreators } from "@/services/database/creators";
-import { DownloadFromFavoriteCreators } from "@/services/downloads/favorite-creators";
+import {
+  DownloadFromFavoriteCreators,
+  UpgradeSavedSets,
+  upgradeSetsMessage,
+} from "@/services/downloads/favorite-creators";
 import { GetUserFollowingAndHiding } from "@/services/mediux/get-user-follow-hiding";
 import { HandleSearch } from "@/services/search/api-search";
-import { ArrowDown, ArrowUp, Plus, Star, X } from "lucide-react";
+import { ArrowDown, ArrowUp, BookmarkIcon, Library, Play, Plus, Star, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useEffect, useState } from "react";
@@ -35,6 +39,8 @@ const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 export function FavoriteCreatorsCard() {
   const autoDownloadNewItems = useUserPreferencesStore((state) => state.autoDownloadNewItems);
   const setAutoDownloadNewItems = useUserPreferencesStore((state) => state.setAutoDownloadNewItems);
+  const autoUpgradeSets = useUserPreferencesStore((state) => state.autoUpgradeSets);
+  const setAutoUpgradeSets = useUserPreferencesStore((state) => state.setAutoUpgradeSets);
   const favoriteCreators = useUserPreferencesStore((state) => state.favoriteCreators);
   const setFavoriteCreators = useUserPreferencesStore((state) => state.setFavoriteCreators);
   const savedFavoriteCreators = useOnboardingStore(
@@ -64,6 +70,18 @@ export function FavoriteCreatorsCard() {
   const [runningForAll, setRunningForAll] = useState(false);
 
   // Check the items that were already in the libraries
+  const [upgradingSets, setUpgradingSets] = useState(false);
+  const upgradeAllSets = async () => {
+    setUpgradingSets(true);
+    const response = await UpgradeSavedSets();
+    setUpgradingSets(false);
+    if (response.status === "error" || !response.data) {
+      toast.error(response.error?.message || "Could not upgrade the saved sets");
+      return;
+    }
+    toast.success(upgradeSetsMessage(response.data));
+  };
+
   const runForAllItems = async () => {
     setRunningForAll(true);
     const response = await DownloadFromFavoriteCreators();
@@ -129,13 +147,28 @@ export function FavoriteCreatorsCard() {
 
   return (
     <Card className="gap-4 border-muted p-4 sm:p-5">
-      <h2 className="text-xl font-semibold">Auto Download New Items</h2>
+      <h2 className="text-xl font-semibold text-blue-500">Favorite Creators & Automatic Downloads</h2>
 
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor="auto-download-new-items" className="cursor-pointer">
           Automatically Download Images for New Items
         </Label>
+
         <div className="flex items-center gap-2">
+          {/* Run for the items already in the libraries, the dialog explains it */}
+          <ConfirmDestructiveDialogActionButton
+            variant="outline"
+            className="h-8 gap-0.5 px-2 cursor-pointer hover:text-primary active:scale-95"
+            onConfirm={runForAllItems}
+            disabled={!autoDownloadNewItems || runningForAll || favoriteCreators.length === 0}
+            title="Run for All Items?"
+            description="Every movie and show without a saved set gets the best set from your favorite creators, added to the Download Queue. On a large library this can be a lot of downloads."
+            confirmText="Run for All Items"
+          >
+            <Play className="h-3.5 w-3.5" />
+            <Library className="h-4 w-4" />
+            <span className="sr-only">Run for All Items</span>
+          </ConfirmDestructiveDialogActionButton>
           <Switch
             id="auto-download-new-items"
             checked={autoDownloadNewItems}
@@ -144,26 +177,64 @@ export function FavoriteCreatorsCard() {
           />
           <PopoverHelp ariaLabel="help-auto-download-new-items">
             <p className="mb-2">
-              When a movie or show has no saved set, aura looks for a set by one of your favorite creators, then saves
-              and downloads it.
+              When a new Movie or Show is added to your libraries, aura looks for a set by one of your favorite
+              creators, then saves and downloads it.
             </p>
-            <p className="mb-2">
-              Your best ranked creator with a set wins. If they have more than one set, the most popular on MediUX is
-              used. Items without a set from your favorite creators are skipped.
-            </p>
-            <p>The image types are your Download Defaults.</p>
+            <p>Use the play button to also check the items already in your libraries.</p>
           </PopoverHelp>
         </div>
       </div>
 
-      {!autoDownloadNewItems ? (
+      <div className="flex items-center justify-between gap-4">
+        <Label htmlFor="auto-upgrade-sets" className="cursor-pointer">
+          Automatically Upgrade Sets
+        </Label>
+        <div className="flex items-center gap-2">
+          {/* Upgrade the saved sets now, the dialog explains it */}
+          <ConfirmDestructiveDialogActionButton
+            variant="outline"
+            className="h-8 gap-0.5 px-2 cursor-pointer hover:text-primary active:scale-95"
+            onConfirm={upgradeAllSets}
+            disabled={!autoUpgradeSets || upgradingSets || favoriteCreators.length === 0}
+            title="Upgrade Saved Sets?"
+            description="Every saved set is checked against your favorite creators. When a higher ranked creator has a set for the item, the new set replaces it, using your Download Defaults, and is added to the Download Queue. Sets with Auto Upgrade off are kept."
+            confirmText="Upgrade Saved Sets"
+          >
+            <Play className="h-3.5 w-3.5" />
+            <BookmarkIcon className="h-4 w-4" />
+            <span className="sr-only">Upgrade Saved Sets</span>
+          </ConfirmDestructiveDialogActionButton>
+          <Switch
+            id="auto-upgrade-sets"
+            checked={autoUpgradeSets}
+            onCheckedChange={setAutoUpgradeSets}
+            className="cursor-pointer"
+          />
+          <PopoverHelp ariaLabel="help-auto-upgrade-sets">
+            <p className="mb-2">
+              The Upgrade Saved Sets job replaces a saved set when a favorite creator ranked higher than its creator has
+              a set for the item. Any favorite creator ranks above creators who aren&apos;t favorites.
+            </p>
+            <p className="mb-2">
+              The new set uses your Download Defaults with Auto Download on, and the old set is removed once the new one
+              is saved.
+            </p>
+            <p className="mb-2">Turn off Auto Upgrade on a saved set to keep it.</p>
+            <p>Use the play button to upgrade your saved sets now.</p>
+          </PopoverHelp>
+        </div>
+      </div>
+
+      {!autoDownloadNewItems && !autoUpgradeSets ? (
         <p className="text-sm text-muted-foreground">
-          Turn this on to choose the creators whose sets are downloaded for new items.
+          Turn one of these on to choose the creators whose sets are downloaded.
         </p>
       ) : (
         <>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Favorite Creators</h3>
+            <h3 className="text-lg font-semibold" id="favorite-creators">
+              Your Favorite Creators
+            </h3>
             <PopoverHelp ariaLabel="help-favorite-creators">
               <p className="mb-2">
                 Your favorite MediUX creators, ranked best first. Rank 1 is your top creator. Use the arrows to change
@@ -312,26 +383,6 @@ export function FavoriteCreatorsCard() {
               </AccordionItem>
             </Accordion>
           )}
-
-          {/* The items that were already in the libraries */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Items Already in Your Libraries</p>
-              <p className="text-xs text-muted-foreground">
-                New items are handled automatically. Run this to also check the items you already have.
-              </p>
-            </div>
-            <ConfirmDestructiveDialogActionButton
-              variant="outline"
-              onConfirm={runForAllItems}
-              disabled={runningForAll || favoriteCreators.length === 0}
-              title="Run for All Items?"
-              description="Every movie and show without a saved set gets the best set from your favorite creators, added to the Download Queue. On a large library this can be a lot of downloads."
-              confirmText="Run for All Items"
-            >
-              {runningForAll ? "Checking..." : "Run for All Items"}
-            </ConfirmDestructiveDialogActionButton>
-          </div>
         </>
       )}
     </Card>

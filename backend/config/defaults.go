@@ -104,6 +104,7 @@ func DefaultUserPreferences() Config_UserPreferences {
 		DefaultAddToQueue:        false,
 		DefaultAddToDBOnly:       false,
 		AutoDownloadNewItems:     false,
+		AutoUpgradeSets:          false,
 		FavoriteCreators:         []string{},
 	}
 }
@@ -117,6 +118,7 @@ var JobDefaults = struct {
 	RefreshMediuxUsers              JobSettingDefault
 	CheckMediuxSiteLink             JobSettingDefault
 	BackupDatabase                  JobSettingDefault
+	UpgradeSavedSets                JobSettingDefault
 }{
 	AutoDownload:                    JobSettingDefault{Enabled: true, Cron: "0 0 * * *"},
 	RefreshMediaItemsAndCollections: JobSettingDefault{Enabled: true, Cron: "0 4 * * *"},
@@ -126,6 +128,7 @@ var JobDefaults = struct {
 	RefreshMediuxUsers:              JobSettingDefault{Enabled: true, Cron: "0 */12 * * *"},
 	CheckMediuxSiteLink:             JobSettingDefault{Enabled: true, Cron: "0 */1 * * *"},
 	BackupDatabase:                  JobSettingDefault{Enabled: true, Cron: "0 3 * * *"},
+	UpgradeSavedSets:                JobSettingDefault{Enabled: true, Cron: "0 4 * * *"},
 }
 
 func boolPtr(b bool) *bool { return new(b) }
@@ -163,6 +166,10 @@ func DefaultJobsConfig() Config_Jobs {
 		BackupDatabase: Config_JobSetting{
 			Enabled: boolPtr(JobDefaults.BackupDatabase.Enabled),
 			Cron:    JobDefaults.BackupDatabase.Cron,
+		},
+		UpgradeSavedSets: Config_JobSetting{
+			Enabled: boolPtr(JobDefaults.UpgradeSavedSets.Enabled),
+			Cron:    JobDefaults.UpgradeSavedSets.Cron,
 		},
 	}
 }

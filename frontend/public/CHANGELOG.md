@@ -3,6 +3,8 @@
 ### Added
 
 - Added pagination to the Download Queue and Failed tabs.
+- Added new option to "Automatically Upgrade Sets", which replaces a saved set with a higher-ranked favorite creator set when available.
+- Added new option to turn off "Automatic Upgrade" in the Download Modal.
 
 ### Fixed
 

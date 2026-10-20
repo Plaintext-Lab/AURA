@@ -142,6 +142,7 @@ type Config_Jobs struct {
 	RefreshMediuxUsers              Config_JobSetting `json:"refresh_mediux_users" yaml:"RefreshMediuxUsers,omitempty"`                             // Schedule for refreshing tracked MediUX users/creators.
 	CheckMediuxSiteLink             Config_JobSetting `json:"check_mediux_site_link" yaml:"CheckMediuxSiteLink,omitempty"`                          // Schedule for checking MediUX site link availability.
 	BackupDatabase                  Config_JobSetting `json:"backup_database" yaml:"BackupDatabase,omitempty"`                                      // Schedule for backing up the database.
+	UpgradeSavedSets                Config_JobSetting `json:"upgrade_saved_sets" yaml:"UpgradeSavedSets,omitempty"`                                 // Schedule for upgrading saved sets to higher ranked favorite creators.
 }
 
 type Config_Backups struct {
@@ -311,5 +312,6 @@ type Config_UserPreferences struct {
 	DefaultAddToQueue        bool     `json:"default_add_to_queue" yaml:"DefaultAddToQueue"`               // Whether "Add to Queue" is checked by default in the Download Modal.
 	DefaultAddToDBOnly       bool     `json:"default_add_to_db_only" yaml:"DefaultAddToDBOnly"`            // Whether "Add to Database Only" is checked by default in the Download Modal.
 	AutoDownloadNewItems     bool     `json:"auto_download_new_items" yaml:"AutoDownloadNewItems"`         // Whether images are downloaded automatically for new items, from the favorite creators.
+	AutoUpgradeSets          bool     `json:"auto_upgrade_sets" yaml:"AutoUpgradeSets"`                    // Whether to automatically upgrade sets when available.
 	FavoriteCreators         []string `json:"favorite_creators" yaml:"FavoriteCreators"`                   // MediUX usernames ranked best first, the first is rank 1.
 }

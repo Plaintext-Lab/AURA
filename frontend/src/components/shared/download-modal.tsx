@@ -81,6 +81,7 @@ type SourceType = "show" | "movie" | "collection";
 interface AssetTypeFormValues {
   types: TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS[];
   autodownload?: boolean;
+  autoupgrade?: boolean;
   addToDBOnly?: boolean;
   source?: SourceType;
 }
@@ -203,6 +204,7 @@ const formSchema = z
       z.object({
         types: z.array(z.enum(DOWNLOAD_IMAGE_TYPE_OPTIONS.map((opt) => opt.value as TYPE_DOWNLOAD_IMAGE_TYPE_OPTIONS))),
         autodownload: z.boolean().optional(),
+        autoupgrade: z.boolean().optional(),
         source: z.enum(["movie", "collection"]).optional(),
         addToDBOnly: z.boolean().optional(),
       })
@@ -308,6 +310,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
   const defaultAddToQueue = useUserPreferencesStore((state) => state.defaultAddToQueue);
   const [addToQueueOnly, setAddToQueueOnly] = useState(defaultAddToQueue);
   const defaultAddToDBOnly = useUserPreferencesStore((state) => state.defaultAddToDBOnly);
+  const autoUpgradeSets = useUserPreferencesStore((state) => state.autoUpgradeSets);
 
   // State - Add New Collection Items
   const [autoAddNewCollectionItems, setAutoAddNewCollectionItems] = useState(false);
@@ -398,6 +401,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           acc[getItemFormKey(item.MediaItem)] = {
             types: computeAssetTypes(item).filter((type) => downloadDefaults.includes(type)),
             autodownload: autoDownloadDefault,
+            autoupgrade: true,
             addToDBOnly: defaultAddToDBOnly,
             source: item.Set.type === "movie" || item.Set.type === "collection" ? item.Set.type : undefined,
           };
@@ -421,6 +425,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
           acc[getItemFormKey(item.MediaItem)] = {
             types: computeAssetTypes(item).filter((type) => downloadDefaults.includes(type)),
             autodownload: autoDownloadDefault,
+            autoupgrade: true,
             addToDBOnly: defaultAddToDBOnly,
             source: item.Set.type === "movie" || item.Set.type === "collection" ? item.Set.type : undefined,
           };
@@ -1163,6 +1168,28 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
                 <FormLabel className="text-md font-normal cursor-pointer">Auto Download</FormLabel>
                 <DownloadModalPopover type="autodownload" />
               </FormItem>
+              {/* Only does something while Automatically Upgrade Sets is on */}
+              {autoUpgradeSets && (
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={
+                        isDisabled || field.value?.types?.length === 0 ? false : field.value?.autoupgrade !== false
+                      }
+                      disabled={isDisabled || field.value?.types?.length === 0}
+                      onCheckedChange={(checked) => {
+                        field.onChange({
+                          ...(field.value ?? {}),
+                          autoupgrade: checked === true,
+                        });
+                      }}
+                      className="h-5 w-5 sm:h-4 sm:w-4 cursor-pointer"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-md font-normal cursor-pointer">Auto Upgrade</FormLabel>
+                  <DownloadModalPopover type="autoupgrade" />
+                </FormItem>
+              )}
             </div>
           </div>
         )}
@@ -1200,6 +1227,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({
             },
             auto_download: options.autodownload || false,
             auto_add_new_collection_items: autoAddNewCollectionItems,
+            no_auto_upgrade: options.autoupgrade === false,
             last_downloaded: "",
             to_delete: false,
           },

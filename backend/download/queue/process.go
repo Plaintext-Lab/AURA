@@ -10,6 +10,7 @@ import (
 	"aura/utils"
 	"context"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -216,6 +217,16 @@ func processQueueJob(ctx context.Context, job database.DownloadQueueJob) {
 		recordDownloadHistoryFailure(ctx, queueItem.MediaItem, models.DBPosterSetDetail{}, upsertErr.Message)
 		finalize()
 		return
+	}
+
+	// The sets this replaces are removed now the new sets are saved
+	for _, setID := range queueItem.ReplaceSetIDs {
+		if slices.ContainsFunc(queueItem.PosterSets, func(set models.DBPosterSetDetail) bool { return set.ID == setID }) {
+			continue
+		}
+		if Err := database.DeletePosterSetForMediaItem(ctx, queueItem.MediaItem.TMDB_ID, queueItem.MediaItem.LibraryTitle, queueItem.MediaItem.Edition, setID); Err.Message != "" {
+			fileWarnings = append(fileWarnings, fmt.Sprintf("Failed to remove the replaced set %s: %s", setID, Err.Message))
+		}
 	}
 
 	finalize()
