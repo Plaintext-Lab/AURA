@@ -83,7 +83,7 @@ export const ConfigSectionLogging: React.FC<ConfigSectionLoggingProps> = ({
   }, [value.level, onChange]);
 
   return (
-    <Card className={`p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
+    <Card className={`gap-4 p-4 sm:p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
       <h2 className="text-xl font-semibold text-blue-500">Logging</h2>
 
       {/* Level */}

@@ -614,7 +614,7 @@ function SettingsPageContent() {
         return <UserPreferencesCard />;
       case "advanced":
         return (
-          <Card className="p-5 space-y-4">
+          <Card className="gap-4 border-muted p-4 sm:p-5">
             <div className="flex flex-col gap-3 border rounded-md p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <Label>Export Configuration</Label>

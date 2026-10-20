@@ -382,7 +382,9 @@ export const ConfigSectionMediaServer: React.FC<ConfigSectionMediaServerProps> =
   }
 
   return (
-    <Card className={`p-5 ${Object.values(displayErrors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
+    <Card
+      className={`gap-4 p-4 sm:p-5 ${Object.values(displayErrors).some(Boolean) ? "border-red-500" : "border-muted"}`}
+    >
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           {badge && <Badge variant="secondary">{badge}</Badge>}

@@ -128,10 +128,10 @@ export function FavoriteCreatorsCard() {
   const remove = (index: number) => setFavoriteCreators(favoriteCreators.filter((_, i) => i !== index));
 
   return (
-    <Card className="p-5 mt-6">
+    <Card className="gap-4 border-muted p-4 sm:p-5">
       <h2 className="text-xl font-semibold">Auto Download New Items</h2>
 
-      <div className="mt-3 flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <Label htmlFor="auto-download-new-items" className="cursor-pointer">
           Automatically Download Images for New Items
         </Label>
@@ -157,12 +157,12 @@ export function FavoriteCreatorsCard() {
       </div>
 
       {!autoDownloadNewItems ? (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Turn this on to choose the creators whose sets are downloaded for new items.
         </p>
       ) : (
         <>
-          <div className="mt-5 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Favorite Creators</h3>
             <PopoverHelp ariaLabel="help-favorite-creators">
               <p className="mb-2">
@@ -176,7 +176,7 @@ export function FavoriteCreatorsCard() {
           </div>
 
           {/* Add a creator */}
-          <div className="relative mt-3">
+          <div className="relative">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -209,9 +209,9 @@ export function FavoriteCreatorsCard() {
 
           {/* Ranked creators */}
           {favoriteCreators.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">No favorite creators yet.</p>
+            <p className="text-sm text-muted-foreground">No favorite creators yet.</p>
           ) : (
-            <ol className="mt-3 divide-y rounded-md border">
+            <ol className="divide-y rounded-md border">
               {favoriteCreators.map((username, index) => (
                 <li key={username} className="flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3">
                   <span className="w-4 shrink-0 text-right text-sm font-semibold text-muted-foreground sm:w-6">

@@ -67,7 +67,7 @@ export const OtherMediaServerFields: React.FC<OtherMediaServerFieldsProps> = ({
   };
 
   return (
-    <div className={cn("space-y-3 rounded-lg border p-3", highlighted ? "border-amber-500" : "border-muted")}>
+    <div className={cn("space-y-3 rounded-md border p-3", highlighted ? "border-amber-500" : "border-muted")}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Switch

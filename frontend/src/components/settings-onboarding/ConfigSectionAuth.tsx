@@ -159,7 +159,7 @@ export const ConfigSectionAuth: React.FC<ConfigSectionAuthProps> = ({
   };
 
   return (
-    <Card className={`p-5 space-y-4 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
+    <Card className={`gap-4 p-4 sm:p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-500">Authentication</h2>
       </div>

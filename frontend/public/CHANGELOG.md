@@ -1,4 +1,12 @@
-## [0.9.109] - 2026-10-08
+## [0.9.110] - 2026-10-19
+
+### UI Tweaks
+
+- Settings sections now have the same padding and layout, and notification templates use the same + button to add variables as the image file names.
+
+---
+
+## [0.9.109] - 2026-10-18
 
 ### Breaking Changes
 
@@ -39,7 +47,7 @@
 - Added option to restore notifications to their default templates in Settings > Notifications.
 - Added option to retry failed downloads in the Download Queue, which will re-add them to the queue with the same settings as before.
 - Added failed download count to the Navbar so you can see at a glance if any downloads failed.
-- Added option to a redacted version of the config file. This is helpful for sharing your config file without exposing sensitive information like tokens, passwords and API keys.
+- Added option to export a redacted version of the config file. This is helpful for sharing your config file without exposing sensitive information like tokens, passwords and API keys.
 - Added automatic retry (up to 3 times) for failed download queue items. First retry is after 5 minutes, second retry is after 30 minutes, and third retry is after 2 hours. After that, the item is marked as failed and will need to be retried manually.
 - Added option to customize the naming convention for downloaded images. This will allow you to not only save your files in a specific location or along side your media files, but also to customize the actual name the images end up with.
 

@@ -219,7 +219,7 @@ export const ConfigSectionSonarrRadarr: React.FC<ConfigSectionSonarrRadarrProps>
 
   // ----- Render -----
   return (
-    <Card className={`p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
+    <Card className={`gap-4 p-4 sm:p-5 ${Object.values(errors).some(Boolean) ? "border-red-500" : "border-muted"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-blue-500 whitespace-nowrap">Sonarr & Radarr</h2>
         <div className="flex items-center">

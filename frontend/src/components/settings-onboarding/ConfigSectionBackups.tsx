@@ -79,7 +79,7 @@ export const ConfigSectionBackups: React.FC<ConfigSectionBackupsProps> = ({
   };
 
   return (
-    <Card className={cn("p-5", errors.keep ? "border-red-500" : "border-muted")}>
+    <Card className={cn("gap-4 p-4 sm:p-5", errors.keep ? "border-red-500" : "border-muted")}>
       {/* Keep Backups */}
       <div className={cn("space-y-1 border rounded-md p-3", dirtyFields.keep && "border-amber-500")}>
         <div className="flex items-center justify-between mb-1">

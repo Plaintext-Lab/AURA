@@ -2,21 +2,14 @@
 
 import { ReturnErrorMessage } from "@/services/api-error-return";
 import { DeleteTempImages } from "@/services/images/api-images-actions";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import React, { useEffect, useRef } from "react";
 
 import { ConfirmDestructiveDialogActionButton } from "@/components/shared/dialog-destructive-action";
 import { PopoverHelp } from "@/components/shared/popover-help";
-import { Button } from "@/components/ui/button";
+import { VariablePicker, insertAtCursor } from "@/components/shared/variable-picker";
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -92,18 +85,9 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   // insertNameVariable puts the variable at the cursor of the file name, or at the end
   const insertNameVariable = (key: keyof AppConfigImageNameTemplates, variable: string) => {
     const templates = value.save_images_locally.name_templates ?? EMPTY_NAME_TEMPLATES;
-    const current = templates[key] ?? "";
-    const input = nameInputRefs.current[key];
-    const start = input?.selectionStart ?? current.length;
-    const end = input?.selectionEnd ?? current.length;
     onChange("save_images_locally", "name_templates", {
       ...templates,
-      [key]: current.slice(0, start) + variable + current.slice(end),
-    });
-    // Put the cursor after the variable once the field updates
-    requestAnimationFrame(() => {
-      input?.focus();
-      input?.setSelectionRange(start + variable.length, start + variable.length);
+      [key]: insertAtCursor(nameInputRefs.current[key], templates[key] ?? "", variable),
     });
   };
 
@@ -137,7 +121,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
   }, [errors, errorsUpdate]);
 
   return (
-    <Card className="p-4 sm:p-5">
+    <Card className="gap-4 border-muted p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-500">Images</h2>
         <ConfirmDestructiveDialogActionButton
@@ -184,7 +168,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
           dirtyFields.save_images_locally?.enabled && "border-amber-500"
         )}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <Label className="mr-2">Save Images Locally</Label>
           <div className="flex items-center gap-2">
             <Switch
@@ -207,7 +191,7 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
           <div
             className={cn("mt-2", dirtyFields.save_images_locally?.enabled && "border border-amber-500 rounded-md p-2")}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
               <Label className="mr-2">Path</Label>
               {editing && (
                 <PopoverHelp ariaLabel="help-images-save-path">
@@ -261,31 +245,12 @@ export const ConfigSectionImages: React.FC<ConfigSectionImagesProps> = ({
                     {field.label}
                   </Label>
                   <div className="flex items-center gap-2">
-                    {/* Add a variable to the file name */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 cursor-pointer"
-                          disabled={!editing || !imageNameOptions}
-                          aria-label={`Add a variable to the ${field.label} file name`}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
-                        {imageNameOptions?.variables.map((variable) => (
-                          <DropdownMenuItem
-                            key={variable}
-                            className="cursor-pointer font-mono text-xs"
-                            onSelect={() => insertNameVariable(field.key, variable)}
-                          >
-                            {variable}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <VariablePicker
+                      variables={imageNameOptions?.variables ?? []}
+                      disabled={!editing}
+                      label={`the ${field.label} file name`}
+                      onPick={(variable) => insertNameVariable(field.key, variable)}
+                    />
                     <Input
                       id={`name-template-${field.key}`}
                       ref={(el) => {
