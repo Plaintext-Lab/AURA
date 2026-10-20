@@ -275,27 +275,29 @@ func fetchEpisodesForSeason(ctx context.Context, msConfig config.Config_MediaSer
 		return season, *logAction.Error
 	}
 
-	for _, episode := range ejResp.Items {
+	for _, ejEpisode := range ejResp.Items {
 		// Skip specials listed in this season by "Display specials within seasons"
-		if episode.ParentIndexNumber != season.SeasonNumber {
+		if ejEpisode.ParentIndexNumber != season.SeasonNumber {
 			continue
 		}
 
 		episode := models.MediaItemEpisode{
-			RatingKey:     episode.ID,
-			Title:         episode.Name,
-			SeasonNumber:  episode.ParentIndexNumber,
-			EpisodeNumber: episode.IndexNumber,
-			AddedAt:       unixSeconds(episode.DateCreated),
+			RatingKey:     ejEpisode.ID,
+			Title:         ejEpisode.Name,
+			SeasonNumber:  ejEpisode.ParentIndexNumber,
+			EpisodeNumber: ejEpisode.IndexNumber,
+			AddedAt:       unixSeconds(ejEpisode.DateCreated),
 			File: models.MediaItemFile{
-				Path:     episode.Path,
-				Size:     episode.MediaSources[0].Size,
-				Duration: episode.RunTimeTicks / 10000,
+				Path:     ejEpisode.Path,
+				Duration: ejEpisode.RunTimeTicks / 10000,
 			},
 		}
 
 		if episode.File.Path == "" {
 			continue
+		}
+		if len(ejEpisode.MediaSources) > 0 {
+			episode.File.Size = ejEpisode.MediaSources[0].Size
 		}
 
 		// For Emby/Jellyfin, the file path is not directly available in the response.

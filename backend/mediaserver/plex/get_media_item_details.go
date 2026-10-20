@@ -148,13 +148,7 @@ func extractMediaItemFromResponse(ctx context.Context, msConfig config.Config_Me
 	// Depending on the Type, populate Movie or Series info
 	switch item.Type {
 	case "movie":
-		item.Movie = &models.MediaItemMovie{
-			File: models.MediaItemFile{
-				Path:     metadata.Media[0].Part[0].File,
-				Size:     metadata.Media[0].Part[0].Size,
-				Duration: metadata.Media[0].Part[0].Duration,
-			},
-		}
+		item.Movie = &models.MediaItemMovie{File: firstFile(metadata.Media)}
 	case "show":
 		// For shows, fetch seasons and episodes
 		Err = fetchSeasonsAndEpisodesForShow(ctx, msConfig, item)
@@ -249,11 +243,12 @@ func fetchSeasonsAndEpisodesForShow(ctx context.Context, msConfig config.Config_
 			SeasonNumber:  seasonNumber,
 			EpisodeNumber: episode.Index,
 			AddedAt:       episode.AddedAt,
-			File: models.MediaItemFile{
-				Path:     episode.Media[0].Part[0].File,
-				Size:     episode.Media[0].Part[0].Size,
-				Duration: episode.Media[0].Part[0].Duration,
-			},
+			File:          firstFile(episode.Media),
+		}
+
+		// Skip episodes that do not have a file
+		if ep.File.Path == "" {
+			continue
 		}
 
 		if episode.AddedAt > latestEpisodeAddedAt {
@@ -361,4 +356,13 @@ func getGUIDsAndRatingsFromResponse(ctx context.Context, plexGUIDS []PlexTagFiel
 
 	// Return the final slice of GUIDs with associated ratings
 	return returnGUIDs, nil
+}
+
+// firstFile returns the first file of the media, or an empty file when Plex has none
+func firstFile(media []PlexVideoMediaItem) models.MediaItemFile {
+	if len(media) == 0 || len(media[0].Part) == 0 {
+		return models.MediaItemFile{}
+	}
+	part := media[0].Part[0]
+	return models.MediaItemFile{Path: part.File, Size: part.Size, Duration: part.Duration}
 }

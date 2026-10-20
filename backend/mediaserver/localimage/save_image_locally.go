@@ -46,7 +46,7 @@ func SaveImageLocally(ctx context.Context, item *models.MediaItem, imageFile mod
 		}
 		getFilePathAction.AppendResult("fetched_item_from_server", true)
 	}
-	if item.Type == "movie" && item.Movie == nil {
+	if item.Type == "movie" && (item.Movie == nil || item.Movie.File.Path == "") {
 		getFilePathAction.SetError("Failed to determine file path for movie", fmt.Sprintf("%s did not return a file for this movie", serverType),
 			map[string]any{
 				"rating_key": item.RatingKey,

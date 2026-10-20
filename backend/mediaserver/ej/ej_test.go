@@ -225,7 +225,9 @@ func TestEJSpecialsStayInTheSpecialsSeason(t *testing.T) {
 			writeJSON(w, map[string]any{"Items": []map[string]any{special}})
 			return
 		}
-		writeJSON(w, map[string]any{"Items": []map[string]any{episode("s2e1", 2, 1, "/tv/Show/Season 02/S02E01.mkv"), special, episode("s2e2", 2, 2, "/tv/Show/Season 02/S02E02.mkv")}})
+		// An episode without media sources is kept, without a size
+		noSources := map[string]any{"Id": "s2e3", "ParentIndexNumber": 2, "IndexNumber": 3, "Path": "/tv/Show/Season 02/S02E03.mkv"}
+		writeJSON(w, map[string]any{"Items": []map[string]any{episode("s2e1", 2, 1, "/tv/Show/Season 02/S02E01.mkv"), special, episode("s2e2", 2, 2, "/tv/Show/Season 02/S02E02.mkv"), noSources}})
 	})
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
@@ -243,7 +245,7 @@ func TestEJSpecialsStayInTheSpecialsSeason(t *testing.T) {
 			got[season.SeasonNumber] = append(got[season.SeasonNumber], ep.RatingKey)
 		}
 	}
-	if !slices.Equal(got[0], []string{"s0e2"}) || !slices.Equal(got[2], []string{"s2e1", "s2e2"}) {
+	if !slices.Equal(got[0], []string{"s0e2"}) || !slices.Equal(got[2], []string{"s2e1", "s2e2", "s2e3"}) {
 		t.Errorf("episodes by season = %v", got)
 	}
 }

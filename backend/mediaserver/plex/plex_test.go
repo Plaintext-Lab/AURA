@@ -153,3 +153,31 @@ func TestAddPlexHeaders(t *testing.T) {
 		t.Errorf("headers = %v", headers)
 	}
 }
+
+func TestPlexEpisodesWithoutAFile(t *testing.T) {
+	// An episode without media is skipped instead of failing the whole show
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"MediaContainer":{"Metadata":[
+			{"ratingKey":"e1","parentIndex":1,"index":1,"Media":[{"Part":[{"file":"/tv/Show/S01E01.mkv","size":5,"duration":7}]}]},
+			{"ratingKey":"e2","parentIndex":1,"index":2},
+			{"ratingKey":"e3","parentIndex":1,"index":3,"Media":[{"Part":[]}]}
+		]}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	item := models.MediaItem{RatingKey: "show", Title: "Show"}
+	if Err := fetchSeasonsAndEpisodesForShow(testContext(), config.Config_MediaServer{Type: "Plex", URL: server.URL}, &item); Err.Message != "" {
+		t.Fatalf("fetchSeasonsAndEpisodesForShow: %s", Err.Message)
+	}
+	if len(item.Series.Seasons) != 1 || len(item.Series.Seasons[0].Episodes) != 1 {
+		t.Fatalf("seasons = %+v, want only episode e1", item.Series.Seasons)
+	}
+	if file := item.Series.Seasons[0].Episodes[0].File; file != (models.MediaItemFile{Path: "/tv/Show/S01E01.mkv", Size: 5, Duration: 7}) {
+		t.Errorf("file = %+v", file)
+	}
+
+	// A movie without media has an empty file
+	if file := firstFile(nil); file != (models.MediaItemFile{}) {
+		t.Errorf("firstFile(nil) = %+v", file)
+	}
+}

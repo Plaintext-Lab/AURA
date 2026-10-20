@@ -3,6 +3,7 @@
 ### Fixed
 
 - Fixed Jellyfin/Emby specials being saved as regular season episodes when "Display Specials within seasons" is enabled, which caused false Episode Changed autodownloads.
+- Fixed a Plex, Emby or Jellyfin item without media info failing the whole library or show refresh
 
 ---
 
