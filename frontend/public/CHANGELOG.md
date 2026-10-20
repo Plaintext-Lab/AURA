@@ -2,7 +2,11 @@
 
 ### Added
 
-- Added pagination to the Download Queue/Failed page.
+- Added pagination to the Download Queue and Failed tabs.
+
+### Fixed
+
+- Fixed issue where Movie sets added to the Download Queue from the Favorite creators had all image types instead of just Poster and Backdrop.
 
 ### UI Tweaks
 

@@ -85,6 +85,14 @@ type SelectedTypes struct {
 	Titlecard           bool `json:"titlecard"`
 }
 
+// ForSetType keeps the image types a set of this type can have, movie and collection sets only have posters and backdrops
+func (s SelectedTypes) ForSetType(setType string) SelectedTypes {
+	if setType == "movie" || setType == "collection" {
+		return SelectedTypes{Poster: s.Poster, Backdrop: s.Backdrop}
+	}
+	return s
+}
+
 type CollectionItem struct {
 	RatingKey    string      `json:"rating_key"`
 	Index        string      `json:"index"` // Unique identifier for the collection in Plex

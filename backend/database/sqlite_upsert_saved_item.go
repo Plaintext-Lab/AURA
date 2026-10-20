@@ -29,6 +29,9 @@ func (s *SQliteDB) UpsertSavedItem(ctx context.Context, newItem models.DBSavedIt
 		return *logAction.Error
 	}
 
+	// Movie and collection sets only have posters and backdrops
+	newItem = newItem.WithSetImageTypes()
+
 	tx, err := s.conn.BeginTx(ctx, nil)
 	if err != nil {
 		logAction.SetError("DB: TX BEGIN failed", err.Error(), map[string]any{"error": err.Error()})

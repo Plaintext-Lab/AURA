@@ -10,6 +10,17 @@ type DBSavedItem struct {
 	Source     string              `json:"source,omitempty"` // What added it to the Download Queue, empty when it was the user
 }
 
+// WithSetImageTypes returns the item with each set's selected types limited to the image types the set can have
+func (item DBSavedItem) WithSetImageTypes() DBSavedItem {
+	sets := make([]DBPosterSetDetail, len(item.PosterSets))
+	for i, set := range item.PosterSets {
+		set.SelectedTypes = set.SelectedTypes.ForSetType(set.Type)
+		sets[i] = set
+	}
+	item.PosterSets = sets
+	return item
+}
+
 // The sources of Download Queue items that the user didn't add
 const (
 	SourceFavoriteCreatorsNewItem  = "favorite_creators_new_item"  // A new item, from a favorite creator

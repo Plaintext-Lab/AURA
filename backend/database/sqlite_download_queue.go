@@ -39,6 +39,9 @@ func (s *SQliteDB) EnqueueDownloadQueueJob(ctx context.Context, item models.DBSa
 		return 0, *logAction.Error
 	}
 
+	// Movie and collection sets only have posters and backdrops
+	item = item.WithSetImageTypes()
+
 	payload, err := json.Marshal(item)
 	if err != nil {
 		logAction.SetError("Failed to marshal Download Queue Job payload", err.Error(), map[string]any{"error": err.Error()})
